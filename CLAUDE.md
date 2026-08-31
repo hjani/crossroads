@@ -12,6 +12,8 @@ TypeScript + Three.js + Vite, running in the browser.
 ## Conventions
 
 - TypeScript strict mode (see `tsconfig.json`). Avoid `any`.
+- US English throughout — identifiers, comments and docs (`center`, not
+  `centre`).
 - Namespace-import Three.js as `THREE` (`import * as THREE from "three"`),
   matching the library's own convention — not a general project rule, just
   matches how all Three.js docs/examples name it.
@@ -23,8 +25,12 @@ TypeScript + Three.js + Vite, running in the browser.
   - `src/input/` — camera pan/zoom, click/drag handling, tool-mode manager.
     Also where an optional grid-snap toggle lives.
   - `src/main.ts` — app entry point.
-- Coordinate system: Y is up, roads live on the XZ ground plane. Units are
-  meters.
+- Coordinate system: Y is up, so the XZ plane is the ground. World units are meters.
+- Screen positions are client pixels (`ScreenPoint`, as pointer events
+  report them) and never mix with world coordinates. Converting between
+  the two is `Viewport`'s job, through names that say which way they go —
+  `screenToGround`, `groundToScreen`. Where a name alone could be read as
+  either, it carries its unit: `metersPerPixel`, `widthPixels`.
 - Data model is gridless at its core — nodes store exact, unsnapped
   positions. Grid snapping (if/when enabled) is applied only at the input
   layer before a position reaches the core model, never baked into the
@@ -32,10 +38,12 @@ TypeScript + Three.js + Vite, running in the browser.
 
 ## Design notes
 
-Non-trivial subsystems get a short design note in `docs/<subsystem>.md`.
-These are requirement-focused: what the thing must do, how it fits the architecture, and what was deliberately deferred — not how it is coded.
-Read the relevant one before working on a subsystem; update it when
-requirements change.
+Non-trivial subsystems get a short design note in `docs/<subsystem>.md`,
+written **before** the implementation. These are requirement-focused: what
+the thing must do and how it fits the architecture — not how it is coded.
+A design note is not a to-do list: leave planned, deferred and
+not-yet-built work out of it, `PROGRESS.md` tracks that. Read the relevant
+one before working on a subsystem; update it when requirements change.
 
 ## Verification
 

@@ -1,11 +1,14 @@
-import * as THREE from "three";
+import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { CameraControls } from "./CameraControls";
+
+/** Right button. */
+const PAN_BUTTON = 2;
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 20;
 
 /** Zoom change per unit of wheel delta, applied exponentially. */
-const WHEEL_ZOOM_SENSITIVITY = 0.0025;
+const WHEEL_ZOOM_SENSITIVITY = 0.01;
 const PINCH_ZOOM_SENSITIVITY = 0.01;
 
 /** Wheel events smaller than this are assumed to come from a touchpad. */
@@ -37,10 +40,10 @@ const ZOOM_KEYS: Record<string, number> = {
 
 /**
  * Google-Maps-style navigation for a top-down orthographic camera:
- * drag or scroll to pan, wheel or pinch to zoom about the screen centre.
+ * right-drag or scroll to pan, wheel or pinch to zoom about the cursor.
  *
- * The camera is assumed to look straight down with `up` set to -Z, so
- * screen right is world +X and screen down is world +Z.
+ * The viewport's camera is assumed to look straight down, so screen right
+ * is world +X and screen down is world +Z.
  */
 export class PanZoomControls implements CameraControls {
   private readonly heldKeys = new Set<string>();
@@ -48,18 +51,24 @@ export class PanZoomControls implements CameraControls {
   private lastPointerX = 0;
   private lastPointerY = 0;
 
+  /**
+   * Pointer input is taken from `domElement`, keyboard input and focus
+   * loss from `window` — keys are not aimed at any particular element.
+   */
   constructor(
-    private readonly camera: THREE.OrthographicCamera,
+    private readonly viewport: Viewport,
     private readonly domElement: HTMLElement,
+    private readonly window: Window,
   ) {
     this.domElement.addEventListener("pointerdown", this.onPointerDown);
     this.domElement.addEventListener("pointermove", this.onPointerMove);
     this.domElement.addEventListener("pointerup", this.onPointerUp);
     this.domElement.addEventListener("pointercancel", this.onPointerUp);
     this.domElement.addEventListener("wheel", this.onWheel, { passive: false });
-    window.addEventListener("keydown", this.onKeyDown);
-    window.addEventListener("keyup", this.onKeyUp);
-    window.addEventListener("blur", this.onBlur);
+    this.domElement.addEventListener("contextmenu", this.onContextMenu);
+    this.window.addEventListener("keydown", this.onKeyDown);
+    this.window.addEventListener("keyup", this.onKeyUp);
+    this.window.addEventListener("blur", this.onBlur);
   }
 
   update(deltaSeconds: number): void {
@@ -92,7 +101,11 @@ export class PanZoomControls implements CameraControls {
     }
     if (direction === 0) return;
 
-    this.zoomBy(Math.exp(direction * KEYBOARD_ZOOM_RATE * deltaSeconds));
+    // No cursor to anchor to, so the screen center holds still.
+    this.zoomBy(
+      Math.exp(direction * KEYBOARD_ZOOM_RATE * deltaSeconds),
+      this.screenCenter,
+    );
   }
 
   dispose(): void {
@@ -101,13 +114,14 @@ export class PanZoomControls implements CameraControls {
     this.domElement.removeEventListener("pointerup", this.onPointerUp);
     this.domElement.removeEventListener("pointercancel", this.onPointerUp);
     this.domElement.removeEventListener("wheel", this.onWheel);
-    window.removeEventListener("keydown", this.onKeyDown);
-    window.removeEventListener("keyup", this.onKeyUp);
-    window.removeEventListener("blur", this.onBlur);
+    this.domElement.removeEventListener("contextmenu", this.onContextMenu);
+    this.window.removeEventListener("keydown", this.onKeyDown);
+    this.window.removeEventListener("keyup", this.onKeyUp);
+    this.window.removeEventListener("blur", this.onBlur);
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
-    if (this.dragPointerId !== null || event.button !== 0) return;
+    if (this.dragPointerId !== null || event.button !== PAN_BUTTON) return;
     this.dragPointerId = event.pointerId;
     this.lastPointerX = event.clientX;
     this.lastPointerY = event.clientY;
@@ -130,6 +144,11 @@ export class PanZoomControls implements CameraControls {
     this.dragPointerId = null;
   };
 
+  /** The browser menu would otherwise open on the button that pans. */
+  private readonly onContextMenu = (event: MouseEvent): void => {
+    event.preventDefault();
+  };
+
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault();
     if (isTouchpadPan(event)) {
@@ -140,7 +159,10 @@ export class PanZoomControls implements CameraControls {
     const sensitivity = event.ctrlKey
       ? PINCH_ZOOM_SENSITIVITY
       : WHEEL_ZOOM_SENSITIVITY;
-    this.zoomBy(Math.exp(-event.deltaY * sensitivity));
+    this.zoomBy(Math.exp(-event.deltaY * sensitivity), {
+      x: event.clientX,
+      y: event.clientY,
+    });
   };
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -158,19 +180,47 @@ export class PanZoomControls implements CameraControls {
 
   /** Move the camera by a screen-space offset in pixels. */
   private panCameraByPixels(dx: number, dy: number): void {
-    const { width, height } = this.domElement.getBoundingClientRect();
-    const worldPerPixelX =
-      (this.camera.right - this.camera.left) / this.camera.zoom / width;
-    const worldPerPixelY =
-      (this.camera.top - this.camera.bottom) / this.camera.zoom / height;
-    this.camera.position.x += dx * worldPerPixelX;
-    this.camera.position.z += dy * worldPerPixelY;
+    const metersPerPixel = this.viewport.metersPerPixel;
+    this.moveCameraBy(dx * metersPerPixel, dy * metersPerPixel);
   }
 
-  private zoomBy(factor: number): void {
-    const zoom = this.camera.zoom * factor;
-    this.camera.zoom = Math.min(Math.max(zoom, MIN_ZOOM), MAX_ZOOM);
-    this.camera.updateProjectionMatrix();
+  /** Move the camera across the ground, keeping its world matrix current. */
+  private moveCameraBy(dx: number, dz: number): void {
+    const { camera } = this.viewport;
+    camera.position.x += dx;
+    camera.position.z += dz;
+    // The viewport converts screen positions by raycasting through the
+    // camera, and several input events can arrive between two frames.
+    camera.updateMatrixWorld();
+  }
+
+  /**
+   * Zoom about a point on screen, keeping the ground under it in place.
+   *
+   * The anchoring is measured rather than derived: where the ground under
+   * the anchor ends up is read back after zooming, so hitting a zoom limit
+   * shifts the view by exactly as much as the zoom actually changed.
+   */
+  private zoomBy(factor: number, anchor: ScreenPoint): void {
+    const { camera } = this.viewport;
+    const groundBefore = this.viewport.screenToGround(anchor);
+
+    const zoom = camera.zoom * factor;
+    camera.zoom = Math.min(Math.max(zoom, MIN_ZOOM), MAX_ZOOM);
+    camera.updateProjectionMatrix();
+
+    const groundAfter = this.viewport.screenToGround(anchor);
+    if (groundBefore === null || groundAfter === null) return;
+
+    this.moveCameraBy(
+      groundBefore.x - groundAfter.x,
+      groundBefore.z - groundAfter.z,
+    );
+  }
+
+  private get screenCenter(): ScreenPoint {
+    const rect = this.domElement.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 }
 

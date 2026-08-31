@@ -25,7 +25,9 @@ Next step: click-to-place straight sections (`src/input/`)
 - [x] `docs/road-network.md` design note
 - [x] core data model (nodes/edges)
 - [ ] click-to-place straight sections
-- [ ] wireframe rendering
+- [ ] snap to existing nodes, so sections can be joined (input layer, independent of grid snapping)
+- [x] `docs/rendering.md` design note
+- [x] wireframe rendering
 - [ ] grid-snap on/off toggle (input layer, not baked into model)
 
 ### M2 — Intersections
