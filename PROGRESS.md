@@ -5,7 +5,7 @@ Quick status for picking up where we left.
 ## Current status
 
 M0 is done. Working on: **M1 — Straight sections**
-Next step: click-to-place straight sections (`src/input/`)
+Next step: snap to existing nodes, so sections can be joined (`src/input/`)
 
 ## Milestones
 
@@ -24,7 +24,7 @@ Next step: click-to-place straight sections (`src/input/`)
 ### M1 — Straight sections
 - [x] `docs/road-network.md` design note
 - [x] core data model (nodes/edges)
-- [ ] click-to-place straight sections
+- [x] click-to-place straight sections
 - [ ] snap to existing nodes, so sections can be joined (input layer, independent of grid snapping)
 - [x] `docs/rendering.md` design note
 - [x] wireframe rendering

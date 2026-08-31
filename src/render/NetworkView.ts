@@ -20,7 +20,7 @@ const NODE_SIZE = 7;
  */
 export class NetworkView {
   /** Add this to the scene once; the view keeps its contents up to date. */
-  readonly scene_object = new THREE.Group();
+  readonly sceneObject = new THREE.Group();
 
   private readonly sections: THREE.LineSegments<
     THREE.BufferGeometry,
@@ -46,7 +46,7 @@ export class NetworkView {
         sizeAttenuation: false,
       }),
     );
-    this.scene_object.add(this.sections, this.nodes);
+    this.sceneObject.add(this.sections, this.nodes);
   }
 
   /** Call once per frame. Cheap unless the network changed. */
