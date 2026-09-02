@@ -5,7 +5,7 @@ Quick status for picking up where we left.
 ## Current status
 
 M0 is done. Working on: **M1 — Straight sections**
-Next step: snap to existing nodes, so sections can be joined (`src/input/`)
+Next step: grid-snap on/off toggle (`src/input/`)
 
 ## Milestones
 
@@ -25,7 +25,7 @@ Next step: snap to existing nodes, so sections can be joined (`src/input/`)
 - [x] `docs/road-network.md` design note
 - [x] core data model (nodes/edges)
 - [x] click-to-place straight sections
-- [ ] snap to existing nodes, so sections can be joined (input layer, independent of grid snapping)
+- [x] snap to existing nodes, so sections can be joined (input layer, independent of grid snapping)
 - [x] `docs/rendering.md` design note
 - [x] wireframe rendering
 - [ ] grid-snap on/off toggle (input layer, not baked into model)
@@ -42,3 +42,11 @@ Next step: snap to existing nodes, so sections can be joined (`src/input/`)
 
 ### M4 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
+
+## Deferred cleanups
+
+Not blocking anything; do them when they start to bite.
+
+- [ ] one named set of ground-plane layer offsets, replacing the heights
+      each drawable picks for itself (`NetworkView`, `SectionPreview`,
+      `NodeHighlight`) — worth doing when the next overlay is added

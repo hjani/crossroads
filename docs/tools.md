@@ -41,6 +41,33 @@ Where a click lands is decided here. Positions reach the model exactly as
 the tool intends them, so welding a point onto an existing node, or
 snapping it to a grid, is this layer's decision and never the model's.
 
+## Snapping
+
+An endpoint placed within a small radius of an existing node becomes that
+node, so the two sections meet at one shared point. Outside that radius
+it is the exact position under the cursor — the network stays gridless,
+and nothing rounds a position that was not deliberately snapped.
+
+The radius is a distance in pixels, not meters. It is how close the
+cursor looks to a node, so it is the same target however far the view is
+zoomed in.
+
+The node an endpoint would weld to is shown while the cursor is near it,
+before the first click as well as during an edit in progress, so where a
+click will land is visible before it is made.
+
+A tool never builds a section that starts and ends in the same place. The
+test is the cursor's distance from where the section started, not the
+distance between the two endpoints it resolved to: zoomed far out, the
+radii of neighboring nodes overlap, and a cursor still within reach of
+the start is refused even when another node is also in range. Nothing is
+built and the edit stays in progress. This is the tool's judgement to
+make — the model rejects a section between one node and itself, but
+accepts a zero-length one between two coincident nodes.
+
+None of this reaches the model. It still receives exact positions and ids
+of nodes that already exist, and decides nothing about either.
+
 ## Input bindings
 
 - Left button — the active tool.
