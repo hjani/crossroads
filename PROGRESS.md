@@ -4,8 +4,8 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0 is done. Working on: **M1 — Straight sections**
-Next step: grid-snap on/off toggle (`src/input/`)
+M0 and M1 are done. Next up: **M2 — Intersections**
+Next step: line–line crossing detection
 
 ## Milestones
 
@@ -28,7 +28,8 @@ Next step: grid-snap on/off toggle (`src/input/`)
 - [x] snap to existing nodes, so sections can be joined (input layer, independent of grid snapping)
 - [x] `docs/rendering.md` design note
 - [x] wireframe rendering
-- [ ] grid-snap on/off toggle (input layer, not baked into model)
+- [x] grid snapping, with Ctrl held to place a point unsnapped (input
+      layer, not baked into model)
 
 ### M2 — Intersections
 - [ ] line–line crossing detection

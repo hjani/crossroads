@@ -2,6 +2,18 @@ import type * as THREE from "three";
 import type { ScreenPoint } from "../render/Viewport";
 
 /**
+ * The modifier keys held as a pointer event was reported.
+ *
+ * Taken from the event itself rather than tracked across keydown and
+ * keyup, so it describes the moment the click or move happened and cannot
+ * drift out of step with it — a key released while the window had no
+ * focus, say. What a modifier means is the tool's to decide.
+ */
+export interface Modifiers {
+  readonly ctrl: boolean;
+}
+
+/**
  * One way of editing the road network: reads pointer input, decides what
  * the user meant, and applies it to the network.
  *
@@ -20,9 +32,9 @@ export interface Tool {
    */
   readonly overlay?: THREE.Object3D;
 
-  onPointerDown?(point: ScreenPoint): void;
-  onPointerMove?(point: ScreenPoint): void;
-  onPointerUp?(point: ScreenPoint): void;
+  onPointerDown?(point: ScreenPoint, modifiers: Modifiers): void;
+  onPointerMove?(point: ScreenPoint, modifiers: Modifiers): void;
+  onPointerUp?(point: ScreenPoint, modifiers: Modifiers): void;
 
   onKeyDown?(event: KeyboardEvent): void;
   onKeyUp?(event: KeyboardEvent): void;

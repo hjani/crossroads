@@ -43,24 +43,40 @@ snapping it to a grid, is this layer's decision and never the model's.
 
 ## Snapping
 
-An endpoint placed within a small radius of an existing node becomes that
-node, so the two sections meet at one shared point. Outside that radius
-it is the exact position under the cursor — the network stays gridless,
-and nothing rounds a position that was not deliberately snapped.
+A point is placed in one of two modes. Snapped is the normal one; holding
+the un-snap modifier gives the other for as long as it is held, so the
+choice is made per point rather than set and forgotten.
 
-The radius is a distance in pixels, not meters. It is how close the
+Snapped, a point within a small radius of an existing node becomes that
+node, so the two sections meet at one shared point. Anywhere else it is
+rounded to a grid. Welding wins where both could apply: a grid point is
+never a join, and a road that reaches an existing one should meet it.
+
+Unsnapped, a point is the exact position under the cursor — over a node
+as much as anywhere else. Nothing welds and nothing rounds, which is what
+makes a position that no rule would produce reachable at all. The price
+is that a join cannot be made in this mode; releasing the modifier is how
+one is.
+
+The pick radius is a distance in pixels, not meters: it is how close the
 cursor looks to a node, so it is the same target however far the view is
-zoomed in.
+zoomed in. The grid pitch is the opposite — a distance in meters, fixed,
+because a grid that changed size with the zoom would place the same click
+differently depending on the view it was made from.
 
-The node an endpoint would weld to is shown while the cursor is near it,
-before the first click as well as during an edit in progress, so where a
-click will land is visible before it is made.
+Where a click would land is marked whenever that is not simply the
+cursor's own position, before the first click as well as during an edit
+in progress, so a snap is visible before it is committed. Unsnapped there
+is nothing to mark: the cursor is already the answer.
 
-A tool never builds a section that starts and ends in the same place. The
-test is the cursor's distance from where the section started, not the
-distance between the two endpoints it resolved to: zoomed far out, the
-radii of neighboring nodes overlap, and a cursor still within reach of
-the start is refused even when another node is also in range. Nothing is
+A tool never builds a section that starts and ends in the same place. Two
+things are refused: a point that resolves to where the section started —
+the same node, or the same grid point — and a cursor that has not left
+the start's pick radius, which catches the unsnapped case where two
+distinct positions are a fraction of a pixel apart. The second is
+measured from the cursor rather than between the resolved endpoints:
+zoomed far out, the radii of neighboring nodes overlap, and a cursor
+still on top of the start is not a section however it snapped. Nothing is
 built and the edit stays in progress. This is the tool's judgement to
 make — the model rejects a section between one node and itself, but
 accepts a zero-length one between two coincident nodes.
@@ -73,6 +89,7 @@ of nodes that already exist, and decides nothing about either.
 - Left button — the active tool.
 - Right button — pan. The browser context menu is suppressed.
 - Escape — cancel the edit in progress.
+- Ctrl, held — place the point exactly under the cursor, without snapping.
 
 Middle-button gestures stay unclaimed, for an orbiting camera later.
 

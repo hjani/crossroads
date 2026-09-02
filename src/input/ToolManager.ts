@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { ScreenPoint } from "../render/Viewport";
-import type { Tool } from "./Tool";
+import type { Modifiers, Tool } from "./Tool";
 
 /** Left button. The right one pans the camera, the middle is unclaimed. */
 const TOOL_BUTTON = 0;
@@ -75,17 +75,17 @@ export class ToolManager {
 
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (event.button !== TOOL_BUTTON) return;
-    this.tool?.onPointerDown?.(screenPointOf(event));
+    this.tool?.onPointerDown?.(screenPointOf(event), modifiersOf(event));
   };
 
   /** Not filtered by button: a tool follows the cursor whether or not it is held. */
   private readonly onPointerMove = (event: PointerEvent): void => {
-    this.tool?.onPointerMove?.(screenPointOf(event));
+    this.tool?.onPointerMove?.(screenPointOf(event), modifiersOf(event));
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (event.button !== TOOL_BUTTON) return;
-    this.tool?.onPointerUp?.(screenPointOf(event));
+    this.tool?.onPointerUp?.(screenPointOf(event), modifiersOf(event));
   };
 
   /** Global bindings first; the tool never sees a key the manager claimed. */
@@ -104,4 +104,8 @@ export class ToolManager {
 
 function screenPointOf(event: PointerEvent): ScreenPoint {
   return { x: event.clientX, y: event.clientY };
+}
+
+function modifiersOf(event: PointerEvent): Modifiers {
+  return { ctrl: event.ctrlKey };
 }
