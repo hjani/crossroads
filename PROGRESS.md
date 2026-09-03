@@ -4,8 +4,8 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0 and M1 are done. Next up: **M2 — Intersections**
-Next step: line–line crossing detection
+M0, M1 and M2 are done. Next up: **M3 — Curved sections**
+Next step: `docs/` design note for the arc section type
 
 ## Milestones
 
@@ -32,9 +32,11 @@ Next step: line–line crossing detection
       layer, not baked into model)
 
 ### M2 — Intersections
-- [ ] line–line crossing detection
-- [ ] split sections / insert shared node
-- [ ] render intersection points
+- [x] `docs/intersections.md` design note
+- [x] line–line crossing detection
+- [x] split sections / insert shared node
+- [x] render intersection points — a junction is an ordinary node, so
+      `NetworkView` already draws it
 
 ### M3 — Curved sections
 - [ ] circular-arc section type
@@ -44,6 +46,18 @@ Next step: line–line crossing detection
 ### M4 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
 
+## Backlog
+
+Wanted, but not part of a milestone yet.
+
+- [ ] show an unfeasible edit in the preview (rubber band in red), so a
+      refused section says why nothing happened instead of being silent
+- [ ] mark every junction the section in progress would create, so the
+      whole edit is visible before it is committed — in a color that
+      separates a node about to be made from one already there
+- [ ] inspection tool: select a node and highlight every section meeting
+      at it
+
 ## Deferred cleanups
 
 Not blocking anything; do them when they start to bite.
@@ -51,3 +65,12 @@ Not blocking anything; do them when they start to bite.
 - [ ] one named set of ground-plane layer offsets, replacing the heights
       each drawable picks for itself (`NetworkView`, `SectionPreview`,
       `NodeHighlight`) — worth doing when the next overlay is added
+- [ ] revisit the two intersection tolerances once sections have width —
+      how close two junctions may sit follows from how wide the roads are
+      (`SAME_POINT_METERS`, `MIN_SECTION_LENGTH_METERS`). A section that
+      crosses nothing but passes close by a node needs an answer then too:
+      with width it is running into that junction, however clear of it the
+      centerlines are
+- [ ] decide how shallow a crossing is still a crossing — near-parallel
+      sections currently cross like any other, and the junction they make
+      moves a long way for a small change in either road

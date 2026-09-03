@@ -77,9 +77,15 @@ distinct positions are a fraction of a pixel apart. The second is
 measured from the cursor rather than between the resolved endpoints:
 zoomed far out, the radii of neighboring nodes overlap, and a cursor
 still on top of the start is not a section however it snapped. Nothing is
-built and the edit stays in progress. This is the tool's judgement to
+built and the edit stays in progress. This is the tool's judgment to
 make — the model rejects a section between one node and itself, but
 accepts a zero-length one between two coincident nodes.
+
+A section can also be refused for being too short to be a road, or for
+what it would cross — see `docs/intersections.md`, which decides both.
+The tool treats such a refusal as it treats a section with no length:
+nothing is built, and the edit stays in progress so the click can be made
+again somewhere it works.
 
 None of this reaches the model. It still receives exact positions and ids
 of nodes that already exist, and decides nothing about either.

@@ -4,6 +4,18 @@ import type { Node, NodeId, Section, SectionId, Vec2 } from "./types";
 export type Endpoint = NodeId | Vec2;
 
 /**
+ * Whether an endpoint names a node rather than carrying a position.
+ *
+ * The `endpoint is NodeId` return type makes this a narrowing test and not
+ * just a boolean one: where it returns true, the compiler treats the
+ * argument as a `NodeId` for the rest of the branch. A plain `boolean`
+ * would leave the caller to assert the type itself.
+ */
+export function isNodeId(endpoint: Endpoint): endpoint is NodeId {
+  return typeof endpoint === "number";
+}
+
+/**
  * Stores the road network and keeps it structurally valid.
  *
  * The only place nodes and sections are created or destroyed. Nodes exist
@@ -35,7 +47,7 @@ export class RoadNetwork {
   addSection(from: Endpoint, to: Endpoint): Section {
     this.requireKnown(from);
     this.requireKnown(to);
-    if (from === to && typeof from === "number") {
+    if (from === to && isNodeId(from)) {
       throw new Error(`Section would start and end at node ${from}`);
     }
 
@@ -91,13 +103,13 @@ export class RoadNetwork {
   }
 
   private requireKnown(endpoint: Endpoint): void {
-    if (typeof endpoint === "number" && !this.nodes.has(endpoint)) {
+    if (isNodeId(endpoint) && !this.nodes.has(endpoint)) {
       throw new Error(`Unknown node ${endpoint}`);
     }
   }
 
   private resolve(endpoint: Endpoint): NodeId {
-    return typeof endpoint === "number" ? endpoint : this.addNode(endpoint);
+    return isNodeId(endpoint) ? endpoint : this.addNode(endpoint);
   }
 
   private addNode(position: Vec2): NodeId {

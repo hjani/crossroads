@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { nearestNode } from "../core/queries";
+import { addSectionWithCrossings } from "../core/edits";
+import { nearestNode, positionOfNode } from "../core/queries";
 import type { Endpoint, RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -81,10 +82,25 @@ export class StraightSectionTool implements Tool {
 
     if (this.endsWhereItStarted(ground, end)) return;
 
-    // The section owns the node made for its far end, so starting the next
-    // one from that node id is what makes the two share it.
-    const section = this.network.addSection(this.pending.endpoint, end.endpoint);
-    this.pending = { kind: "node", endpoint: section.to, position: end.position };
+    // Refused where the crossings it would make are not ones that can be
+    // built. Nothing was added, and the section stays in progress so the
+    // same click can be made again somewhere it works.
+    const far = addSectionWithCrossings(
+      this.network,
+      this.pending.endpoint,
+      end.endpoint,
+    );
+    if (far === null) return;
+
+    // The node at the far end is the network's now, so starting the next
+    // section from it is what makes the two share it. Its position is asked
+    // for rather than assumed: the click may have landed on a junction that
+    // was already there, a centimeter from where it was made.
+    this.pending = {
+      kind: "node",
+      endpoint: far,
+      position: positionOfNode(this.network, far),
+    };
   }
 
   /** Follows the cursor whether or not a section is being drawn — the mark

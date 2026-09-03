@@ -1,5 +1,6 @@
-import type { RoadNetwork } from "./RoadNetwork";
-import type { Node, Vec2 } from "./types";
+import { segmentCrossing } from "./geometry";
+import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
+import type { Node, NodeId, SectionId, Vec2 } from "./types";
 
 /**
  * Geometric questions asked of the network from outside it.
@@ -38,4 +39,115 @@ export function nearestNode(
   }
 
   return nearest;
+}
+
+/**
+ * Some node within `maxDistance` meters of a position, or null if there is
+ * none.
+ *
+ * Stops at the first one it finds rather than weighing up the candidates,
+ * which is what a caller asking "is there a node here" wants — and where
+ * the distance is small enough that a second node could not also be in
+ * range, there is nothing to weigh. Use `nearestNode` for a pick radius,
+ * where several nodes can plausibly be in reach at once.
+ */
+export function nodeWithin(
+  network: RoadNetwork,
+  of: Vec2,
+  maxDistance: number,
+): Node | null {
+  const limit = maxDistance * maxDistance;
+
+  for (const node of network.allNodes()) {
+    const dx = node.position.x - of.x;
+    const dz = node.position.z - of.z;
+    if (dx * dx + dz * dz <= limit) {
+      return node;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Where a node is. Throws if the network does not have it, as `addSection`
+ * does — an id held by anything reading the network is expected to be one
+ * the network still knows.
+ */
+export function positionOfNode(network: RoadNetwork, id: NodeId): Vec2 {
+  const node = network.getNode(id);
+  if (node === undefined) {
+    throw new Error(`Unknown node ${id}`);
+  }
+  return node.position;
+}
+
+/** Where an endpoint is, whether it names a node or carries a position. */
+export function positionOf(network: RoadNetwork, endpoint: Endpoint): Vec2 {
+  return isNodeId(endpoint) ? positionOfNode(network, endpoint) : endpoint;
+}
+
+/** A place where a section between two endpoints would cross an existing one. */
+export interface SectionCrossing {
+  readonly section: SectionId;
+  readonly point: Vec2;
+  /** 0 at the new section's start, 1 at its end. */
+  readonly alongNew: number;
+}
+
+/**
+ * Every existing section a new one from `from` to `to` would cross, in the
+ * order they are met walking from `from`.
+ *
+ * Sections already meeting at either endpoint are left out. They touch the
+ * new one at a node it is being attached to, which is a join the caller is
+ * making rather than a crossing to resolve — and nothing is missed by
+ * skipping them, since two straight segments sharing a point meet nowhere
+ * else unless they are parallel, which is not a crossing either.
+ *
+ * A linear scan over every section, like `nearestNode` over every node.
+ */
+export function crossingsAlong(
+  network: RoadNetwork,
+  from: Endpoint,
+  to: Endpoint,
+): SectionCrossing[] {
+  const start = positionOf(network, from);
+  const end = positionOf(network, to);
+  const joined = new Set([
+    ...sectionsAtEndpoint(network, from),
+    ...sectionsAtEndpoint(network, to),
+  ]);
+
+  const crossings: SectionCrossing[] = [];
+  for (const section of network.allSections()) {
+    if (joined.has(section.id)) {
+      continue;
+    }
+
+    const crossing = segmentCrossing(
+      start,
+      end,
+      positionOfNode(network, section.from),
+      positionOfNode(network, section.to),
+    );
+    if (crossing !== null) {
+      crossings.push({
+        section: section.id,
+        point: crossing.point,
+        alongNew: crossing.alongA,
+      });
+    }
+  }
+
+  crossings.sort((left, right) => left.alongNew - right.alongNew);
+  return crossings;
+}
+
+/** The sections meeting at an endpoint — none, for a bare position. */
+function sectionsAtEndpoint(
+  network: RoadNetwork,
+  endpoint: Endpoint,
+): readonly SectionId[] {
+  return isNodeId(endpoint) ? network.sectionsAt(endpoint) : [];
 }

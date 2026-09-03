@@ -49,3 +49,7 @@ one before working on a subsystem; update it when requirements change.
 
 - `npm run dev` — start the Vite dev server.
 - `npm run typecheck` — run `tsc --noEmit` as a quick correctness gate.
+- `npm test` — run the Vitest suite. Tests live next to the code as
+  `*.test.ts`, and cover `src/core/` only: logic with exact expected
+  answers and no Three.js in the way. Rendering and input are checked by
+  running the app.
