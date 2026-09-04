@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoadNetwork } from "./core/RoadNetwork";
 import { PanZoomControls } from "./input/PanZoomControls";
+import { SelectionTool } from "./input/SelectionTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
 import { NetworkView } from "./render/NetworkView";
@@ -35,11 +36,14 @@ scene.add(tools.sceneObject);
 
 // Where the layers meet: the palette names the tools, and this is what the
 // names do. A tool is built fresh on every activation, since the manager
-// disposes the one it replaces and an instance is single-use. The entries
-// with no action are the tools that do not exist yet — the selection tool
-// later in M3, arcs in M4.
+// disposes the one it replaces and an instance is single-use. The entry
+// with no action is the tool that does not exist yet — arcs, in M4.
 const palette = new ToolPalette(document.body, [
-  { id: "select", label: "Select", activate: null },
+  {
+    id: "select",
+    label: "Select",
+    activate: () => tools.setActiveTool(new SelectionTool(network, viewport)),
+  },
   {
     id: "straight",
     label: "Straight",

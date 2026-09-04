@@ -1,6 +1,6 @@
-import { segmentCrossing } from "./geometry";
+import { segmentCrossing, squaredDistanceToSegment } from "./geometry";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import type { Node, NodeId, SectionId, Vec2 } from "./types";
+import type { Node, NodeId, Section, SectionId, Vec2 } from "./types";
 
 /**
  * Geometric questions asked of the network from outside it.
@@ -34,6 +34,41 @@ export function nearestNode(
     const distance = dx * dx + dz * dz;
     if (distance <= nearestDistance) {
       nearest = node;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearest;
+}
+
+/**
+ * The section nearest a position, or null if none runs within
+ * `maxDistance` meters of it.
+ *
+ * Distance to the section, not to its endpoints: a position beside the
+ * middle of a long road is near it. Measured to the nearest place along it,
+ * so a position past either end falls back to being near that end.
+ *
+ * A linear scan over every section, like `nearestNode` over every node, and
+ * the same place a spatial index would go.
+ */
+export function nearestSection(
+  network: RoadNetwork,
+  to: Vec2,
+  maxDistance: number,
+): Section | null {
+  let nearest: Section | null = null;
+  // Squared throughout, so the scan needs no square roots.
+  let nearestDistance = maxDistance * maxDistance;
+
+  for (const section of network.allSections()) {
+    const distance = squaredDistanceToSegment(
+      to,
+      positionOfNode(network, section.from),
+      positionOfNode(network, section.to),
+    );
+    if (distance <= nearestDistance) {
+      nearest = section;
       nearestDistance = distance;
     }
   }

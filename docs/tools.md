@@ -111,6 +111,34 @@ preview can show what was refused rather than only that something was.
 None of this reaches the model. It still receives exact positions and ids
 of nodes that already exist, and decides nothing about either.
 
+## Selection
+
+Selecting is a tool like any other, and while it is active nothing is
+built: it reads the network and changes none of it.
+
+A click selects the section nearest the cursor, within a pick radius —
+distance to the road itself, so a click beside the middle of a long one
+finds it, and a click past either end falls back to being near that end.
+The radius is in pixels, for the same reason the node one is: how close the
+cursor *looks* to a section should not change with the zoom. Where several
+are in reach at once, the nearest wins.
+
+The section a click would catch is marked before the click, the same rule
+that marks where a point would land and draws what an edit would do. It is
+the same question asked a move earlier, so the mark and the click cannot
+disagree, and without it there is no way to see that the cursor is close
+enough. Clicking clear of everything selects nothing, which is how a
+selection is dropped without leaving the tool; cancelling drops it too.
+
+What is selected and what is merely under the cursor are both marks on the
+same section, so they are separated twice over: by color, and by the
+selection also marking the nodes at either end. The section under the
+cursor goes unmarked while it is the selected one — it is already marked,
+and there is nothing worth painting over the selection to say.
+
+A selection is a tool's own state, so it does not survive a tool switch,
+like anything else a tool is holding.
+
 ## Input bindings
 
 - Left button — the active tool.

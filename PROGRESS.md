@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0, M1 and M2 are done. Current: **M3 — Editing UI**, which arrived ahead
 of the curves because a second tool needs a way to be chosen, and because
 nothing can be deleted yet. Then **M4 — Curved sections**
-Next step: the selection tool
+Next step: selecting a node
 
 ## Milestones
 
@@ -62,7 +62,7 @@ Next step: the selection tool
 - [x] hand the palette the tools: clicking an entry is
       `ToolManager.setActiveTool`, and the palette picks the tool at
       startup, where `main.ts` used to hardcode the one tool there is
-- [ ] selection tool: click a section to select it, highlighting it and
+- [x] selection tool: click a section to select it, highlighting it and
       the nodes at either end
 - [ ] click a node to select that instead, highlighting it and every
       section meeting it — but not the nodes at those sections' far ends,
@@ -100,14 +100,35 @@ Not blocking anything; do them when they start to bite.
 
 - [ ] one named set of ground-plane layer offsets, replacing the heights
       each drawable picks for itself (`NetworkView`, `SectionPlanView`,
-      `NodeHighlight`). Six of them now, and which sits above which is
-      the whole point — a selection highlight has to find its own place
-      among them, so M3 is when this bites
+      `NodeHighlight`, `SectionHighlight`). Eight of them now, and which
+      sits above which is the whole point. Worth doing with the colors
+      below: same complaint, same files
 - [ ] the same for the colors, which each drawable also picks for itself.
-      An edit has a rule — green for what it would create, red for what
-      it would create but cannot, blue for what is already there — and
-      the rule lives only in comments. `NodeHighlight` does not follow
-      it either: it is blue on a grid point, where nothing exists yet
+      The rule the scene is heading for: **color says what state something
+      is in; shape and size say what kind of thing it is.** Color is the
+      scarcer channel and state is what has to be readable at a glance,
+      so a node does not also need its own hue — it is a fat point on a
+      layer above the lines. Five states:
+      - `EXISTING` `0xdddddd` — the network as it is
+      - `AIMED` `0xffdd44` — what a click would land on or act on
+      - `SELECTED` `0x66ccff`
+      - `PLANNED` `0x66ee88` — what the edit would create
+      - `REFUSED` `0xff5555` — what it would create, and will not
+
+      `SelectionTool` already names its two this way, pending a shared
+      home for all five. Two of the remappings are decisions rather than
+      bookkeeping. `NodeHighlight`'s blue becomes `AIMED`, which is what
+      fixes the wart of it being blue-for-"already there" while sitting on
+      a bare grid point where nothing exists. And `SectionPlanView`'s
+      existing-node marks become `AIMED` too rather than `EXISTING`: they
+      are the nodes a chain would weld onto, and `EXISTING` would erase
+      the made-vs-met distinction those marks exist for. What it costs is
+      the nodes' orange — they become `EXISTING` like the sections,
+      leaving size and layer to keep a busy junction legible. That is the
+      thing to look at when it lands; the fallback is a brighter tone for
+      nodes *within* the class rather than a sixth color. Scene colors
+      only — `src/ui/toolPalette.css` is a different layer in a different
+      medium
 - [ ] revisit the two intersection tolerances once sections have width —
       how close two junctions may sit follows from how wide the roads are
       (`SAME_POINT_METERS`, `MIN_SECTION_LENGTH_METERS`). A section that
