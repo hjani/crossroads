@@ -1,9 +1,14 @@
 import * as THREE from "three";
-import { applySectionPlan, planSection } from "../core/edits";
+import {
+  applySectionPlan,
+  planSection,
+  type BuildableSectionPlan,
+} from "../core/edits";
 import { nearestNode, positionOfNode } from "../core/queries";
 import type { Endpoint, RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
+import { PlanMarks } from "../render/PlanMarks";
 import { SectionPreview } from "../render/SectionPreview";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import { snapToGrid } from "./gridSnap";
@@ -12,8 +17,12 @@ import type { Modifiers, Tool } from "./Tool";
 /**
  * How close the cursor must look to a node to weld onto it. In pixels, so
  * the node is the same size of target at every zoom.
+ *
+ * A radius around a node, and nothing to do with the grid — the other way
+ * a point is placed, which rounds each axis on its own and is measured in
+ * meters (`GRID_PITCH_METERS`).
  */
-const SNAP_RADIUS_PIXELS = 12;
+const NODE_PICK_RADIUS_PIXELS = 12;
 
 /**
  * Where a click puts an endpoint: how the point was arrived at, what the
@@ -50,6 +59,7 @@ interface Placement {
 export class StraightSectionTool implements Tool {
   private readonly preview = new SectionPreview();
   private readonly highlight = new NodeHighlight();
+  private readonly planMarks = new PlanMarks();
   private readonly decoration = new THREE.Group();
 
   private pending: Placement | null = null;
@@ -62,7 +72,11 @@ export class StraightSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
-    this.decoration.add(this.preview.sceneObject, this.highlight.sceneObject);
+    this.decoration.add(
+      this.preview.sceneObject,
+      this.highlight.sceneObject,
+      this.planMarks.sceneObject,
+    );
   }
 
   get overlay(): THREE.Object3D {
@@ -80,13 +94,10 @@ export class StraightSectionTool implements Tool {
       return;
     }
 
-    if (this.endsWhereItStarted(ground, end)) return;
-
-    // Refused where the crossings it would make are not ones that can be
-    // built. Nothing was added, and the section stays in progress so the
-    // same click can be made again somewhere it works.
-    const plan = planSection(this.network, this.pending.endpoint, end.endpoint);
-    if (!plan.buildable) return;
+    // Nothing was added when the section is refused, and it stays in
+    // progress so the same click can be made again somewhere it works.
+    const plan = this.planTo(ground, end);
+    if (plan === null) return;
 
     const far = applySectionPlan(this.network, plan);
 
@@ -99,6 +110,12 @@ export class StraightSectionTool implements Tool {
       endpoint: far,
       position: positionOfNode(this.network, far),
     };
+
+    // The decoration was drawn against the network as it was, where the
+    // section's points were nodes that would be made. They have been, so
+    // it is redrawn before the cursor moves and answers a question that
+    // has already changed under it.
+    this.showPlacement(point, modifiers);
   }
 
   /** Follows the cursor whether or not a section is being drawn — the mark
@@ -133,7 +150,7 @@ export class StraightSectionTool implements Tool {
   }
 
   /** Marks where a click would land, and rubber-bands to it if a section
-   * is being drawn. */
+   * is being drawn, together with what committing it would build. */
   private showPlacement(point: ScreenPoint, modifiers: Modifiers): void {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
@@ -148,12 +165,25 @@ export class StraightSectionTool implements Tool {
 
     if (this.pending === null) return;
     this.preview.show(this.pending.position, placed.position);
+
+    const plan = this.planTo(ground, placed);
+    if (plan === null) {
+      this.planMarks.hide();
+      return;
+    }
+
+    // The plan's points stand in for the placement mark while they show:
+    // its last one is in that same place, and says more about it than "a
+    // click lands here" does.
+    this.planMarks.showPlan(this.network, plan);
+    this.highlight.hide();
   }
 
   /** The node highlight stays: it answers where the cursor is, not what was being drawn. */
   cancel(): void {
     this.pending = null;
     this.preview.hide();
+    this.planMarks.hide();
   }
 
   /**
@@ -169,7 +199,7 @@ export class StraightSectionTool implements Tool {
       return { kind: "free", endpoint: ground, position: ground };
     }
 
-    const node = nearestNode(this.network, ground, this.snapRadiusMeters);
+    const node = nearestNode(this.network, ground, this.nodePickRadiusMeters);
     if (node !== null) {
       return { kind: "node", endpoint: node.id, position: node.position };
     }
@@ -179,37 +209,46 @@ export class StraightSectionTool implements Tool {
   }
 
   /**
-   * Whether a click there would end the section where it started.
+   * What committing the section in progress at `end` would build, or null
+   * if it would be refused — which is every reason a click there does
+   * nothing, in the order they are asked.
    *
-   * Two ways it can. The endpoint may resolve to the point the section
-   * started from — the same node, or the same grid point — which is what
-   * catches a second click anywhere within the cell the first one landed
-   * in. Or the cursor may not have left the start's reach, which catches
-   * the unsnapped case, where two positions are distinct but a fraction
-   * of a pixel apart. That one is measured from the cursor rather than
-   * between the placements: zoomed out, the reach of neighboring nodes
-   * overlaps, and a cursor still on top of the start is not a section
-   * however it snapped.
+   * A cursor that has not left the start's pick radius is not a section,
+   * however the click resolved. Measured from the cursor rather than
+   * between the two resolved points: zoomed out, the radius covers
+   * neighboring nodes too, and welding onto one of those would draw a road
+   * out of a click that was aimed at the start. Past that, whether the
+   * crossings the section makes are ones that can be built is
+   * `planSection`'s answer, and it refuses a section with no length too.
+   *
+   * The whole of the decision, so a preview asking the same question is
+   * shown what the click does rather than an approximation of it.
    */
-  private endsWhereItStarted(ground: Vec2, end: Placement): boolean {
-    if (this.pending === null) return false;
+  private planTo(ground: Vec2, end: Placement): BuildableSectionPlan | null {
+    if (this.pending === null) return null;
+    if (this.withinNodePickRadius(ground, this.pending.position)) return null;
 
-    const { position } = this.pending;
-    if (end.position.x === position.x && end.position.z === position.z) {
-      return true;
-    }
-
-    const distance = Math.hypot(ground.x - position.x, ground.z - position.z);
-    return distance <= this.snapRadiusMeters;
+    const plan = planSection(this.network, this.pending.endpoint, end.endpoint);
+    return plan.buildable ? plan : null;
   }
 
-  private get snapRadiusMeters(): number {
-    return SNAP_RADIUS_PIXELS * this.viewport.metersPerPixel;
+  /**
+   * Whether two ground positions are close enough that a click at one of
+   * them would weld onto a node at the other.
+   */
+  private withinNodePickRadius(ground: Vec2, of: Vec2): boolean {
+    const distance = Math.hypot(ground.x - of.x, ground.z - of.z);
+    return distance <= this.nodePickRadiusMeters;
+  }
+
+  private get nodePickRadiusMeters(): number {
+    return NODE_PICK_RADIUS_PIXELS * this.viewport.metersPerPixel;
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
   dispose(): void {
     this.preview.dispose();
     this.highlight.dispose();
+    this.planMarks.dispose();
   }
 }

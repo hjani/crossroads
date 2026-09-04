@@ -7,7 +7,8 @@ import type { Vec2 } from "../core/types";
  */
 const HIGHLIGHT_HEIGHT = 0.035;
 
-/** The preview blue, so the mark reads as part of the edit in progress. */
+/** Blue, which is what the edit's colors reserve for something already
+ * there — and a node the cursor has found is exactly that. */
 const HIGHLIGHT_COLOR = 0x66ccff;
 
 /** In pixels, and wider than a node, so the mark shows around it. */

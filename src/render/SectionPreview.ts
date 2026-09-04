@@ -4,7 +4,12 @@ import type { Vec2 } from "../core/types";
 /** Above the sections in `NetworkView`, so a preview crossing one reads clearly. */
 const PREVIEW_HEIGHT = 0.03;
 
-const PREVIEW_COLOR = 0x66ccff;
+/**
+ * Green for what the edit would create — the same green `PlanMarks` puts
+ * on a node about to be made, so the band and the junctions along it read
+ * as one thing. Blue is left to mean what is already there.
+ */
+const PREVIEW_COLOR = 0x66ee88;
 
 /**
  * The rubber-band line for a section being drawn: one segment between two

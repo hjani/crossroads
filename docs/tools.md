@@ -58,28 +58,29 @@ makes a position that no rule would produce reachable at all. The price
 is that a join cannot be made in this mode; releasing the modifier is how
 one is.
 
-The pick radius is a distance in pixels, not meters: it is how close the
-cursor looks to a node, so it is the same target however far the view is
-zoomed in. The grid pitch is the opposite — a distance in meters, fixed,
-because a grid that changed size with the zoom would place the same click
-differently depending on the view it was made from.
+The node pick radius is a distance in pixels, not meters: it is how close
+the cursor looks to a node, so it is the same target however far the view
+is zoomed in. The grid pitch is the opposite — a distance in meters,
+fixed, because a grid that changed size with the zoom would place the same
+click differently depending on the view it was made from.
 
 Where a click would land is marked whenever that is not simply the
 cursor's own position, before the first click as well as during an edit
 in progress, so a snap is visible before it is committed. Unsnapped there
 is nothing to mark: the cursor is already the answer.
 
-A tool never builds a section that starts and ends in the same place. Two
-things are refused: a point that resolves to where the section started —
-the same node, or the same grid point — and a cursor that has not left
-the start's pick radius, which catches the unsnapped case where two
-distinct positions are a fraction of a pixel apart. The second is
-measured from the cursor rather than between the resolved endpoints:
-zoomed far out, the radii of neighboring nodes overlap, and a cursor
-still on top of the start is not a section however it snapped. Nothing is
-built and the edit stays in progress. This is the tool's judgment to
-make — the model rejects a section between one node and itself, but
-accepts a zero-length one between two coincident nodes.
+A tool never builds a section that starts and ends in the same place. It
+refuses a cursor that has not left the start's node pick radius, measured
+from the cursor rather than between the resolved endpoints: zoomed far
+out, the radii of neighboring nodes overlap, and a cursor still on top of
+the start is not a section however it snapped. Nothing is built and the
+edit stays in progress.
+
+That is all the tool judges about a section's length, and it judges it in
+pixels: whether the user has aimed anywhere yet. A point that resolves to
+where the section started — the same node, or the same grid point — needs
+no rule here, being a section of no length, which is refused for what it
+would build.
 
 A section can also be refused for being too short to be a road, or for
 what it would cross — see `docs/intersections.md`, which decides both.
