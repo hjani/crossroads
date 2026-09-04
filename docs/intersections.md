@@ -27,14 +27,26 @@ road on top of it.
 
 ## When it is decided
 
-Crossings are resolved as a section is added, which is the only moment the
-network changes. There is no pass over the whole network looking for
-crossings, because there is no way for one to appear except by adding a
-section.
+Crossings are resolved as a section is added. There is no pass over the
+whole network looking for crossings, because there is no way for one to
+appear except by adding a section.
+
+Deciding and doing are two steps, and only the second one touches the
+network. The first answers what a section between two points would build —
+which sections it cuts, where the junctions land, and whether the result
+can be built at all — as a value that stands on its own. The second carries
+that answer out. Nothing is decided twice: the second step asks no question
+the first did not already settle, so what is built is what was described.
+
+Being able to ask without building is the point of the separation. The same
+question serves a section about to be committed and one still being dragged
+around, so a tool can show what a click would do before it is made, and the
+answer it showed is the one that lands.
 
 The whole edit lands at once or not at all. A section that crosses three
-others adds every piece and every junction together; a refused one leaves
-the network exactly as it was.
+others adds every piece and every junction together; a refused one is
+refused before anything is created, so the network is untouched rather than
+restored.
 
 ## How close is the same place
 

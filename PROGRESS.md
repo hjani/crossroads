@@ -4,8 +4,9 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0, M1 and M2 are done. Next up: **M3 — Curved sections**
-Next step: `docs/` design note for the arc section type
+M0 and M1 are done. Current: **M2 — Intersections**, reopened for edit
+feedback. Then **M3 — Curved sections**
+Next step: mark the junctions the section in progress would create
 
 ## Milestones
 
@@ -37,6 +38,15 @@ Next step: `docs/` design note for the arc section type
 - [x] split sections / insert shared node
 - [x] render intersection points — a junction is an ordinary node, so
       `NetworkView` already draws it
+- [x] split the edit in two: one call plans it, another applies a plan.
+      The plan is immutable and says whether it can be built, so applying
+      one implements it rather than re-deciding it — and the tool can ask
+      the same question a move earlier, to show what a click would do
+- [ ] mark every junction the section in progress would create, so the
+      whole edit is visible before it is committed — in a color that
+      separates a node about to be made from one already there
+- [ ] show an unfeasible edit in the preview (rubber band in red), so a
+      refused section says why nothing happened instead of being silent
 
 ### M3 — Curved sections
 - [ ] circular-arc section type
@@ -50,11 +60,6 @@ Next step: `docs/` design note for the arc section type
 
 Wanted, but not part of a milestone yet.
 
-- [ ] show an unfeasible edit in the preview (rubber band in red), so a
-      refused section says why nothing happened instead of being silent
-- [ ] mark every junction the section in progress would create, so the
-      whole edit is visible before it is committed — in a color that
-      separates a node about to be made from one already there
 - [ ] inspection tool: select a node and highlight every section meeting
       at it
 

@@ -5,10 +5,9 @@ import {
   nodeWithin,
   positionOf,
   positionOfNode,
-  type SectionCrossing,
 } from "./queries";
-import type { Endpoint, RoadNetwork } from "./RoadNetwork";
-import type { NodeId, SectionId, Vec2 } from "./types";
+import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
+import type { NodeId, Section, SectionId, Vec2 } from "./types";
 
 /**
  * Edits that span more than one section.
@@ -17,6 +16,12 @@ import type { NodeId, SectionId, Vec2 } from "./types";
  * keeps them structurally valid, while these compose its public calls into
  * a change that means something — a crossing becomes a junction. Nothing
  * here is privileged, and a caller could make the same calls itself.
+ *
+ * Deciding and doing are separate calls. Planning answers what a section
+ * would build and whether it can be built, and touches nothing; applying a
+ * plan carries it out and decides nothing. So the same question can be
+ * asked of a section that is only being dragged around, and the answer it
+ * gave is the one that lands.
  */
 
 /**
@@ -29,6 +34,118 @@ import type { NodeId, SectionId, Vec2 } from "./types";
  */
 export const MIN_SECTION_LENGTH_METERS = 1;
 
+/** A place a planned section runs through: where it starts, where it
+ * crosses something, where it ends. */
+export interface PlannedPoint {
+  /** The place itself: an existing node the section meets, or a position
+   * where one is to be made. */
+  readonly at: Endpoint;
+  /**
+   * The sections cut in two here, in the order they are cut — usually one,
+   * none where the place is a node already, and several where roads that
+   * pass within a centimeter of each other are crossed at what is, on the
+   * ground, one point.
+   */
+  readonly cuts: readonly SectionId[];
+}
+
+/**
+ * A section that can be built, as the chain of points it runs through:
+ * a piece of road between each pair of them, and a junction wherever a
+ * point cuts something.
+ *
+ * Points in the same place are already merged, so no two are, and there is
+ * one piece per gap. What to build is the chain's shape and nothing else.
+ *
+ * The type says there are at least two points — a start and an end — which
+ * is what makes the section a section. `[T, T, ...T[]]` is a tuple type
+ * with a rest element: the compiler knows the first two are there, so
+ * reading them needs no check.
+ */
+export interface BuildableSectionPlan {
+  readonly buildable: true;
+  readonly points: readonly [PlannedPoint, PlannedPoint, ...PlannedPoint[]];
+}
+
+/** What adding a section would do to the network — or that it cannot. */
+export type SectionPlan = BuildableSectionPlan | { readonly buildable: false };
+
+/**
+ * Works out what adding a section from `from` to `to` would build, without
+ * building any of it.
+ *
+ * Unbuildable unless the network it would leave is worth having: every
+ * piece the section is cut into is a road, and every crossing falls
+ * somewhere a junction can go. With nothing crossed, the single piece is
+ * the whole section.
+ */
+export function planSection(
+  network: RoadNetwork,
+  from: Endpoint,
+  to: Endpoint,
+): SectionPlan {
+  // Non-empty from the first line and never shrinks, so the chain always
+  // has a last point to measure the next one against.
+  const points: [PlannedPoint, ...PlannedPoint[]] = [{ at: from, cuts: [] }];
+
+  // Lengths are measured along the crossing points themselves, rather than
+  // along the points being planned: those sit within a centimeter of them,
+  // near enough to build at and not to measure with.
+  let measuredFrom = positionOf(network, from);
+
+  for (const crossing of crossingsAlong(network, from, to)) {
+    if (!isBuildablePiece(measuredFrom, crossing.point)) {
+      return { buildable: false };
+    }
+    if (!landsCleanly(network, crossing.point)) {
+      return { buildable: false };
+    }
+    measuredFrom = crossing.point;
+
+    const reached = points[points.length - 1].at;
+    const at = pickPoint(network, crossing.point, [reached, to]);
+    append(network, points, plannedCrossing(network, crossing.section, at));
+  }
+
+  if (!isBuildablePiece(measuredFrom, positionOf(network, to))) {
+    return { buildable: false };
+  }
+  append(network, points, { at: to, cuts: [] });
+
+  if (points.length < 2) {
+    // Everything merged into one point: the section begins and ends in the
+    // same place, and there is no piece of road between them.
+    return { buildable: false };
+  }
+
+  const [start, next, ...rest] = points;
+  return { buildable: true, points: [start, next, ...rest] };
+}
+
+/**
+ * Builds a planned section: cuts what the plan says to cut, and runs a
+ * piece of road between each pair of its points.
+ *
+ * Returns the node at the far end, so a run of roads can carry on from it.
+ * Decides nothing — a plan is buildable or it is not, and this one is.
+ */
+export function applySectionPlan(
+  network: RoadNetwork,
+  plan: BuildableSectionPlan,
+): NodeId {
+  const [start, next, ...rest] = plan.points;
+
+  // The first point has no piece before it, so it only supplies the end
+  // the second is joined to. After that each piece carries on from the
+  // node the one before it left.
+  const first = applyCuts(network, start);
+  let far = network.addSection(first, applyCuts(network, next)).to;
+  for (const point of rest) {
+    far = network.addSection(far, applyCuts(network, point)).to;
+  }
+  return far;
+}
+
 /**
  * Splits a section at a point, and returns the node its halves meet at.
  *
@@ -36,22 +153,16 @@ export const MIN_SECTION_LENGTH_METERS = 1;
  * splits nothing and gives back that endpoint's node, so a road meeting
  * another where it already ends joins it rather than cutting it.
  */
-export function splitSection(
+function splitSection(
   network: RoadNetwork,
   id: SectionId,
   at: Endpoint,
 ): NodeId {
-  const section = network.getSection(id);
-  if (section === undefined) {
-    throw new Error(`Unknown section ${id}`);
-  }
+  const section = getSection(network, id);
 
-  const point = positionOf(network, at);
-  if (isSamePoint(point, positionOfNode(network, section.from))) {
-    return section.from;
-  }
-  if (isSamePoint(point, positionOfNode(network, section.to))) {
-    return section.to;
+  const end = endAt(network, section, positionOf(network, at));
+  if (end !== null) {
+    return end;
   }
 
   // Both halves go in before the original comes out: the network discards a
@@ -64,101 +175,117 @@ export function splitSection(
 }
 
 /**
- * Adds a section, turning everything it crosses into a junction: each
- * section crossed is split at the crossing, and the new one into the pieces
- * between them.
+ * Cuts what a point of the chain cuts, and gives back the end the pieces of
+ * road either side of it attach to.
  *
- * Returns the node at the `to` end, so a run of roads can carry on from it.
- * Returns null instead if the layout cannot be built cleanly, in which case
- * nothing was created or removed.
+ * Each cut is made at the node the one before it left, so several sections
+ * cut in one place meet at one node rather than at a row of them. A point
+ * that cuts nothing is simply the place it already was.
  */
-export function addSectionWithCrossings(
-  network: RoadNetwork,
-  from: Endpoint,
-  to: Endpoint,
-): NodeId | null {
-  const crossings = crossingsAlong(network, from, to);
-  if (!isFeasible(network, from, to, crossings)) {
-    return null;
+function applyCuts(network: RoadNetwork, point: PlannedPoint): Endpoint {
+  let at = point.at;
+  for (const cut of point.cuts) {
+    at = splitSection(network, cut, at);
   }
-  if (crossings.length === 0) {
-    return network.addSection(from, to).to;
-  }
-
-  let previous = from;
-  for (const crossing of crossings) {
-    const atPrevious = isSamePoint(crossing.point, positionOf(network, previous));
-    const junction = splitSection(
-      network,
-      crossing.section,
-      splitPoint(network, crossing.point, atPrevious ? previous : to),
-    );
-
-    if (!atPrevious) {
-      network.addSection(previous, junction);
-    }
-    previous = junction;
-  }
-
-  // The loop ran at least once, so `previous` is the junction it left. The
-  // assertion states what the loop guarantees and the type cannot.
-  const lastJunction = previous as NodeId;
-
-  // Which is the answer already, if that crossing was the far end.
-  const end = positionOf(network, to);
-  if (isSamePoint(positionOfNode(network, lastJunction), end)) {
-    return lastJunction;
-  }
-  return network.addSection(lastJunction, to).to;
+  return at;
 }
 
 /**
- * Where to split for a crossing: the crossing point, unless the network
- * already has a point there.
+ * What a crossing makes of the section it crosses: a junction cutting it in
+ * two, or the end it already has in that place.
  *
- * `candidate` is the end of the new section the crossing might have landed
- * on, which wins because it is a position the user placed, and is not
- * necessarily a node yet. Failing that, an existing node in the same place
- * is used, so that two roads crossing the new one within a centimeter of
- * each other meet it at one node rather than at two beside each other.
+ * The second is how a road running through an existing junction crosses
+ * every section meeting there and cuts none of them.
  */
-function splitPoint(
+function plannedCrossing(
   network: RoadNetwork,
-  point: Vec2,
-  candidate: Endpoint,
+  section: SectionId,
+  at: Endpoint,
+): PlannedPoint {
+  const place = positionOf(network, at);
+  const end = endAt(network, getSection(network, section), place);
+  return end === null ? { at, cuts: [section] } : { at: end, cuts: [] };
+}
+
+/**
+ * Adds a point to the chain, or merges it into the last one if that is the
+ * same place — where a crossing lands on an end of the new section, on a
+ * junction it has already been through, or on another crossing a centimeter
+ * away.
+ *
+ * Merging is what leaves the chain with one piece of road per gap: two
+ * points in the same place would ask for a piece between them and there is
+ * none to build. Their cuts are kept, all of them: sections crossed within
+ * a centimeter of each other are one junction, and dropping either would
+ * leave a road running through another uncut.
+ */
+function append(
+  network: RoadNetwork,
+  points: [PlannedPoint, ...PlannedPoint[]],
+  point: PlannedPoint,
+): void {
+  const last = points[points.length - 1];
+  if (!isSamePoint(positionOf(network, point.at), positionOf(network, last.at))) {
+    points.push(point);
+    return;
+  }
+
+  points[points.length - 1] = {
+    // A node the network already has says the place better than a position
+    // does, since building at the position would leave a second node beside
+    // it. Where neither is a node the two are the same position anyway.
+    at: isNodeId(last.at) ? last.at : point.at,
+    cuts: [...last.cuts, ...point.cuts],
+  };
+}
+
+/**
+ * Which place a point of the chain is: one of the candidates, if it is
+ * there, and otherwise a node already in that place or a position for a new
+ * one.
+ *
+ * The candidates are the ends of the new section — the point the chain has
+ * reached and the point it is heading for — and they win because they are
+ * positions the user placed, and are not necessarily nodes yet. Failing
+ * them, an existing node is used, so that two roads crossing the new one
+ * within a centimeter of each other meet it at one node rather than at two
+ * beside each other.
+ */
+function pickPoint(
+  network: RoadNetwork,
+  where: Vec2,
+  candidates: readonly Endpoint[],
 ): Endpoint {
-  if (isSamePoint(point, positionOf(network, candidate))) {
-    return candidate;
+  for (const candidate of candidates) {
+    if (isSamePoint(where, positionOf(network, candidate))) {
+      return candidate;
+    }
   }
-  return nodeWithin(network, point, SAME_POINT_METERS)?.id ?? point;
+  return nodeWithin(network, where, SAME_POINT_METERS)?.id ?? where;
 }
 
-/**
- * Whether the edit leaves a network worth building: every piece the new
- * section is cut into is a road, and every crossing falls somewhere a
- * junction can go. With nothing crossed, the single piece is the whole
- * section.
- *
- * Asked before anything is created, so a refusal costs the network nothing.
- */
-function isFeasible(
+/** The section's own end in that place, if either of them is there. */
+function endAt(
   network: RoadNetwork,
-  from: Endpoint,
-  to: Endpoint,
-  crossings: readonly SectionCrossing[],
-): boolean {
-  let previous = positionOf(network, from);
-  for (const crossing of crossings) {
-    if (!isBuildablePiece(previous, crossing.point)) {
-      return false;
-    }
-    if (!landsCleanly(network, crossing.point)) {
-      return false;
-    }
-    previous = crossing.point;
+  section: Section,
+  place: Vec2,
+): NodeId | null {
+  if (isSamePoint(place, positionOfNode(network, section.from))) {
+    return section.from;
   }
+  if (isSamePoint(place, positionOfNode(network, section.to))) {
+    return section.to;
+  }
+  return null;
+}
 
-  return isBuildablePiece(previous, positionOf(network, to));
+/** Throws for an unknown section, as `positionOfNode` does for a node. */
+function getSection(network: RoadNetwork, id: SectionId): Section {
+  const section = network.getSection(id);
+  if (section === undefined) {
+    throw new Error(`Unknown section ${id}`);
+  }
+  return section;
 }
 
 /**

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { addSectionWithCrossings } from "../core/edits";
+import { applySectionPlan, planSection } from "../core/edits";
 import { nearestNode, positionOfNode } from "../core/queries";
 import type { Endpoint, RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
@@ -85,12 +85,10 @@ export class StraightSectionTool implements Tool {
     // Refused where the crossings it would make are not ones that can be
     // built. Nothing was added, and the section stays in progress so the
     // same click can be made again somewhere it works.
-    const far = addSectionWithCrossings(
-      this.network,
-      this.pending.endpoint,
-      end.endpoint,
-    );
-    if (far === null) return;
+    const plan = planSection(this.network, this.pending.endpoint, end.endpoint);
+    if (!plan.buildable) return;
+
+    const far = applySectionPlan(this.network, plan);
 
     // The node at the far end is the network's now, so starting the next
     // section from it is what makes the two share it. Its position is asked
