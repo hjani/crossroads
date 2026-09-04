@@ -67,8 +67,23 @@ export interface BuildableSectionPlan {
   readonly points: readonly [PlannedPoint, PlannedPoint, ...PlannedPoint[]];
 }
 
+/**
+ * A section that cannot be built, as the chain it would have run through.
+ *
+ * The chain is kept because a refusal still has something to say: where
+ * the section was going, and which junctions it was going to make. Nothing
+ * here is a promise — none of it will be built — so the points carry no
+ * guarantee either, not even that there are two of them. A section whose
+ * ends are the same place collapses to one, and that is a refusal like any
+ * other.
+ */
+export interface UnbuildableSectionPlan {
+  readonly buildable: false;
+  readonly points: readonly PlannedPoint[];
+}
+
 /** What adding a section would do to the network — or that it cannot. */
-export type SectionPlan = BuildableSectionPlan | { readonly buildable: false };
+export type SectionPlan = BuildableSectionPlan | UnbuildableSectionPlan;
 
 /**
  * Works out what adding a section from `from` to `to` would build, without
@@ -78,6 +93,12 @@ export type SectionPlan = BuildableSectionPlan | { readonly buildable: false };
  * piece the section is cut into is a road, and every crossing falls
  * somewhere a junction can go. With nothing crossed, the single piece is
  * the whole section.
+ *
+ * The chain is walked to the end whether or not it can be built, and
+ * judged once it is whole. A refusal is a verdict on the section, not the
+ * point a walk gave up at — so it comes back describing the section that
+ * was asked for rather than the part of it that was reached, and anything
+ * showing the user what a click would do has all of it to draw.
  */
 export function planSection(
   network: RoadNetwork,
@@ -87,6 +108,7 @@ export function planSection(
   // Non-empty from the first line and never shrinks, so the chain always
   // has a last point to measure the next one against.
   const points: [PlannedPoint, ...PlannedPoint[]] = [{ at: from, cuts: [] }];
+  let buildable = true;
 
   // Lengths are measured along the crossing points themselves, rather than
   // along the points being planned: those sit within a centimeter of them,
@@ -95,10 +117,10 @@ export function planSection(
 
   for (const crossing of crossingsAlong(network, from, to)) {
     if (!isBuildablePiece(measuredFrom, crossing.point)) {
-      return { buildable: false };
+      buildable = false;
     }
     if (!landsCleanly(network, crossing.point)) {
-      return { buildable: false };
+      buildable = false;
     }
     measuredFrom = crossing.point;
 
@@ -108,17 +130,22 @@ export function planSection(
   }
 
   if (!isBuildablePiece(measuredFrom, positionOf(network, to))) {
-    return { buildable: false };
+    buildable = false;
   }
   append(network, points, { at: to, cuts: [] });
 
-  if (points.length < 2) {
+  const [start, next, ...rest] = points;
+  if (next === undefined) {
     // Everything merged into one point: the section begins and ends in the
-    // same place, and there is no piece of road between them.
-    return { buildable: false };
+    // same place, and there is no piece of road between them. Not caught
+    // by the piece lengths above, which read a gap of nothing as no piece
+    // to build rather than as one too short to be a road.
+    return { buildable: false, points };
+  }
+  if (!buildable) {
+    return { buildable: false, points };
   }
 
-  const [start, next, ...rest] = points;
   return { buildable: true, points: [start, next, ...rest] };
 }
 

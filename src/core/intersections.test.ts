@@ -1,9 +1,5 @@
 import { assert, describe, expect, it } from "vitest";
-import {
-  applySectionPlan,
-  planSection,
-  type BuildableSectionPlan,
-} from "./edits";
+import { applySectionPlan, planSection, type SectionPlan } from "./edits";
 import { segmentCrossing } from "./geometry";
 import { positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
@@ -27,8 +23,13 @@ function build(
   return plan.buildable ? applySectionPlan(network, plan) : null;
 }
 
+/** Every place a plan runs through, in order. */
+function chainPoints(network: RoadNetwork, plan: SectionPlan): Vec2[] {
+  return plan.points.map((point) => positionOf(network, point.at));
+}
+
 /** Where a plan would cut a section in two, in the order it meets them. */
-function cutPoints(network: RoadNetwork, plan: BuildableSectionPlan): Vec2[] {
+function cutPoints(network: RoadNetwork, plan: SectionPlan): Vec2[] {
   return plan.points
     .filter((point) => point.cuts.length > 0)
     .map((point) => positionOf(network, point.at));
@@ -241,5 +242,37 @@ describe("planning and building a section", () => {
 
     expect(plan.buildable).toBe(false);
     expect(layout(network)).toEqual(before);
+  });
+
+  it("describes the section it refuses, not just that it refused it", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+
+    // The stub above, asked about again: a refusal still says where the
+    // section was going and what it would have cut on the way, which is
+    // what lets a refused edit be drawn as the edit it was.
+    const plan = planSection(network, at(5, -5), at(5, 0.4));
+
+    expect(chainPoints(network, plan)).toEqual([
+      at(5, -5),
+      at(5, 0),
+      at(5, 0.4),
+    ]);
+    expect(cutPoints(network, plan)).toEqual([at(5, 0)]);
+  });
+
+  it("refuses a section that ends where it started, with nothing to draw", () => {
+    const network = new RoadNetwork();
+    const corner = build(network, at(0, 0), at(5, 0));
+    assert(corner !== null);
+
+    // Both ends in one place, so the chain collapses to a single point:
+    // there is no piece of road between them, and nothing a preview could
+    // show either. The tool leans on this to tell a click that does
+    // nothing from a section it turned down.
+    const plan = planSection(network, corner, at(5, 0));
+
+    expect(plan.buildable).toBe(false);
+    expect(plan.points).toHaveLength(1);
   });
 });

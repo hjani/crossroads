@@ -1,15 +1,10 @@
 import * as THREE from "three";
-import {
-  applySectionPlan,
-  planSection,
-  type BuildableSectionPlan,
-} from "../core/edits";
+import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
 import { nearestNode, positionOfNode } from "../core/queries";
 import type { Endpoint, RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
-import { PlanMarks } from "../render/PlanMarks";
-import { SectionPreview } from "../render/SectionPreview";
+import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import { snapToGrid } from "./gridSnap";
 import type { Modifiers, Tool } from "./Tool";
@@ -57,9 +52,8 @@ interface Placement {
  * looks like is the tool's business, not its caller's.
  */
 export class StraightSectionTool implements Tool {
-  private readonly preview = new SectionPreview();
+  private readonly planView = new SectionPlanView();
   private readonly highlight = new NodeHighlight();
-  private readonly planMarks = new PlanMarks();
   private readonly decoration = new THREE.Group();
 
   private pending: Placement | null = null;
@@ -72,11 +66,7 @@ export class StraightSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
-    this.decoration.add(
-      this.preview.sceneObject,
-      this.highlight.sceneObject,
-      this.planMarks.sceneObject,
-    );
+    this.decoration.add(this.planView.sceneObject, this.highlight.sceneObject);
   }
 
   get overlay(): THREE.Object3D {
@@ -97,7 +87,7 @@ export class StraightSectionTool implements Tool {
     // Nothing was added when the section is refused, and it stays in
     // progress so the same click can be made again somewhere it works.
     const plan = this.planTo(ground, end);
-    if (plan === null) return;
+    if (plan === null || !plan.buildable) return;
 
     const far = applySectionPlan(this.network, plan);
 
@@ -149,41 +139,37 @@ export class StraightSectionTool implements Tool {
     this.showPlacement(this.cursor, modifiers);
   }
 
-  /** Marks where a click would land, and rubber-bands to it if a section
-   * is being drawn, together with what committing it would build. */
+  /** Draws what a click would do: the section it would build where there
+   * is one to plan, and otherwise a mark on where the click would land. */
   private showPlacement(point: ScreenPoint, modifiers: Modifiers): void {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
     const placed = this.place(ground, modifiers);
+    const plan = this.planTo(ground, placed);
+
+    if (plan !== null) {
+      // The plan stands in for the placement mark: its last point is where
+      // the click would land, and says more about it than "a click lands
+      // here" does.
+      this.planView.showPlan(this.network, plan);
+      this.highlight.hide();
+      return;
+    }
+
     // Nothing to mark when the point is the cursor's own position.
+    this.planView.hide();
     if (placed.kind === "free") {
       this.highlight.hide();
     } else {
       this.highlight.show(placed.position);
     }
-
-    if (this.pending === null) return;
-    this.preview.show(this.pending.position, placed.position);
-
-    const plan = this.planTo(ground, placed);
-    if (plan === null) {
-      this.planMarks.hide();
-      return;
-    }
-
-    // The plan's points stand in for the placement mark while they show:
-    // its last one is in that same place, and says more about it than "a
-    // click lands here" does.
-    this.planMarks.showPlan(this.network, plan);
-    this.highlight.hide();
   }
 
   /** The node highlight stays: it answers where the cursor is, not what was being drawn. */
   cancel(): void {
     this.pending = null;
-    this.preview.hide();
-    this.planMarks.hide();
+    this.planView.hide();
   }
 
   /**
@@ -209,27 +195,34 @@ export class StraightSectionTool implements Tool {
   }
 
   /**
-   * What committing the section in progress at `end` would build, or null
-   * if it would be refused — which is every reason a click there does
-   * nothing, in the order they are asked.
+   * What the network makes of a section from the point in progress to
+   * `end`, or null where there is no section to ask about.
    *
-   * A cursor that has not left the start's pick radius is not a section,
-   * however the click resolved. Measured from the cursor rather than
-   * between the two resolved points: zoomed out, the radius covers
-   * neighboring nodes too, and welding onto one of those would draw a road
-   * out of a click that was aimed at the start. Past that, whether the
-   * crossings the section makes are ones that can be built is
-   * `planSection`'s answer, and it refuses a section with no length too.
+   * Null three times over. Before the first click, there is nothing to
+   * plan from. While the cursor has not left the start's pick radius, it
+   * is not a section however the click resolved — measured from `ground`,
+   * where the cursor actually is, rather than between the two resolved
+   * points, because zoomed out the radius covers neighboring nodes too,
+   * and welding onto one of those would draw a road out of a click that
+   * was aimed at the start.
    *
-   * The whole of the decision, so a preview asking the same question is
-   * shown what the click does rather than an approximation of it.
+   * And where the chain comes back as a single point, which is the same
+   * absence arrived at in meters rather than pixels: the click resolved
+   * onto the place the section started from. Zoomed in, a grid cell is
+   * wider than the pick radius, so this is the only one of the three that
+   * catches a cursor still inside the cell it started in.
+   *
+   * A plan that does come back may still be unbuildable, which is a
+   * different thing and the network's to say. Between them the two
+   * outcomes are the whole of what a click would do, so showing this
+   * answer shows what the click does rather than an approximation of it.
    */
-  private planTo(ground: Vec2, end: Placement): BuildableSectionPlan | null {
+  private planTo(ground: Vec2, end: Placement): SectionPlan | null {
     if (this.pending === null) return null;
     if (this.withinNodePickRadius(ground, this.pending.position)) return null;
 
     const plan = planSection(this.network, this.pending.endpoint, end.endpoint);
-    return plan.buildable ? plan : null;
+    return plan.points.length < 2 ? null : plan;
   }
 
   /**
@@ -247,8 +240,7 @@ export class StraightSectionTool implements Tool {
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
   dispose(): void {
-    this.preview.dispose();
+    this.planView.dispose();
     this.highlight.dispose();
-    this.planMarks.dispose();
   }
 }

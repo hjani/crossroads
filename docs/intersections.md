@@ -43,6 +43,14 @@ question serves a section about to be committed and one still being dragged
 around, so a tool can show what a click would do before it is made, and the
 answer it showed is the one that lands.
 
+A refusal describes the section too. It is a verdict on the whole of what
+was asked for, not the point a search gave up at, so it comes back saying
+where the section was going and which junctions it was going to make —
+none of which will be built. That is what lets a refused edit be shown as
+the edit it was, rather than as nothing at all. It is only the buildable
+answer that promises anything, and only that one carries the guarantee
+that there is a section there to build.
+
 The whole edit lands at once or not at all. A section that crosses three
 others adds every piece and every junction together; a refused one is
 refused before anything is created, so the network is untouched rather than
