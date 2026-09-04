@@ -117,3 +117,17 @@ Not blocking anything; do them when they start to bite.
 - [ ] decide how shallow a crossing is still a crossing — near-parallel
       sections currently cross like any other, and the junction they make
       moves a long way for a small change in either road
+- [ ] stamp `network.version` on a plan and check it before applying, so a
+      plan made against a network that has since changed is caught rather
+      than half-built. Nothing plans further ahead than the click that
+      applies it today; the moment something does — undo, a plan held
+      across a tool switch, anything else editing the network — the ids in
+      an old plan are already someone else's. A mismatch is a caller bug,
+      so it throws rather than refusing: the plan said it was buildable
+- [ ] stop rebuilding `SectionPlanView`'s geometry on every pointer move.
+      Three buffers are disposed and reallocated each time the cursor
+      moves, where `NodeHighlight` writes into a preallocated attribute and
+      sets `needsUpdate`. The point count is not what costs — the per-move
+      churn is, and a fixed-capacity attribute with `setDrawRange` would
+      match the neighbors. It bites when a second thing starts redrawing
+      per move, or on a machine where this one is already felt
