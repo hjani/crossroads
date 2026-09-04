@@ -9,7 +9,10 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    // Vite's ambient declarations, which say that importing a `.css` file
+    // is a legal module import — TypeScript otherwise knows only code.
+    "types": ["vite/client"]
   },
   "include": ["src"]
 }

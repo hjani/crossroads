@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0, M1 and M2 are done. Current: **M3 — Editing UI**, which arrived ahead
 of the curves because a second tool needs a way to be chosen, and because
 nothing can be deleted yet. Then **M4 — Curved sections**
-Next step: `docs/ui.md` design note
+Next step: the selection tool
 
 ## Milestones
 
@@ -52,12 +52,16 @@ Next step: `docs/ui.md` design note
       that was turned down rather than going blank
 
 ### M3 — Editing UI
-- [ ] `docs/ui.md` design note — chrome is a layer the project does not
-      have yet: DOM over the canvas rather than widgets in the scene, in
-      its own `src/ui/`, so `src/render/` stays about the network
-- [ ] tool palette: choose the active tool by clicking it, which is
-      `ToolManager.setActiveTool` and nothing more. `main.ts` currently
-      hardcodes the one tool there is
+- [x] `docs/ui.md` design note — the controls around the view are a layer
+      the project does not have yet: DOM over the canvas rather than
+      widgets in the scene, in its own `src/ui/`, so `src/render/` stays
+      about the network
+- [x] tool palette: a panel of buttons over the canvas, one per tool,
+      marking the one that is selected. An entry whose tool does not exist
+      yet shows its place and refuses to be picked
+- [x] hand the palette the tools: clicking an entry is
+      `ToolManager.setActiveTool`, and the palette picks the tool at
+      startup, where `main.ts` used to hardcode the one tool there is
 - [ ] selection tool: click a section to select it, highlighting it and
       the nodes at either end
 - [ ] click a node to select that instead, highlighting it and every
@@ -80,8 +84,15 @@ Next step: `docs/ui.md` design note
 
 Wanted, but not part of a milestone yet.
 
-Nothing right now — the inspection tool moved into M3 as the selection
-tool.
+- [ ] evaluate a UI framework for `src/ui/`. The panels are hand-written
+      DOM, which is fine while they issue commands and starts to hurt when
+      one has to reflect model state that changes elsewhere — the first
+      panel that displays a selection is when to look. Signal-based ones
+      first (Solid, Svelte, or Preact signals): they track which values a
+      piece of UI read and update only that, which is the nearest thing on
+      the web to a WPF binding. The layer knows nothing of the network,
+      Three.js or the tools, so the change would be confined to `src/ui/`
+      and a few lines of `main.ts`
 
 ## Deferred cleanups
 

@@ -5,6 +5,7 @@ import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
 import { NetworkView } from "./render/NetworkView";
 import { Viewport } from "./render/Viewport";
+import { ToolPalette } from "./ui/ToolPalette";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
@@ -31,7 +32,23 @@ scene.add(networkView.sceneObject);
 
 const tools = new ToolManager(renderer.domElement, window);
 scene.add(tools.sceneObject);
-tools.setActiveTool(new StraightSectionTool(network, viewport));
+
+// Where the layers meet: the palette names the tools, and this is what the
+// names do. A tool is built fresh on every activation, since the manager
+// disposes the one it replaces and an instance is single-use. The entries
+// with no action are the tools that do not exist yet — the selection tool
+// later in M3, arcs in M4.
+const palette = new ToolPalette(document.body, [
+  { id: "select", label: "Select", activate: null },
+  {
+    id: "straight",
+    label: "Straight",
+    activate: () =>
+      tools.setActiveTool(new StraightSectionTool(network, viewport)),
+  },
+  { id: "arc", label: "Arc", activate: null },
+]);
+palette.select("straight");
 
 const timer = new THREE.Timer();
 // Suppresses the huge delta after the tab regains focus.
