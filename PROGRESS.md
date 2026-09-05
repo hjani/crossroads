@@ -4,10 +4,10 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0, M1 and M2 are done. Current: **M3 — Editing UI**, which arrived ahead
-of the curves because a second tool needs a way to be chosen, and because
-nothing can be deleted yet. Then **M4 — Curved sections**
-Next step: Delete removes the selection
+M0 through M3 are done — M3 came ahead of the curves because a second tool
+needs a way to be chosen, and because nothing could be deleted. Current:
+**M4 — Curved sections**
+Next step: circular-arc section type
 
 ## Milestones
 
@@ -67,7 +67,7 @@ Next step: Delete removes the selection
 - [x] click a node to select that instead, highlighting it and every
       section meeting it — but not the nodes at those sections' far ends,
       which are not part of what is selected
-- [ ] Delete removes the selection: a section on its own, or a node
+- [x] Delete removes the selection: a section on its own, or a node
       together with every section meeting it. Removing the sections is
       the whole of it either way, since `RoadNetwork` discards a node the
       moment its last section leaves

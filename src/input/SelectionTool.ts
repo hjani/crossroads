@@ -75,9 +75,7 @@ function sameSelection(
  * dropped without leaving the tool.
  *
  * The selection lives here and dies with the tool, since the manager
- * disposes a tool it switches away from. Nothing outside can read it yet;
- * what it is *for* — deleting, and later editing what is selected — is the
- * rest of M3.
+ * disposes a tool it switches away from.
  */
 export class SelectionTool implements Tool {
   private readonly aimedMark = new SectionHighlight(AIMED_COLOR);
@@ -124,6 +122,40 @@ export class SelectionTool implements Tool {
 
   onPointerMove(point: ScreenPoint): void {
     this.cursor = point;
+    this.redraw();
+  }
+
+  /**
+   * Delete removes what is selected: a section on its own, or a node with
+   * every section meeting it. The model takes the nodes left bare either
+   * way, so removing is the whole of it.
+   *
+   * Backspace does the same. Neither key is claimed by the manager, which
+   * takes only Escape, so what they mean is this tool's to decide.
+   */
+  onKeyDown(event: KeyboardEvent): void {
+    if (event.key !== "Delete" && event.key !== "Backspace") return;
+
+    // Backspace still means history-back in some browsers, and the network
+    // lives only in memory. Claimed whether or not anything is selected, so
+    // the key never leaves the page on the strength of what was aimed at.
+    event.preventDefault();
+
+    const selected = this.selected;
+    if (selected === null) return;
+
+    if (selected.kind === "node") {
+      this.network.removeNode(selected.id);
+    } else {
+      this.network.removeSection(selected.id);
+    }
+
+    // Dropped before anything is drawn: the marks read the network for
+    // what they draw, and what this named is no longer in it. The aimed
+    // mark is then asked again under a cursor that has not moved, deleting
+    // being one of the ways the answer changes underneath it.
+    this.selected = null;
+    this.selectedMark.hide();
     this.redraw();
   }
 

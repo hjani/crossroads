@@ -19,9 +19,9 @@ export function isNodeId(endpoint: Endpoint): endpoint is NodeId {
  * Stores the road network and keeps it structurally valid.
  *
  * The only place nodes and sections are created or destroyed. Nodes exist
- * only as endpoints of sections, so they are never added or removed on
- * their own. Decisions about what *should* be built — snapping, welding,
- * whether a layout is sensible — belong to the editing tools, not here.
+ * only as endpoints of sections: one appears when a section is built to a
+ * position, and goes when its last section leaves. Even removing a node is
+ * removing the sections that meet it.
  */
 export class RoadNetwork {
   private readonly nodes = new Map<NodeId, Node>();
@@ -65,15 +65,32 @@ export class RoadNetwork {
 
   /** Also removes either endpoint left without sections. Unknown ids are ignored. */
   removeSection(id: SectionId): void {
-    const section = this.sections.get(id);
-    if (section === undefined) {
-      return;
+    if (this.discardSection(id)) {
+      this.commit();
+    }
+  }
+
+  /**
+   * Removes every section meeting a node, which is what removing the node
+   * is: it goes with the last of them, by the rule above. Unknown ids are
+   * ignored.
+   *
+   * A far end left without sections goes too, and that is as far as it
+   * reaches — a node stranded here had only the section just removed, so
+   * there is nothing hanging off it to remove in turn.
+   *
+   * One change however many sections it takes, so the version counts what
+   * the caller asked for rather than the steps inside it.
+   */
+  removeNode(id: NodeId): void {
+    const attached = this.sectionsAt(id);
+    for (const section of attached) {
+      this.discardSection(section);
     }
 
-    this.sections.delete(id);
-    this.detach(section.from, id);
-    this.detach(section.to, id);
-    this.commit();
+    if (attached.length > 0) {
+      this.commit();
+    }
   }
 
   getNode(id: NodeId): Node | undefined {
@@ -84,9 +101,18 @@ export class RoadNetwork {
     return this.sections.get(id);
   }
 
-  /** Empty for an unknown node. */
+  /**
+   * The sections meeting a node, empty for an unknown one.
+   *
+   * A copy, taken now: the list a node keeps is spliced as sections come
+   * and go, so handing out the real one would make the `readonly` a
+   * promise it does not keep — and a caller removing the sections it just
+   * asked for would walk a list shrinking under it, missing every other
+   * one.
+   */
   sectionsAt(id: NodeId): readonly SectionId[] {
-    return this.adjacency.get(id) ?? [];
+    const attached = this.adjacency.get(id);
+    return attached === undefined ? [] : [...attached];
   }
 
   allNodes(): IterableIterator<Node> {
@@ -121,6 +147,26 @@ export class RoadNetwork {
 
   private attach(nodeId: NodeId, sectionId: SectionId): void {
     this.adjacency.get(nodeId)?.push(sectionId);
+  }
+
+  /**
+   * Takes a section out along with either endpoint left bare, and says
+   * whether there was one to take.
+   *
+   * Records nothing: what counts as one change is the public call's to
+   * decide, and removing a node is one change however many sections it
+   * takes.
+   */
+  private discardSection(id: SectionId): boolean {
+    const section = this.sections.get(id);
+    if (section === undefined) {
+      return false;
+    }
+
+    this.sections.delete(id);
+    this.detach(section.from, id);
+    this.detach(section.to, id);
+    return true;
   }
 
   /** Drops one section from a node, discarding the node if it was the last. */

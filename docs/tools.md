@@ -154,11 +154,24 @@ selection.
 A selection is a tool's own state, so it does not survive a tool switch,
 like anything else a tool is holding.
 
+Deleting removes what is selected, and with it whatever the model is left
+holding for its sake alone. A section goes on its own, taking an endpoint
+only where that was its last section; a node takes every section meeting
+it, and the far end of each of those where the same rule applies. So what
+is deleted is exactly what the selection marked, plus the nodes that were
+only there because of it. Nothing else is touched — a node left with two
+sections and a kink where a junction used to be is a node like any other.
+
+The selection is empty afterwards, since what it named is gone. What the
+cursor is aimed at is asked again without it having moved, deleting being
+one of the ways the answer changes underneath it.
+
 ## Input bindings
 
 - Left button — the active tool.
 - Right button — pan. The browser context menu is suppressed.
 - Escape — cancel the edit in progress.
+- Delete, Backspace — remove the selection.
 - Ctrl, held — place the point exactly under the cursor, without snapping.
 
 Middle-button gestures stay unclaimed, for an orbiting camera later.
