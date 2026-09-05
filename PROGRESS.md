@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0, M1 and M2 are done. Current: **M3 — Editing UI**, which arrived ahead
 of the curves because a second tool needs a way to be chosen, and because
 nothing can be deleted yet. Then **M4 — Curved sections**
-Next step: selecting a node
+Next step: Delete removes the selection
 
 ## Milestones
 
@@ -64,7 +64,7 @@ Next step: selecting a node
       startup, where `main.ts` used to hardcode the one tool there is
 - [x] selection tool: click a section to select it, highlighting it and
       the nodes at either end
-- [ ] click a node to select that instead, highlighting it and every
+- [x] click a node to select that instead, highlighting it and every
       section meeting it — but not the nodes at those sections' far ends,
       which are not part of what is selected
 - [ ] Delete removes the selection: a section on its own, or a node

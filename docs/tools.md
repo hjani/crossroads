@@ -120,25 +120,36 @@ of nodes that already exist, and decides nothing about either.
 Selecting is a tool like any other, and while it is active nothing is
 built: it reads the network and changes none of it.
 
-A click selects the section nearest the cursor, within a pick radius —
+A click catches a node or a section: the nearest node within the node pick
+radius, or failing that the nearest section within a radius of its own —
 distance to the road itself, so a click beside the middle of a long one
 finds it, and a click past either end falls back to being near that end.
-The radius is in pixels, for the same reason the node one is: how close the
-cursor *looks* to a section should not change with the zoom. Where several
-are in reach at once, the nearest wins.
+Both radii are in pixels, for the same reason the welding one is: how
+close the cursor *looks* to something should not change with the zoom.
 
-The section a click would catch is marked before the click, the same rule
-that marks where a point would land and draws what an edit would do. It is
-the same question asked a move earlier, so the mark and the click cannot
-disagree, and without it there is no way to see that the cursor is close
-enough. Clicking clear of everything selects nothing, which is how a
+A node wins outright rather than the two being weighed on distance. It
+sits on the sections meeting it, so on distance it would never be the
+nearer thing — and the end of a section is where most of the reasons to
+click one are.
+
+What a click would catch is marked before the click, the same rule that
+marks where a point would land and draws what an edit would do. It is the
+same question asked a move earlier, so the mark and the click cannot
+disagree. Clicking clear of everything selects nothing, which is how a
 selection is dropped without leaving the tool; cancelling drops it too.
 
-What is selected and what is merely under the cursor are both marks on the
-same section, so they are separated twice over: by color, and by the
-selection also marking the nodes at either end. The section under the
-cursor goes unmarked while it is the selected one — it is already marked,
-and there is nothing worth painting over the selection to say.
+A selected section marks itself and the nodes at either end. A selected
+node marks itself and every section meeting it — but not the nodes at
+those sections' far ends, which are where the selection stops rather than
+part of it. The aimed mark is that thing alone: a section is its line, a
+node the one mark. So what is selected is told from what is under the
+cursor twice over — by color, and by only a selection reaching past the
+thing it names.
+
+What is aimed at goes unmarked while it is exactly what is selected, there
+being nothing worth painting over the selection to say. A section meeting
+the selected node is still marked, since clicking it would change the
+selection.
 
 A selection is a tool's own state, so it does not survive a tool switch,
 like anything else a tool is holding.
