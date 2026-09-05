@@ -74,8 +74,11 @@ Next step: circular-arc section type
 
 ### M4 — Curved sections
 - [ ] circular-arc section type
-- [ ] interactive curvature control
-- [ ] extend intersection detection to arcs
+- [ ] render arc sections, before there is any way to place one by hand
+- [ ] select an arc
+- [ ] cut an arc: two arcs on the same circle sharing a new node
+- [ ] extend intersection detection to arcs (line–arc, arc–arc)
+- [ ] interactive placement / curvature control
 
 ### M5 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
