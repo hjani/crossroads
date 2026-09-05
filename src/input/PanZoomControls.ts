@@ -182,9 +182,15 @@ export class PanZoomControls implements CameraControls {
   private panCameraByPixels(dx: number, dy: number): void {
     const metersPerPixel = this.viewport.metersPerPixel;
     this.moveCameraBy(dx * metersPerPixel, dy * metersPerPixel);
+    this.viewport.notifyViewChanged();
   }
 
-  /** Move the camera across the ground, keeping its world matrix current. */
+  /**
+   * Move the camera across the ground, keeping its world matrix current.
+   *
+   * The move alone, without announcing it: a zoom moves the camera as part
+   * of anchoring, and the two are one change to the view, not two.
+   */
   private moveCameraBy(dx: number, dz: number): void {
     const { camera } = this.viewport;
     camera.position.x += dx;
@@ -210,12 +216,16 @@ export class PanZoomControls implements CameraControls {
     camera.updateProjectionMatrix();
 
     const groundAfter = this.viewport.screenToGround(anchor);
-    if (groundBefore === null || groundAfter === null) return;
+    if (groundBefore !== null && groundAfter !== null) {
+      this.moveCameraBy(
+        groundBefore.x - groundAfter.x,
+        groundBefore.z - groundAfter.z,
+      );
+    }
 
-    this.moveCameraBy(
-      groundBefore.x - groundAfter.x,
-      groundBefore.z - groundAfter.z,
-    );
+    // The zoom itself changed the view, whether or not the anchor could be
+    // held: announced once, after both halves of it have happened.
+    this.viewport.notifyViewChanged();
   }
 
   private get screenCenter(): ScreenPoint {

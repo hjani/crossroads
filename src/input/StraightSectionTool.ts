@@ -62,11 +62,19 @@ export class StraightSectionTool implements Tool {
    * without it having moved. Null until the pointer is first heard from. */
   private cursor: ScreenPoint | null = null;
 
+  /** What was held the last time either was heard from, since a redraw can
+   * be asked for by something that carries neither — the camera moving. */
+  private modifiers: Modifiers = { ctrl: false };
+
+  private readonly unsubscribeViewChanged: () => void;
+
   constructor(
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
     this.decoration.add(this.planView.sceneObject, this.highlight.sceneObject);
+
+    this.unsubscribeViewChanged = viewport.onViewChanged(() => this.redraw());
   }
 
   get overlay(): THREE.Object3D {
@@ -74,6 +82,9 @@ export class StraightSectionTool implements Tool {
   }
 
   onPointerDown(point: ScreenPoint, modifiers: Modifiers): void {
+    this.cursor = point;
+    this.modifiers = modifiers;
+
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
@@ -105,7 +116,7 @@ export class StraightSectionTool implements Tool {
     // section's points were nodes that would be made. They have been, so
     // it is redrawn before the cursor moves and answers a question that
     // has already changed under it.
-    this.showPlacement(point, modifiers);
+    this.redraw();
   }
 
   /** Follows the cursor whether or not a section is being drawn — the mark
@@ -113,7 +124,8 @@ export class StraightSectionTool implements Tool {
    * click would join rather than start something new. */
   onPointerMove(point: ScreenPoint, modifiers: Modifiers): void {
     this.cursor = point;
-    this.showPlacement(point, modifiers);
+    this.modifiers = modifiers;
+    this.redraw();
   }
 
   /**
@@ -127,25 +139,32 @@ export class StraightSectionTool implements Tool {
    * reads on the press and release of the very key it describes.
    */
   onKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Control") this.redraw({ ctrl: true });
+    if (event.key === "Control") this.setCtrl(true);
   }
 
   onKeyUp(event: KeyboardEvent): void {
-    if (event.key === "Control") this.redraw({ ctrl: false });
+    if (event.key === "Control") this.setCtrl(false);
   }
 
-  private redraw(modifiers: Modifiers): void {
+  private setCtrl(ctrl: boolean): void {
+    this.modifiers = { ctrl };
+    this.redraw();
+  }
+
+  /**
+   * Draws what a click would do: the section it would build where there is
+   * one to plan, and otherwise a mark on where the click would land.
+   *
+   * Asked of the cursor and the modifiers as last seen, so it answers for
+   * whatever moved — the cursor, the modifier, or the camera under both.
+   */
+  private redraw(): void {
     if (this.cursor === null) return;
-    this.showPlacement(this.cursor, modifiers);
-  }
 
-  /** Draws what a click would do: the section it would build where there
-   * is one to plan, and otherwise a mark on where the click would land. */
-  private showPlacement(point: ScreenPoint, modifiers: Modifiers): void {
-    const ground = this.viewport.screenToGround(point);
+    const ground = this.viewport.screenToGround(this.cursor);
     if (ground === null) return;
 
-    const placed = this.place(ground, modifiers);
+    const placed = this.place(ground, this.modifiers);
     const plan = this.planTo(ground, placed);
 
     if (plan !== null) {
@@ -166,10 +185,13 @@ export class StraightSectionTool implements Tool {
     }
   }
 
-  /** The node highlight stays: it answers where the cursor is, not what was being drawn. */
+  /** The node highlight stays: it answers where the cursor is, not what was
+   * being drawn — and it is drawn again, since the plan it stood aside for
+   * is gone. */
   cancel(): void {
     this.pending = null;
     this.planView.hide();
+    this.redraw();
   }
 
   /**
@@ -240,6 +262,7 @@ export class StraightSectionTool implements Tool {
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
   dispose(): void {
+    this.unsubscribeViewChanged();
     this.planView.dispose();
     this.highlight.dispose();
   }

@@ -45,6 +45,10 @@ Which is why a refusal is a color and not a disappearance. The preview
 still shows the section being aimed; it shows it as one that will not be
 built.
 
+A tool has to expect the camera to move at any moment, unannounced and
+between any two events it hears — panning and zooming are not its own and
+happen whatever it is in the middle of.
+
 Switching tools cancels whatever the old one had in progress and takes its
 preview off the screen. A tool leaves behind neither state nor geometry
 once it is no longer active.

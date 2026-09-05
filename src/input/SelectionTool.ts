@@ -57,6 +57,12 @@ export class SelectionTool implements Tool {
 
   private selected: SectionId | null = null;
 
+  /** Where the cursor was last seen, so the aimed mark can be redrawn
+   * without it having moved. Null until the pointer is first heard from. */
+  private cursor: ScreenPoint | null = null;
+
+  private readonly unsubscribeViewChanged: () => void;
+
   constructor(
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
@@ -65,6 +71,8 @@ export class SelectionTool implements Tool {
       this.aimedMark.sceneObject,
       this.selectedMark.sceneObject,
     );
+
+    this.unsubscribeViewChanged = viewport.onViewChanged(() => this.redraw());
   }
 
   get overlay(): THREE.Object3D {
@@ -75,6 +83,7 @@ export class SelectionTool implements Tool {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
+    this.cursor = point;
     this.selected = this.sectionAt(ground)?.id ?? null;
 
     // Both marks are redrawn under a cursor that has not moved: the click
@@ -85,17 +94,28 @@ export class SelectionTool implements Tool {
   }
 
   onPointerMove(point: ScreenPoint): void {
-    const ground = this.viewport.screenToGround(point);
-    if (ground === null) return;
-
-    this.showAimed(ground);
+    this.cursor = point;
+    this.redraw();
   }
 
   /** Escape drops the selection. The aimed mark stays: it answers where the
-   * cursor is, not what was being held. */
+   * cursor is, not what was being held — and it is drawn again, since
+   * dropping the selection is what un-suppresses it. */
   cancel(): void {
     this.selected = null;
     this.selectedMark.hide();
+    this.redraw();
+  }
+
+  /** Draws the aimed mark from where the cursor was last seen, for when the
+   * answer changed under a cursor that has not moved. */
+  private redraw(): void {
+    if (this.cursor === null) return;
+
+    const ground = this.viewport.screenToGround(this.cursor);
+    if (ground === null) return;
+
+    this.showAimed(ground);
   }
 
   /** The section a click at `ground` would catch, or null for none. */
@@ -160,6 +180,7 @@ export class SelectionTool implements Tool {
 
   /** Releases the marks' GPU buffers. The tool is unusable after. */
   dispose(): void {
+    this.unsubscribeViewChanged();
     this.aimedMark.dispose();
     this.selectedMark.dispose();
   }

@@ -49,12 +49,37 @@ export class Viewport {
   private readonly normalizedPoint = new THREE.Vector2();
   private readonly worldPoint = new THREE.Vector3();
 
+  private readonly viewChangedListeners = new Set<() => void>();
+
   constructor(readonly domElement: HTMLElement) {
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, NEAR_PLANE, FAR_PLANE);
     this.camera.position.set(0, CAMERA_HEIGHT, 0);
     // Looking straight down, screen up is world -Z, so screen right is world +X.
     this.camera.up.set(0, 0, -1);
     this.camera.lookAt(0, 0, 0);
+  }
+
+  /**
+   * Watch for the view changing — the camera moved or zoomed, the canvas
+   * resized. Returns the function that stops watching.
+   *
+   * Anything that answers a question about where the cursor is over the
+   * ground has to ask it again when this fires: the camera is nobody's to
+   * hold still, and it moves without a pointer event to say so.
+   */
+  onViewChanged(listener: () => void): () => void {
+    this.viewChangedListeners.add(listener);
+    return () => this.viewChangedListeners.delete(listener);
+  }
+
+  /**
+   * Announce that the view has changed, called by whoever changed it.
+   *
+   * The camera is moved through here rather than by here, so the viewport
+   * cannot see a move happen — it is told, by the same code that made it.
+   */
+  notifyViewChanged(): void {
+    for (const listener of this.viewChangedListeners) listener();
   }
 
   /** Match the projection to the canvas. Call whenever the canvas resizes. */
@@ -66,6 +91,7 @@ export class Viewport {
     this.camera.top = halfSpanZ;
     this.camera.bottom = -halfSpanZ;
     this.camera.updateProjectionMatrix();
+    this.notifyViewChanged();
   }
 
   /**
