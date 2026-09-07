@@ -62,6 +62,21 @@ describe("nearestSection", () => {
     expect(nearestSection(network, at(5, 2), 10)?.id).toBe(near.id);
   });
 
+  it("finds an arc by its curve and not by its chord", () => {
+    const network = new RoadNetwork();
+    // A half circle of radius five, bulging away from the line between its
+    // ends. A meter outside the curve at the top; four and a half from it
+    // halfway along the chord, where a section measured end to end would
+    // have been half a meter away.
+    const section = network.addSection(at(0, 0), at(10, 0), {
+      kind: "arc",
+      via: at(5, 5),
+    });
+
+    expect(nearestSection(network, at(5, 6), 2)?.id).toBe(section.id);
+    expect(nearestSection(network, at(5, 0.5), 2)).toBeNull();
+  });
+
   it("reaches a section only by its end", () => {
     const network = new RoadNetwork();
     const section = network.addSection(at(0, 0), at(10, 0), STRAIGHT);

@@ -122,10 +122,13 @@ built: it reads the network and changes none of it.
 
 A click catches a node or a section: the nearest node within the node pick
 radius, or failing that the nearest section within a radius of its own —
-distance to the road itself, so a click beside the middle of a long one
+distance to the road as it runs, so a click beside the middle of a long one
 finds it, and a click past either end falls back to being near that end.
-Both radii are in pixels, for the same reason the welding one is: how
-close the cursor *looks* to something should not change with the zoom.
+That distance is measured against the shape the model holds, not against
+the pieces the section is drawn with, so what a click catches does not
+depend on how finely anything was drawn. Both radii are in pixels, for the
+same reason the welding one is: how close the cursor *looks* to something
+should not change with the zoom.
 
 A node wins outright rather than the two being weighed on distance. It
 sits on the sections meeting it, so on distance it would never be the
@@ -141,10 +144,11 @@ selection is dropped without leaving the tool; cancelling drops it too.
 A selected section marks itself and the nodes at either end. A selected
 node marks itself and every section meeting it — but not the nodes at
 those sections' far ends, which are where the selection stops rather than
-part of it. The aimed mark is that thing alone: a section is its line, a
+part of it. The aimed mark is that thing alone: a section is the road, a
 node the one mark. So what is selected is told from what is under the
 cursor twice over — by color, and by only a selection reaching past the
-thing it names.
+thing it names. Either mark on a section follows the shape that section is
+drawn in, so it sits on the road rather than beside it.
 
 What is aimed at goes unmarked while it is exactly what is selected, there
 being nothing worth painting over the selection to say. A section meeting

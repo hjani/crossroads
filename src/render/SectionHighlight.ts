@@ -12,11 +12,12 @@ const NODE_MARK_HEIGHT = 0.035;
 /** In pixels, and wider than a node, so the mark shows around it. */
 const NODE_MARK_SIZE = 15;
 
-/** A section to draw, as the two places it runs between. */
-export interface HighlightedSection {
-  readonly from: Vec2;
-  readonly to: Vec2;
-}
+/**
+ * A section to draw, as the run of positions it follows — `tessellate` is
+ * where one comes from. The whole shape rather than the two ends, so a mark
+ * on a curve is the curve and not the line across it.
+ */
+export type HighlightedSection = readonly Vec2[];
 
 /**
  * A mark on sections, and on nodes, in one color.
@@ -64,12 +65,23 @@ export class SectionHighlight {
     this.sceneObject.visible = false;
   }
 
-  /** Draws the marks, and makes them visible if they were not. */
+  /**
+   * Draws the marks, and makes them visible if they were not.
+   *
+   * Each section is written the way `NetworkView` writes the network:
+   * `LineSegments` joins the buffer two points at a time and nothing between
+   * one pair and the next, so a run is written with every interior point
+   * twice.
+   */
   show(sections: readonly HighlightedSection[], nodes: readonly Vec2[]): void {
     const lineCoordinates: number[] = [];
     for (const section of sections) {
-      lineCoordinates.push(section.from.x, SECTION_LINE_HEIGHT, section.from.z);
-      lineCoordinates.push(section.to.x, SECTION_LINE_HEIGHT, section.to.z);
+      for (let i = 1; i < section.length; i++) {
+        const start = section[i - 1];
+        const end = section[i];
+        lineCoordinates.push(start.x, SECTION_LINE_HEIGHT, start.z);
+        lineCoordinates.push(end.x, SECTION_LINE_HEIGHT, end.z);
+      }
     }
 
     const nodeMarkCoordinates: number[] = [];

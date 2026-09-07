@@ -3,6 +3,7 @@ import {
   arcCircle,
   arcLength,
   arcPolyline,
+  distanceToArc,
   pointOnArc,
   type ArcCircle,
 } from "./arcs";
@@ -160,6 +161,64 @@ function worstSag(points: readonly Vec2[], circle: ArcCircle): number {
   }
   return worst;
 }
+
+describe("distanceToArc", () => {
+  it("is zero on the curve itself", () => {
+    expect(distanceToArc(northeast, east, north, northeast)).toBeCloseTo(0);
+  });
+
+  it("measures how far off the circle a point is", () => {
+    // Twice as far from the center as the curve, along the same direction.
+    const outside = at(2 * northeast.x, 2 * northeast.z);
+    const inside = at(northeast.x / 2, northeast.z / 2);
+
+    expect(distanceToArc(outside, east, north, northeast)).toBeCloseTo(1);
+    expect(distanceToArc(inside, east, north, northeast)).toBeCloseTo(0.5);
+  });
+
+  it("measures to the curve rather than to the line between the ends", () => {
+    // Halfway along the chord: on the line between the ends, and a sagitta
+    // away from the arc that bulges past it.
+    const sagitta = 1 - Math.SQRT1_2;
+
+    expect(distanceToArc(at(0.5, 0.5), east, north, northeast)).toBeCloseTo(
+      sagitta,
+    );
+  });
+
+  it("measures to the nearer end from a direction the arc never turns to", () => {
+    // Across the circle from the quarter arc, so the nearest place on it is
+    // an end and not the point of the circle facing this one.
+    expect(distanceToArc(southwest, east, north, northeast)).toBeCloseTo(
+      distance(southwest, east),
+    );
+  });
+
+  it("measures against the way round the via picks", () => {
+    // Same ends and same circle as above, the other three quarters: what was
+    // on the curve is now off it, and what was off it is on.
+    expect(distanceToArc(southwest, east, north, southwest)).toBeCloseTo(0);
+    expect(distanceToArc(northeast, east, north, southwest)).toBeCloseTo(
+      distance(northeast, east),
+    );
+  });
+
+  it("measures the radius from the center", () => {
+    expect(distanceToArc(at(0, 0), east, north, northeast)).toBeCloseTo(1);
+  });
+
+  it("mirrors when the ends are swapped", () => {
+    expect(distanceToArc(at(0.5, 0.5), north, east, northeast)).toBeCloseTo(
+      distanceToArc(at(0.5, 0.5), east, north, northeast),
+    );
+  });
+
+  it("measures to the segment when the three are in a line", () => {
+    expect(distanceToArc(at(5, 3), at(0, 0), at(10, 0), at(5, 0))).toBeCloseTo(
+      3,
+    );
+  });
+});
 
 describe("arcPolyline", () => {
   it("ends exactly on the positions it was given", () => {

@@ -1,4 +1,5 @@
 import { distance, lerp } from "./points";
+import { distanceToSegment } from "./segments";
 import type { Vec2 } from "./types";
 
 /**
@@ -105,6 +106,54 @@ export function arcLength(from: Vec2, to: Vec2, via: Vec2): number {
   return run === null
     ? distance(from, to)
     : run.circle.radius * Math.abs(run.sweep);
+}
+
+/**
+ * How far `point` is from the arc `from`–`via`–`to`, in meters.
+ *
+ * Measured against the circle rather than against the chords an arc is drawn
+ * with, which makes this the exact answer and the drawing the approximation
+ * of it. It is also the shorter way round: every point at the same distance
+ * from the center is on the circle, so once the point's direction from the
+ * center is known to fall inside the sweep, how far off the curve it is
+ * amounts to how much its radius differs from the arc's.
+ *
+ * A direction outside the sweep is the arc's version of a point past the end
+ * of a segment: the nearest place on the curve is then whichever end the
+ * turn ran out at, so the distance is to the nearer of the two. Without
+ * that, a position across the far side of the circle would read as being on
+ * the road.
+ *
+ * The center itself needs no case of its own. Its direction is whatever
+ * `atan2` makes of no offset at all, but both readings come out at the
+ * radius — which is the truth, every point of the arc being exactly that far
+ * away.
+ *
+ * A `via` in line with the ends measures against the segment between them,
+ * the same straight reading the rest of this module gives one.
+ */
+export function distanceToArc(
+  point: Vec2,
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+): number {
+  const run = arcRun(from, to, via);
+  if (run === null) {
+    return distanceToSegment(point, from, to);
+  }
+
+  const { center, radius } = run.circle;
+  const turn = turnFrom(run.startAngle, angleAt(center, point));
+
+  // Forward sweeps are reached by turning up to it; backward ones run the
+  // other way, which the same forward count reaches only in its last stretch.
+  const withinSweep =
+    run.sweep >= 0 ? turn <= run.sweep : turn >= run.sweep + 2 * Math.PI;
+
+  return withinSweep
+    ? Math.abs(distance(point, center) - radius)
+    : Math.min(distance(point, from), distance(point, to));
 }
 
 /**

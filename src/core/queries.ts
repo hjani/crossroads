@@ -1,4 +1,5 @@
-import { segmentCrossing, squaredDistanceToSegment } from "./segments";
+import { distanceToArc } from "./arcs";
+import { distanceToSegment, segmentCrossing } from "./segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
 import type { Node, NodeId, Section, SectionId, Vec2 } from "./types";
 
@@ -45,9 +46,10 @@ export function nearestNode(
  * The section nearest a position, or null if none runs within
  * `maxDistance` meters of it.
  *
- * Distance to the section, not to its endpoints: a position beside the
- * middle of a long road is near it. Measured to the nearest place along it,
- * so a position past either end falls back to being near that end.
+ * Distance to the section as it runs, not to its endpoints and not to the
+ * line between them: a position beside the middle of a long road is near it,
+ * and an arc is measured against its curve. Measured to the nearest place
+ * along it, so a position past either end falls back to being near that end.
  *
  * A linear scan over every section, like `nearestNode` over every node, and
  * the same place a spatial index would go.
@@ -58,15 +60,10 @@ export function nearestSection(
   maxDistance: number,
 ): Section | null {
   let nearest: Section | null = null;
-  // Squared throughout, so the scan needs no square roots.
-  let nearestDistance = maxDistance * maxDistance;
+  let nearestDistance = maxDistance;
 
   for (const section of network.allSections()) {
-    const distance = squaredDistanceToSegment(
-      to,
-      positionOfNode(network, section.from),
-      positionOfNode(network, section.to),
-    );
+    const distance = distanceToSection(network, section, to);
     if (distance <= nearestDistance) {
       nearest = section;
       nearestDistance = distance;
@@ -74,6 +71,28 @@ export function nearestSection(
   }
 
   return nearest;
+}
+
+/**
+ * How far a position is from a section, in meters, whichever shape it runs
+ * in.
+ *
+ * In meters rather than squared, unlike the scan in `nearestNode`: how far
+ * an arc strays from its circle cannot be had without the square root that
+ * finds the radius in the first place, so there is none to skip. One per
+ * section is nothing beside the linear scan it sits in.
+ */
+function distanceToSection(
+  network: RoadNetwork,
+  section: Section,
+  to: Vec2,
+): number {
+  const from = positionOfNode(network, section.from);
+  const end = positionOfNode(network, section.to);
+
+  return section.geometry.kind === "arc"
+    ? distanceToArc(to, from, end, section.geometry.via)
+    : distanceToSegment(to, from, end);
 }
 
 /**

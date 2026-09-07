@@ -21,6 +21,11 @@ tolerance is a distance on the ground rather than on screen, so what is
 drawn follows from the network alone — the same reason the drawing is
 rebuilt on an edit and on nothing else.
 
+Working out that shape is shared with whatever else draws a section. A tool
+marking one gets the same run of positions to the same tolerance, so a mark
+follows the road rather than cutting across it. What a mark means, and when
+it is shown, stays the tool's.
+
 The drawing follows the model. Any edit is reflected without the editor
 having to say what changed, and an unedited network costs nothing per
 frame.

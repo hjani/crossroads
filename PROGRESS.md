@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M3 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M4 — Curved sections**
-Next step: select an arc
+Next step: interactive placement / curvature control
 
 ## Milestones
 
@@ -79,7 +79,9 @@ Next step: select an arc
       further from the curve than a tolerance in meters, and `main.ts`
       seeds a few so there is something to look at until a tool can place
       one
-- [ ] select an arc
+- [x] select an arc — picking measures against the arc's circle rather than
+      the chords it is drawn with, and the marks follow the same shape the
+      section is drawn in
 - [ ] cut an arc: two arcs on the same circle sharing a new node
 - [ ] extend intersection detection to arcs (line–arc, arc–arc)
 - [ ] interactive placement / curvature control
@@ -153,6 +155,8 @@ Not blocking anything; do them when they start to bite.
       across a tool switch, anything else editing the network — the ids in
       an old plan are already someone else's. A mismatch is a caller bug,
       so it throws rather than refusing: the plan said it was buildable
+- [ ] stop re-tessellating and rebuilding the aimed mark on every pointer
+      move, when it is usually the same section as the move before
 - [ ] stop rebuilding `SectionPlanView`'s geometry on every pointer move.
       Three buffers are disposed and reallocated each time the cursor
       moves, where `NodeHighlight` writes into a preallocated attribute and

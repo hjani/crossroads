@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import { nearestNode, nearestSection, positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
-import type { NodeId, SectionId, Vec2 } from "../core/types";
+import type { NodeId, Section, SectionId, Vec2 } from "../core/types";
 import {
   SectionHighlight,
   type HighlightedSection,
 } from "../render/SectionHighlight";
+import { tessellate } from "../render/tessellate";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { Tool } from "./Tool";
 
@@ -249,26 +250,33 @@ export class SelectionTool implements Tool {
         [positionOfNode(this.network, selected.id)],
       );
     } else {
-      const highlight = this.highlightOf(selected.id);
-      this.selectedMark.show([highlight], [highlight.from, highlight.to]);
+      const section = this.sectionOf(selected.id);
+      this.selectedMark.show(
+        [tessellate(this.network, section)],
+        [
+          positionOfNode(this.network, section.from),
+          positionOfNode(this.network, section.to),
+        ],
+      );
     }
   }
 
-  /**
-   * Where a section runs, which is what the highlight draws. Throws for an
-   * id the network does not have, as `positionOfNode` does: what is
-   * selected came from a query a moment earlier, and nothing else edits the
-   * network while this tool is active.
-   */
+  /** The shape a section is drawn in, which is what the mark on it draws. */
   private highlightOf(id: SectionId): HighlightedSection {
+    return tessellate(this.network, this.sectionOf(id));
+  }
+
+  /**
+   * The section an id names. Throws for one the network does not have, as
+   * `positionOfNode` does: what is selected came from a query a moment
+   * earlier, and nothing else edits the network while this tool is active.
+   */
+  private sectionOf(id: SectionId): Section {
     const section = this.network.getSection(id);
     if (section === undefined) {
       throw new Error(`Unknown section ${id}`);
     }
-    return {
-      from: positionOfNode(this.network, section.from),
-      to: positionOfNode(this.network, section.to),
-    };
+    return section;
   }
 
   /** Releases the marks' GPU buffers. The tool is unusable after. */

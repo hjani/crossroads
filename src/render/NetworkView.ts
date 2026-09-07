@@ -1,8 +1,7 @@
 import * as THREE from "three";
-import { arcPolyline } from "../core/arcs";
-import { positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
-import type { Section, Vec2 } from "../core/types";
+import type { Vec2 } from "../core/types";
+import { tessellate } from "./tessellate";
 
 /** Height above the ground plane, to stay clear of the reference grid. */
 const SECTION_HEIGHT = 0.02;
@@ -13,16 +12,6 @@ const SECTION_COLOR = 0xdddddd;
 const NODE_COLOR = 0xffaa33;
 /** In pixels — see `sizeAttenuation` below. */
 const NODE_SIZE = 7;
-
-/**
- * How far a drawn arc may stray from the curve it stands for, in meters.
- *
- * A distance on the ground rather than on screen, so the geometry depends on
- * the network alone and is rebuilt only when the network changes. Zoom far
- * enough in and the chords do eventually show, which is where a tolerance
- * that follows `Viewport.metersPerPixel` would take over.
- */
-const ARC_SAG_METERS = 0.05;
 
 /**
  * Draws a road network as a wireframe: sections as lines, nodes as points.
@@ -88,28 +77,11 @@ export class NetworkView {
 
     const sectionPoints: number[] = [];
     for (const section of this.network.allSections()) {
-      appendPolyline(this.tessellate(section), sectionPoints);
+      appendPolyline(tessellate(this.network, section), sectionPoints);
     }
 
     replaceGeometry(this.sections, sectionPoints);
     replaceGeometry(this.nodes, nodePoints);
-  }
-
-  /**
-   * A section as the run of positions it is drawn along: its two ends for a
-   * straight, and enough points to pass for the curve for an arc.
-   *
-   * Where the two kinds stop differing. Everything past here works on
-   * points, so an arc costs the drawing no more than a straight with a lot
-   * of ends.
-   */
-  private tessellate(section: Section): readonly Vec2[] {
-    const from = positionOfNode(this.network, section.from);
-    const to = positionOfNode(this.network, section.to);
-
-    return section.geometry.kind === "arc"
-      ? arcPolyline(from, to, section.geometry.via, ARC_SAG_METERS)
-      : [from, to];
   }
 }
 
