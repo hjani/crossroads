@@ -7,7 +7,13 @@ import {
   positionOfNode,
 } from "./queries";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import type { NodeId, Section, SectionId, Vec2 } from "./types";
+import {
+  STRAIGHT,
+  type NodeId,
+  type Section,
+  type SectionId,
+  type Vec2,
+} from "./types";
 
 /**
  * Edits that span more than one section.
@@ -166,9 +172,9 @@ export function applySectionPlan(
   // the second is joined to. After that each piece carries on from the
   // node the one before it left.
   const first = applyCuts(network, start);
-  let far = network.addSection(first, applyCuts(network, next)).to;
+  let far = network.addSection(first, applyCuts(network, next), STRAIGHT).to;
   for (const point of rest) {
-    far = network.addSection(far, applyCuts(network, point)).to;
+    far = network.addSection(far, applyCuts(network, point), STRAIGHT).to;
   }
   return far;
 }
@@ -195,8 +201,8 @@ function splitSection(
   // Both halves go in before the original comes out: the network discards a
   // node the moment its last section leaves, so removing first would take
   // the endpoints with it.
-  const half = network.addSection(section.from, at);
-  network.addSection(half.to, section.to);
+  const half = network.addSection(section.from, at, STRAIGHT);
+  network.addSection(half.to, section.to, STRAIGHT);
   network.removeSection(id);
   return half.to;
 }

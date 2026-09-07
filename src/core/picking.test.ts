@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { distanceToSegment } from "./geometry";
 import { nearestSection } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
-import type { Vec2 } from "./types";
+import { STRAIGHT, type Vec2 } from "./types";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };
@@ -38,14 +38,14 @@ describe("distanceToSegment", () => {
 describe("nearestSection", () => {
   it("finds a section the position runs alongside", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(at(0, 0), at(10, 0));
+    const section = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
 
     expect(nearestSection(network, at(5, 2), 3)?.id).toBe(section.id);
   });
 
   it("is null where nothing is in range", () => {
     const network = new RoadNetwork();
-    network.addSection(at(0, 0), at(10, 0));
+    network.addSection(at(0, 0), at(10, 0), STRAIGHT);
 
     expect(nearestSection(network, at(5, 2), 1)).toBeNull();
   });
@@ -56,15 +56,15 @@ describe("nearestSection", () => {
 
   it("takes the nearer of two in range", () => {
     const network = new RoadNetwork();
-    const near = network.addSection(at(0, 0), at(10, 0));
-    network.addSection(at(0, 5), at(10, 5));
+    const near = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
+    network.addSection(at(0, 5), at(10, 5), STRAIGHT);
 
     expect(nearestSection(network, at(5, 2), 10)?.id).toBe(near.id);
   });
 
   it("reaches a section only by its end", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(at(0, 0), at(10, 0));
+    const section = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
 
     // Past the end, so the distance is to the end itself — in range at
     // three meters, out of it at one.

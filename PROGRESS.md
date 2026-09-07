@@ -73,7 +73,7 @@ Next step: circular-arc section type
       moment its last section leaves
 
 ### M4 — Curved sections
-- [ ] circular-arc section type
+- [x] circular-arc section type
 - [ ] render arc sections, before there is any way to place one by hand
 - [ ] select an arc
 - [ ] cut an arc: two arcs on the same circle sharing a new node

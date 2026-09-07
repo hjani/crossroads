@@ -1,4 +1,12 @@
-import type { Node, NodeId, Section, SectionId, Vec2 } from "./types";
+import { arcCircle } from "./geometry";
+import type {
+  Node,
+  NodeId,
+  Section,
+  SectionGeometry,
+  SectionId,
+  Vec2,
+} from "./types";
 
 /** Either an existing node, or a position at which to create one. */
 export type Endpoint = NodeId | Vec2;
@@ -40,22 +48,29 @@ export class RoadNetwork {
   /**
    * Creates a section, and a node for any endpoint given as a position.
    *
-   * Throws if an endpoint names a node that does not exist, or if both
-   * ends resolve to the same node. Both endpoints are checked before
-   * anything is created, so a rejected call changes nothing.
+   * Throws if an endpoint names a node that does not exist, if both ends
+   * resolve to the same node, or if an arc's `via` is in line with them and
+   * so has no circle through it. Everything is checked before anything is
+   * created, so a rejected call changes nothing.
    */
-  addSection(from: Endpoint, to: Endpoint): Section {
-    this.requireKnown(from);
-    this.requireKnown(to);
+  addSection(from: Endpoint, to: Endpoint, geometry: SectionGeometry): Section {
+    const fromPosition = this.requirePosition(from);
+    const toPosition = this.requirePosition(to);
     if (from === to && isNodeId(from)) {
       throw new Error(`Section would start and end at node ${from}`);
+    }
+    if (
+      geometry.kind === "arc" &&
+      arcCircle(fromPosition, toPosition, geometry.via) === null
+    ) {
+      throw new Error("Arc runs through a position in line with its ends");
     }
 
     const fromId = this.resolve(from);
     const toId = this.resolve(to);
 
     const id = this.nextSectionId++ as SectionId;
-    const section: Section = { id, from: fromId, to: toId, kind: "straight" };
+    const section: Section = { id, from: fromId, to: toId, geometry };
     this.sections.set(id, section);
     this.attach(fromId, id);
     this.attach(toId, id);
@@ -128,10 +143,23 @@ export class RoadNetwork {
     this.currentVersion++;
   }
 
-  private requireKnown(endpoint: Endpoint): void {
-    if (isNodeId(endpoint) && !this.nodes.has(endpoint)) {
+  /**
+   * Where an endpoint is, throwing if it names a node that does not exist.
+   *
+   * Checking and reading the position are one step because the caller needs
+   * both, and a position it could not read is the very thing the check is
+   * about.
+   */
+  private requirePosition(endpoint: Endpoint): Vec2 {
+    if (!isNodeId(endpoint)) {
+      return endpoint;
+    }
+
+    const node = this.nodes.get(endpoint);
+    if (node === undefined) {
       throw new Error(`Unknown node ${endpoint}`);
     }
+    return node.position;
   }
 
   private resolve(endpoint: Endpoint): NodeId {

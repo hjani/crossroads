@@ -5,8 +5,7 @@
 The road network itself: the graph of nodes and sections that every other
 module reads from or edits. Pure logic — no rendering, no input handling, no snapping.
 
-Straight sections only for now, but curved sections and automatically
-inserted intersections must fit without reshaping the model.
+Automatically inserted intersections must fit without reshaping the model.
 
 ## What it holds
 
@@ -15,12 +14,26 @@ sections meet at it.
 
 A **section** is an edge between two nodes plus its geometry.
 
+A section's **geometry** is how it runs between those two nodes: straight,
+or a circular arc. An arc is fixed by a third position it passes through,
+between its ends. Three positions that are not in a line lie on one circle,
+so that one point settles the radius, which way the road bends, and whether
+it takes the short or the long way round. The circle itself is derived from
+the three, never stored, so a moving node leaves nothing out of step.
+
+The endpoints already fix all but one degree of freedom, so a point is more
+than an arc strictly needs: several of them describe the same arc. Two
+sections have the same shape when the circles and ends they work out to
+agree, not when their stored points do.
+
 Nodes and sections are addressed by stable ids, valid for the lifetime of
 the element.
 
 ## Rules
 
 - A section joins two distinct, existing nodes.
+- An arc's third position is not in a line with its endpoints. Three points
+  in a line have no circle through them, so there is no arc to build.
 - Two nodes may be joined by more than one section.
 - Removing a section leaves its endpoint nodes in place, unless it was the last section of the node.
 - A node is removed by removing every section meeting it. There is no way
