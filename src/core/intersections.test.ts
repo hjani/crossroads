@@ -4,7 +4,7 @@ import { segmentCrossing } from "./segments";
 import { positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";
-import type { NodeId, Vec2 } from "./types";
+import { STRAIGHT, type NodeId, type Vec2 } from "./types";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };
@@ -19,7 +19,7 @@ function build(
   from: Endpoint,
   to: Endpoint,
 ): NodeId | null {
-  const plan = planSection(network, from, to);
+  const plan = planSection(network, from, to, STRAIGHT);
   return plan.buildable ? applySectionPlan(network, plan) : null;
 }
 
@@ -176,7 +176,7 @@ describe("planning and building a section", () => {
 
     // Half a centimeter apart, which is the same place: the two crossings
     // are one point of the chain, and it cuts both roads.
-    const plan = planSection(network, at(0, 0), at(10, 0));
+    const plan = planSection(network, at(0, 0), at(10, 0), STRAIGHT);
     assert(plan.buildable);
     expect(cutPoints(network, plan)).toEqual([at(5, 0)]);
 
@@ -202,7 +202,7 @@ describe("planning and building a section", () => {
     build(network, at(6, -2), at(6, 2));
     const before = layout(network);
 
-    const plan = planSection(network, at(0, 0), at(8, 0));
+    const plan = planSection(network, at(0, 0), at(8, 0), STRAIGHT);
     assert(plan.buildable);
 
     expect(cutPoints(network, plan)).toEqual([at(2, 0), at(6, 0)]);
@@ -212,7 +212,8 @@ describe("planning and building a section", () => {
   it("refuses a section too short to be a road, crossing or not", () => {
     const network = new RoadNetwork();
 
-    expect(planSection(network, at(0, 0), at(0.4, 0)).buildable).toBe(false);
+    const plan = planSection(network, at(0, 0), at(0.4, 0), STRAIGHT);
+    expect(plan.buildable).toBe(false);
     expect(layout(network)).toEqual([]);
   });
 
@@ -224,7 +225,7 @@ describe("planning and building a section", () => {
 
     // Parallel to the first road and 40 cm from it, so it crosses the second
     // one just short of the junction the two already share.
-    const plan = planSection(network, at(0, 0.4), at(10, 0.4));
+    const plan = planSection(network, at(0, 0.4), at(10, 0.4), STRAIGHT);
 
     expect(plan.buildable).toBe(false);
     expect(layout(network)).toEqual(before);
@@ -238,7 +239,7 @@ describe("planning and building a section", () => {
 
     // Ends 40 cm past the road it crosses: too short a piece to be a road,
     // and too far from its end to be the same place.
-    const plan = planSection(network, at(5, -5), at(5, 0.4));
+    const plan = planSection(network, at(5, -5), at(5, 0.4), STRAIGHT);
 
     expect(plan.buildable).toBe(false);
     expect(layout(network)).toEqual(before);
@@ -251,7 +252,7 @@ describe("planning and building a section", () => {
     // The stub above, asked about again: a refusal still says where the
     // section was going and what it would have cut on the way, which is
     // what lets a refused edit be drawn as the edit it was.
-    const plan = planSection(network, at(5, -5), at(5, 0.4));
+    const plan = planSection(network, at(5, -5), at(5, 0.4), STRAIGHT);
 
     expect(chainPoints(network, plan)).toEqual([
       at(5, -5),
@@ -270,9 +271,75 @@ describe("planning and building a section", () => {
     // there is no piece of road between them, and nothing a preview could
     // show either. The tool leans on this to tell a click that does
     // nothing from a section it turned down.
-    const plan = planSection(network, corner, at(5, 0));
+    const plan = planSection(network, corner, at(5, 0), STRAIGHT);
 
     expect(plan.buildable).toBe(false);
     expect(plan.points).toHaveLength(1);
+  });
+});
+
+describe("planning and building an arc", () => {
+  it("builds one through the position it was given", () => {
+    const network = new RoadNetwork();
+
+    const plan = planSection(network, at(0, 0), at(10, 0), {
+      kind: "arc",
+      via: at(5, 2),
+    });
+    assert(plan.buildable);
+    applySectionPlan(network, plan);
+
+    const [section] = [...network.allSections()];
+    expect(section?.geometry).toEqual({ kind: "arc", via: at(5, 2) });
+    expect(layout(network)).toEqual(["(0,0)-(10,0)"]);
+  });
+
+  it("refuses a third position in line with the ends", () => {
+    const network = new RoadNetwork();
+
+    // No circle passes through three positions in a line, so there is no
+    // arc to build. Refused rather than thrown: this is where a third
+    // position lands on its way across the road.
+    const plan = planSection(network, at(0, 0), at(10, 0), {
+      kind: "arc",
+      via: at(5, 0),
+    });
+
+    expect(plan.buildable).toBe(false);
+    expect(layout(network)).toEqual([]);
+  });
+
+  it("measures an arc along its curve rather than across it", () => {
+    const network = new RoadNetwork();
+
+    // Half a meter apart, which is too short for a straight road. The arc
+    // between them runs most of the way round a small circle, so as a road
+    // it is nearly a meter and a half of one.
+    const ends = [at(0, 0), at(0.5, 0)] as const;
+    expect(planSection(network, ...ends, STRAIGHT).buildable).toBe(false);
+
+    const curved = planSection(network, ...ends, {
+      kind: "arc",
+      via: at(0.25, 0.5),
+    });
+    expect(curved.buildable).toBe(true);
+  });
+
+  it("crosses nothing, for now, and makes no junction", () => {
+    const network = new RoadNetwork();
+    build(network, at(5, -5), at(5, 5));
+
+    // The arc runs over that road at (5,2) and neither is cut there: the
+    // line–arc case is not written, so an arc is planned as meeting
+    // nothing. Deliberate, and this is where it will show when it changes.
+    const plan = planSection(network, at(0, 0), at(10, 0), {
+      kind: "arc",
+      via: at(5, 2),
+    });
+    assert(plan.buildable);
+    applySectionPlan(network, plan);
+
+    expect(layout(network)).toEqual(["(0,0)-(10,0)", "(5,-5)-(5,5)"]);
+    expect(nodeCount(network)).toBe(4);
   });
 });

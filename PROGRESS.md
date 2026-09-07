@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M3 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M4 — Curved sections**
-Next step: interactive placement / curvature control
+Next step: cutting an arc, and the crossings that need it
 
 ## Milestones
 
@@ -82,9 +82,20 @@ Next step: interactive placement / curvature control
 - [x] select an arc — picking measures against the arc's circle rather than
       the chords it is drawn with, and the marks follow the same shape the
       section is drawn in
-- [ ] cut an arc: two arcs on the same circle sharing a new node
+- [ ] cut an arc: two arcs sharing a new node. Not quite on the same
+      circle — a cut point merged onto a neighbor sits up to a centimeter
+      off the curve, so each half needs a via worked out from where the
+      point actually landed. Which is also when a plan should start
+      carrying a geometry per piece rather than one for the whole section:
+      the vias can only be settled once the chain's merging has, so they
+      are a second pass over the finished chain, and until then
+      `applySectionPlan` and `SectionPlanView` both re-derive the same rule
+      instead of reading one answer
 - [ ] extend intersection detection to arcs (line–arc, arc–arc)
-- [ ] interactive placement / curvature control
+- [x] interactive placement / curvature control
+- [ ] a modifier that fixes the sweep at a quarter circle, deriving the
+      control point instead of placing it: two such arcs exist between the
+      ends, and the one on the cursor's side of the chord is planned
 
 ### M5 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
@@ -118,10 +129,11 @@ Not blocking anything; do them when they start to bite.
       is in; shape and size say what kind of thing it is.** Color is the
       scarcer channel and state is what has to be readable at a glance,
       so a node does not also need its own hue — it is a fat point on a
-      layer above the lines. Five states:
+      layer above the lines. Six states:
       - `EXISTING` `0xdddddd` — the network as it is
       - `AIMED` `0xffdd44` — what a click would land on or act on
       - `SELECTED` `0x66ccff`
+      - `IN_PROGRESS` `0xcc88ff` — a gesture with no verdict yet
       - `PLANNED` `0x66ee88` — what the edit would create
       - `REFUSED` `0xff5555` — what it would create, and will not
 
@@ -136,7 +148,7 @@ Not blocking anything; do them when they start to bite.
       the nodes' orange — they become `EXISTING` like the sections,
       leaving size and layer to keep a busy junction legible. That is the
       thing to look at when it lands; the fallback is a brighter tone for
-      nodes *within* the class rather than a sixth color. Scene colors
+      nodes *within* the class rather than another color. Scene colors
       only — `src/ui/toolPalette.css` is a different layer in a different
       medium
 - [ ] revisit the two intersection tolerances once sections have width —

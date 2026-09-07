@@ -1,7 +1,14 @@
 import { distanceToArc } from "./arcs";
 import { distanceToSegment, segmentCrossing } from "./segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import type { Node, NodeId, Section, SectionId, Vec2 } from "./types";
+import type {
+  Node,
+  NodeId,
+  Section,
+  SectionGeometry,
+  SectionId,
+  Vec2,
+} from "./types";
 
 /**
  * Geometric questions asked of the network from outside it.
@@ -160,12 +167,22 @@ export interface SectionCrossing {
  * else unless they are parallel, which is not a crossing either.
  *
  * A linear scan over every section, like `nearestNode` over every node.
+ *
+ * An arc crosses nothing at all for now: the segment math below answers for
+ * two straight runs, and the line–arc and arc–arc cases are not written. So
+ * an arc is planned as meeting nothing, and runs over other roads without
+ * making a junction. This is the one place that changes when they are.
  */
 export function crossingsAlong(
   network: RoadNetwork,
   from: Endpoint,
   to: Endpoint,
+  geometry: SectionGeometry,
 ): SectionCrossing[] {
+  if (geometry.kind === "arc") {
+    return [];
+  }
+
   const start = positionOf(network, from);
   const end = positionOf(network, to);
   const joined = new Set([

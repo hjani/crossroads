@@ -1,39 +1,17 @@
 import * as THREE from "three";
 import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
-import { nearestNode, positionOfNode } from "../core/queries";
-import type { Endpoint, RoadNetwork } from "../core/RoadNetwork";
-import type { Vec2 } from "../core/types";
+import { positionOfNode } from "../core/queries";
+import type { RoadNetwork } from "../core/RoadNetwork";
+import { STRAIGHT, type Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
-import { snapToGrid } from "./gridSnap";
+import {
+  placeEndpoint,
+  withinNodePickRadius,
+  type Placement,
+} from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
-
-/**
- * How close the cursor must look to a node to weld onto it. In pixels, so
- * the node is the same size of target at every zoom.
- *
- * A radius around a node, and nothing to do with the grid — the other way
- * a point is placed, which rounds each axis on its own and is measured in
- * meters (`GRID_PITCH_METERS`).
- */
-const NODE_PICK_RADIUS_PIXELS = 12;
-
-/**
- * Where a click puts an endpoint: how the point was arrived at, what the
- * model is told — an existing node once welded, a bare position otherwise
- * — and the point to draw it at, which is the node's own position when
- * the two differ.
- *
- * `kind` is what the tool reasons about; the endpoint alone cannot tell a
- * grid point from an unsnapped one, since both reach the model as a bare
- * position.
- */
-interface Placement {
-  readonly kind: "node" | "grid" | "free";
-  readonly endpoint: Endpoint;
-  readonly position: Vec2;
-}
 
 /**
  * Draws straight sections by clicking their endpoints.
@@ -88,7 +66,7 @@ export class StraightSectionTool implements Tool {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
-    const end = this.place(ground, modifiers);
+    const end = placeEndpoint(this.network, this.viewport, ground, modifiers);
 
     if (this.pending === null) {
       this.pending = end;
@@ -164,7 +142,12 @@ export class StraightSectionTool implements Tool {
     const ground = this.viewport.screenToGround(this.cursor);
     if (ground === null) return;
 
-    const placed = this.place(ground, this.modifiers);
+    const placed = placeEndpoint(
+      this.network,
+      this.viewport,
+      ground,
+      this.modifiers,
+    );
     const plan = this.planTo(ground, placed);
 
     if (plan !== null) {
@@ -195,28 +178,6 @@ export class StraightSectionTool implements Tool {
   }
 
   /**
-   * Decides where a ground position actually puts an endpoint.
-   *
-   * Welding beats the grid where both could apply — a grid point is never
-   * a join. Ctrl skips both: the cursor's own position, over a node as
-   * much as anywhere else, which is the only way to reach a point no rule
-   * would produce.
-   */
-  private place(ground: Vec2, modifiers: Modifiers): Placement {
-    if (modifiers.ctrl) {
-      return { kind: "free", endpoint: ground, position: ground };
-    }
-
-    const node = nearestNode(this.network, ground, this.nodePickRadiusMeters);
-    if (node !== null) {
-      return { kind: "node", endpoint: node.id, position: node.position };
-    }
-
-    const snapped = snapToGrid(ground);
-    return { kind: "grid", endpoint: snapped, position: snapped };
-  }
-
-  /**
    * What the network makes of a section from the point in progress to
    * `end`, or null where there is no section to ask about.
    *
@@ -241,23 +202,17 @@ export class StraightSectionTool implements Tool {
    */
   private planTo(ground: Vec2, end: Placement): SectionPlan | null {
     if (this.pending === null) return null;
-    if (this.withinNodePickRadius(ground, this.pending.position)) return null;
+    if (withinNodePickRadius(this.viewport, ground, this.pending.position)) {
+      return null;
+    }
 
-    const plan = planSection(this.network, this.pending.endpoint, end.endpoint);
+    const plan = planSection(
+      this.network,
+      this.pending.endpoint,
+      end.endpoint,
+      STRAIGHT,
+    );
     return plan.points.length < 2 ? null : plan;
-  }
-
-  /**
-   * Whether two ground positions are close enough that a click at one of
-   * them would weld onto a node at the other.
-   */
-  private withinNodePickRadius(ground: Vec2, of: Vec2): boolean {
-    const distance = Math.hypot(ground.x - of.x, ground.z - of.z);
-    return distance <= this.nodePickRadiusMeters;
-  }
-
-  private get nodePickRadiusMeters(): number {
-    return NODE_PICK_RADIUS_PIXELS * this.viewport.metersPerPixel;
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */

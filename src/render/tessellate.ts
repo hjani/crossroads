@@ -1,7 +1,7 @@
 import { arcPolyline } from "../core/arcs";
 import { positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
-import type { Section, Vec2 } from "../core/types";
+import type { Section, SectionGeometry, Vec2 } from "../core/types";
 
 /**
  * A section as the run of positions it is drawn along.
@@ -37,10 +37,27 @@ export function tessellate(
   network: RoadNetwork,
   section: Section,
 ): readonly Vec2[] {
-  const from = positionOfNode(network, section.from);
-  const to = positionOfNode(network, section.to);
+  return polylineBetween(
+    positionOfNode(network, section.from),
+    positionOfNode(network, section.to),
+    section.geometry,
+  );
+}
 
-  return section.geometry.kind === "arc"
-    ? arcPolyline(from, to, section.geometry.via, ARC_SAG_METERS)
+/**
+ * The same shape, for a stretch of road that is not a section: a piece of
+ * one being planned, whose ends are positions rather than nodes.
+ *
+ * Sharing this with `tessellate` is what makes a preview and the section it
+ * turns into the same curve — a preview drawn any other way would move
+ * under the click that commits it.
+ */
+export function polylineBetween(
+  from: Vec2,
+  to: Vec2,
+  geometry: SectionGeometry,
+): readonly Vec2[] {
+  return geometry.kind === "arc"
+    ? arcPolyline(from, to, geometry.via, ARC_SAG_METERS)
     : [from, to];
 }

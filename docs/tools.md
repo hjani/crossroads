@@ -45,6 +45,10 @@ Which is why a refusal is a color and not a disappearance. The preview
 still shows the section being aimed; it shows it as one that will not be
 built.
 
+A tool taking several points has a stage where there is not yet an edit to
+ask about. What it draws there is neither of those two answers, and takes a
+color of its own to say so.
+
 A tool has to expect the camera to move at any moment, unannounced and
 between any two events it hears — panning and zooming are not its own and
 happen whatever it is in the middle of.
@@ -114,6 +118,25 @@ preview can show what was refused rather than only that something was.
 
 None of this reaches the model. It still receives exact positions and ids
 of nodes that already exist, and decides nothing about either.
+
+## Placing an arc
+
+An arc is placed with three points: its two ends, and then the position it
+passes through between them. The ends come first so the last point changes
+only how the road bends — and since the arc is built through that position,
+it runs under the cursor placing it.
+
+The third point is not an endpoint. It snaps to the grid and unsnaps with
+the modifier like any other placed point, but it never welds onto a node:
+it settles the shape rather than marking a place on the road.
+
+There is no section to plan until the third point is placed, so what is
+drawn before that takes the in-progress color. After it the plan is drawn
+like any other — planned where it can be built, refused where it cannot,
+three points in a line among the refusals for having no circle through
+them.
+
+Cancelling drops the whole arc rather than stepping back a point.
 
 ## Selection
 

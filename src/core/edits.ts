@@ -1,3 +1,4 @@
+import { arcCircle, arcLength } from "./arcs";
 import { distance, isSamePoint, SAME_POINT_METERS } from "./points";
 import {
   crossingsAlong,
@@ -11,6 +12,7 @@ import {
   STRAIGHT,
   type NodeId,
   type Section,
+  type SectionGeometry,
   type SectionId,
   type Vec2,
 } from "./types";
@@ -71,6 +73,9 @@ export interface PlannedPoint {
 export interface BuildableSectionPlan {
   readonly buildable: true;
   readonly points: readonly [PlannedPoint, PlannedPoint, ...PlannedPoint[]];
+  /** How the section runs between its points — carried so a plan describes
+   * the whole of what would be built, shape included. */
+  readonly geometry: SectionGeometry;
 }
 
 /**
@@ -86,6 +91,9 @@ export interface BuildableSectionPlan {
 export interface UnbuildableSectionPlan {
   readonly buildable: false;
   readonly points: readonly PlannedPoint[];
+  /** The shape it was going to run in, so a refusal can be drawn as the
+   * section that was asked for rather than as the line between its ends. */
+  readonly geometry: SectionGeometry;
 }
 
 /** What adding a section would do to the network — or that it cannot. */
@@ -110,6 +118,7 @@ export function planSection(
   network: RoadNetwork,
   from: Endpoint,
   to: Endpoint,
+  geometry: SectionGeometry,
 ): SectionPlan {
   // Non-empty from the first line and never shrinks, so the chain always
   // has a last point to measure the next one against.
@@ -119,10 +128,20 @@ export function planSection(
   // Lengths are measured along the crossing points themselves, rather than
   // along the points being planned: those sit within a centimeter of them,
   // near enough to build at and not to measure with.
-  let measuredFrom = positionOf(network, from);
+  const begin = positionOf(network, from);
+  const end = positionOf(network, to);
+  let measuredFrom = begin;
 
-  for (const crossing of crossingsAlong(network, from, to)) {
-    if (!isBuildablePiece(measuredFrom, crossing.point)) {
+  // An arc is the circle through its ends and its third position, and three
+  // positions in a line have none. A refusal rather than a thrown error,
+  // because a third position dragged from one side of the road to the other
+  // crosses the line every time, and the user is aiming through it.
+  if (geometry.kind === "arc" && arcCircle(begin, end, geometry.via) === null) {
+    buildable = false;
+  }
+
+  for (const crossing of crossingsAlong(network, from, to, geometry)) {
+    if (!isBuildableLength(pieceLength(measuredFrom, crossing.point, geometry))) {
       buildable = false;
     }
     if (!landsCleanly(network, crossing.point)) {
@@ -135,7 +154,7 @@ export function planSection(
     append(network, points, plannedCrossing(network, crossing.section, at));
   }
 
-  if (!isBuildablePiece(measuredFrom, positionOf(network, to))) {
+  if (!isBuildableLength(pieceLength(measuredFrom, end, geometry))) {
     buildable = false;
   }
   append(network, points, { at: to, cuts: [] });
@@ -146,13 +165,13 @@ export function planSection(
     // same place, and there is no piece of road between them. Not caught
     // by the piece lengths above, which read a gap of nothing as no piece
     // to build rather than as one too short to be a road.
-    return { buildable: false, points };
+    return { buildable: false, points, geometry };
   }
   if (!buildable) {
-    return { buildable: false, points };
+    return { buildable: false, points, geometry };
   }
 
-  return { buildable: true, points: [start, next, ...rest] };
+  return { buildable: true, points: [start, next, ...rest], geometry };
 }
 
 /**
@@ -171,10 +190,14 @@ export function applySectionPlan(
   // The first point has no piece before it, so it only supplies the end
   // the second is joined to. After that each piece carries on from the
   // node the one before it left.
+  // Every piece runs in the section's own shape. Which is only right while
+  // there is one piece to an arc — an arc cut in two needs a third position
+  // for each half, and neither of them is the one the whole arc was given.
+  // It holds for now, since an arc crosses nothing to be cut at.
   const first = applyCuts(network, start);
-  let far = network.addSection(first, applyCuts(network, next), STRAIGHT).to;
+  let far = network.addSection(first, applyCuts(network, next), plan.geometry).to;
   for (const point of rest) {
-    far = network.addSection(far, applyCuts(network, point), STRAIGHT).to;
+    far = network.addSection(far, applyCuts(network, point), plan.geometry).to;
   }
   return far;
 }
@@ -336,12 +359,25 @@ function landsCleanly(network: RoadNetwork, point: Vec2): boolean {
 }
 
 /**
- * A stretch between two split points is either no piece at all — the same
- * place twice, where a crossing lands on a point the section already has —
- * or a section long enough to be a road. In between is the near miss
- * nothing sensible can be made of.
+ * How far a piece of the section runs between two of its points, in meters
+ * — along the curve of an arc rather than across it, so a bend is measured
+ * as the road a driver takes.
+ *
+ * An arc is only ever asked for the whole of itself, crossing nothing to be
+ * cut at, which is what makes its own third position the right one to
+ * measure by. A piece of an arc would need a third position of its own.
  */
-function isBuildablePiece(from: Vec2, to: Vec2): boolean {
-  const length = distance(from, to);
+function pieceLength(from: Vec2, to: Vec2, geometry: SectionGeometry): number {
+  return geometry.kind === "arc"
+    ? arcLength(from, to, geometry.via)
+    : distance(from, to);
+}
+
+/**
+ * A length is either no piece at all — the same place twice, where a
+ * crossing lands on a point the section already has — or long enough to be
+ * a road. In between is the near miss nothing sensible can be made of.
+ */
+function isBuildableLength(length: number): boolean {
   return length <= SAME_POINT_METERS || length >= MIN_SECTION_LENGTH_METERS;
 }
