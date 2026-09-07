@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distanceToSegment } from "./geometry";
+import { distanceToSegment } from "./segments";
 import { nearestSection } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT, type Vec2 } from "./types";

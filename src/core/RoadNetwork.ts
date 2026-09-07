@@ -1,4 +1,4 @@
-import { arcCircle } from "./geometry";
+import { arcCircle } from "./arcs";
 import type {
   Node,
   NodeId,

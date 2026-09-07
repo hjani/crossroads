@@ -1,4 +1,4 @@
-import { segmentCrossing, squaredDistanceToSegment } from "./geometry";
+import { segmentCrossing, squaredDistanceToSegment } from "./segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
 import type { Node, NodeId, Section, SectionId, Vec2 } from "./types";
 

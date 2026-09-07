@@ -1,6 +1,6 @@
 import { assert, describe, expect, it } from "vitest";
 import { applySectionPlan, planSection, type SectionPlan } from "./edits";
-import { segmentCrossing } from "./geometry";
+import { segmentCrossing } from "./segments";
 import { positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";

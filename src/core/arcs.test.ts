@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arcCircle, arcLength, pointOnArc, type ArcCircle } from "./geometry";
+import { arcCircle, arcLength, pointOnArc, type ArcCircle } from "./arcs";
 import type { Vec2 } from "./types";
 
 function at(x: number, z: number): Vec2 {

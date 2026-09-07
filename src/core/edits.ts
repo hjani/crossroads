@@ -1,4 +1,4 @@
-import { distance, isSamePoint, SAME_POINT_METERS } from "./geometry";
+import { distance, isSamePoint, SAME_POINT_METERS } from "./points";
 import {
   crossingsAlong,
   nearestNode,
