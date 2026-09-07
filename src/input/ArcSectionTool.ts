@@ -82,7 +82,12 @@ export class ArcSectionTool implements Tool {
     if (ground === null) return;
 
     if (this.start === null) {
-      this.start = placeEndpoint(this.network, this.viewport, ground, modifiers);
+      this.start = placeEndpoint(
+        this.network,
+        this.viewport,
+        ground,
+        modifiers,
+      );
 
       // The mark on where a click lands gives way to the gesture, and the
       // cursor has not moved to ask for it.

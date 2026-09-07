@@ -66,12 +66,18 @@ describe("segmentCrossing", () => {
   });
 
   it("has nothing to report for parallel segments", () => {
-    expect(segmentCrossing(at(0, 0), at(10, 0), at(0, 1), at(10, 1))).toBeNull();
+    expect(
+      segmentCrossing(at(0, 0), at(10, 0), at(0, 1), at(10, 1)),
+    ).toBeNull();
   });
 
   it("has nothing to report for collinear segments, overlapping or not", () => {
-    expect(segmentCrossing(at(0, 0), at(10, 0), at(5, 0), at(15, 0))).toBeNull();
-    expect(segmentCrossing(at(0, 0), at(10, 0), at(20, 0), at(30, 0))).toBeNull();
+    expect(
+      segmentCrossing(at(0, 0), at(10, 0), at(5, 0), at(15, 0)),
+    ).toBeNull();
+    expect(
+      segmentCrossing(at(0, 0), at(10, 0), at(20, 0), at(30, 0)),
+    ).toBeNull();
   });
 
   it("has nothing to report where the lines meet past the end of a segment", () => {

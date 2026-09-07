@@ -141,7 +141,9 @@ export function planSection(
   }
 
   for (const crossing of crossingsAlong(network, from, to, geometry)) {
-    if (!isBuildableLength(pieceLength(measuredFrom, crossing.point, geometry))) {
+    if (
+      !isBuildableLength(pieceLength(measuredFrom, crossing.point, geometry))
+    ) {
       buildable = false;
     }
     if (!landsCleanly(network, crossing.point)) {
@@ -195,7 +197,11 @@ export function applySectionPlan(
   // for each half, and neither of them is the one the whole arc was given.
   // It holds for now, since an arc crosses nothing to be cut at.
   const first = applyCuts(network, start);
-  let far = network.addSection(first, applyCuts(network, next), plan.geometry).to;
+  let far = network.addSection(
+    first,
+    applyCuts(network, next),
+    plan.geometry,
+  ).to;
   for (const point of rest) {
     far = network.addSection(far, applyCuts(network, point), plan.geometry).to;
   }
@@ -281,7 +287,9 @@ function append(
   point: PlannedPoint,
 ): void {
   const last = points[points.length - 1];
-  if (!isSamePoint(positionOf(network, point.at), positionOf(network, last.at))) {
+  if (
+    !isSamePoint(positionOf(network, point.at), positionOf(network, last.at))
+  ) {
     points.push(point);
     return;
   }
