@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M3 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M4 — Curved sections**
-Next step: circular-arc section type
+Next step: select an arc
 
 ## Milestones
 
@@ -74,7 +74,11 @@ Next step: circular-arc section type
 
 ### M4 — Curved sections
 - [x] circular-arc section type
-- [ ] render arc sections, before there is any way to place one by hand
+- [x] render arc sections, before there is any way to place one by hand —
+      an arc is tessellated to a polyline fine enough that no piece strays
+      further from the curve than a tolerance in meters, and `main.ts`
+      seeds a few so there is something to look at until a tool can place
+      one
 - [ ] select an arc
 - [ ] cut an arc: two arcs on the same circle sharing a new node
 - [ ] extend intersection detection to arcs (line–arc, arc–arc)
@@ -87,6 +91,7 @@ Next step: circular-arc section type
 
 Wanted, but not part of a milestone yet.
 
+- [ ] level of detail for arc tessellation
 - [ ] evaluate a UI framework for `src/ui/`. The panels are hand-written
       DOM, which is fine while they issue commands and starts to hurt when
       one has to reflect model state that changes elsewhere — the first

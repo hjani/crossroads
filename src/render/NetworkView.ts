@@ -1,6 +1,8 @@
 import * as THREE from "three";
+import { arcPolyline } from "../core/arcs";
+import { positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
-import type { NodeId } from "../core/types";
+import type { Section, Vec2 } from "../core/types";
 
 /** Height above the ground plane, to stay clear of the reference grid. */
 const SECTION_HEIGHT = 0.02;
@@ -11,6 +13,16 @@ const SECTION_COLOR = 0xdddddd;
 const NODE_COLOR = 0xffaa33;
 /** In pixels — see `sizeAttenuation` below. */
 const NODE_SIZE = 7;
+
+/**
+ * How far a drawn arc may stray from the curve it stands for, in meters.
+ *
+ * A distance on the ground rather than on screen, so the geometry depends on
+ * the network alone and is rebuilt only when the network changes. Zoom far
+ * enough in and the chords do eventually show, which is where a tolerance
+ * that follows `Viewport.metersPerPixel` would take over.
+ */
+const ARC_SAG_METERS = 0.05;
 
 /**
  * Draws a road network as a wireframe: sections as lines, nodes as points.
@@ -76,21 +88,47 @@ export class NetworkView {
 
     const sectionPoints: number[] = [];
     for (const section of this.network.allSections()) {
-      this.appendEndpoint(section.from, sectionPoints);
-      this.appendEndpoint(section.to, sectionPoints);
+      appendPolyline(this.tessellate(section), sectionPoints);
     }
 
     replaceGeometry(this.sections, sectionPoints);
     replaceGeometry(this.nodes, nodePoints);
   }
 
-  private appendEndpoint(id: NodeId, points: number[]): void {
-    const node = this.network.getNode(id);
-    if (node === undefined) {
-      throw new Error(`Section endpoint ${id} is not a node of the network`);
-    }
+  /**
+   * A section as the run of positions it is drawn along: its two ends for a
+   * straight, and enough points to pass for the curve for an arc.
+   *
+   * Where the two kinds stop differing. Everything past here works on
+   * points, so an arc costs the drawing no more than a straight with a lot
+   * of ends.
+   */
+  private tessellate(section: Section): readonly Vec2[] {
+    const from = positionOfNode(this.network, section.from);
+    const to = positionOfNode(this.network, section.to);
 
-    points.push(node.position.x, SECTION_HEIGHT, node.position.z);
+    return section.geometry.kind === "arc"
+      ? arcPolyline(from, to, section.geometry.via, ARC_SAG_METERS)
+      : [from, to];
+  }
+}
+
+/**
+ * Appends a polyline in the layout `LineSegments` draws.
+ *
+ * That primitive takes the buffer two points at a time and joins each pair,
+ * drawing nothing between one pair and the next — so a connected run is
+ * written with every interior point twice, ending one piece and starting
+ * the next. It costs a duplicated point per piece and buys one geometry and
+ * one draw call for the whole network, where a `Line` per section would be
+ * an object apiece.
+ */
+function appendPolyline(points: readonly Vec2[], coordinates: number[]): void {
+  for (let i = 1; i < points.length; i++) {
+    const start = points[i - 1];
+    const end = points[i];
+    coordinates.push(start.x, SECTION_HEIGHT, start.z);
+    coordinates.push(end.x, SECTION_HEIGHT, end.z);
   }
 }
 

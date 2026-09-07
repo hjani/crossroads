@@ -11,9 +11,15 @@ they will draw into the same scene.
 
 ## What it does
 
-The whole network is drawn: every section as a straight line between its
-endpoints, every node as a point. A node shared by several sections shows
-as one point.
+The whole network is drawn: every section along the shape it has, every
+node as a point. A node shared by several sections shows as one point.
+
+A straight section is the line between its endpoints. An arc is drawn as a
+run of short straight pieces standing in for the curve, enough of them that
+none strays further from the true arc than a stated tolerance. That
+tolerance is a distance on the ground rather than on screen, so what is
+drawn follows from the network alone — the same reason the drawing is
+rebuilt on an edit and on nothing else.
 
 The drawing follows the model. Any edit is reflected without the editor
 having to say what changed, and an unedited network costs nothing per

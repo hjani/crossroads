@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { arcCircle, arcLength, pointOnArc, type ArcCircle } from "./arcs";
+import {
+  arcCircle,
+  arcLength,
+  arcPolyline,
+  pointOnArc,
+  type ArcCircle,
+} from "./arcs";
+import { distance } from "./points";
 import type { Vec2 } from "./types";
 
 function at(x: number, z: number): Vec2 {
@@ -134,5 +141,97 @@ describe("arcLength", () => {
 
   it("is the straight distance when the three are in a line", () => {
     expect(arcLength(at(0, 0), at(10, 0), at(5, 0))).toBeCloseTo(10);
+  });
+});
+
+/**
+ * The furthest any chord of the polyline strays from the circle it stands
+ * in for — measured at each chord's midpoint, which on a circle is where the
+ * gap is widest.
+ */
+function worstSag(points: readonly Vec2[], circle: ArcCircle): number {
+  let worst = 0;
+  for (let i = 1; i < points.length; i++) {
+    const midpoint = at(
+      (points[i - 1].x + points[i].x) / 2,
+      (points[i - 1].z + points[i].z) / 2,
+    );
+    worst = Math.max(worst, circle.radius - distance(circle.center, midpoint));
+  }
+  return worst;
+}
+
+describe("arcPolyline", () => {
+  it("ends exactly on the positions it was given", () => {
+    const points = arcPolyline(east, north, northeast, 0.1);
+
+    expect(points[0]).toEqual(east);
+    expect(points[points.length - 1]).toEqual(north);
+  });
+
+  it("puts every point on the arc's circle", () => {
+    const points = arcPolyline(east, north, northeast, 0.01);
+
+    for (const point of points) {
+      expect(distance(at(0, 0), point)).toBeCloseTo(1);
+    }
+  });
+
+  it("keeps every chord within the tolerance asked for", () => {
+    const circle = circleThrough(east, north, northeast);
+
+    for (const tolerance of [0.5, 0.1, 0.01, 0.0001]) {
+      expect(worstSag(arcPolyline(east, north, northeast, tolerance), circle))
+        .toBeLessThanOrEqual(tolerance);
+    }
+  });
+
+  it("subdivides a finer tolerance further", () => {
+    const coarse = arcPolyline(east, north, northeast, 0.1);
+    const fine = arcPolyline(east, north, northeast, 0.001);
+
+    expect(fine.length).toBeGreaterThan(coarse.length);
+  });
+
+  it("subdivides a longer sweep further, at the same radius", () => {
+    const quarter = arcPolyline(east, north, northeast, 0.01);
+    const threeQuarters = arcPolyline(east, north, southwest, 0.01);
+
+    expect(threeQuarters.length).toBeGreaterThan(quarter.length);
+  });
+
+  it("subdivides a wider curve further, for the same sweep", () => {
+    // A quarter circle of radius 10 rather than 1. Each chord may be longer
+    // — the tolerance is a fixed distance, and there is more room under a
+    // gentler curve — but the arc grows faster than the chords do, so it
+    // still takes more of them.
+    const tight = arcPolyline(east, north, northeast, 0.01);
+    const wide = arcPolyline(at(10, 0), at(0, 10), at(7.07107, 7.07107), 0.01);
+
+    expect(wide.length).toBeGreaterThan(tight.length);
+  });
+
+  it("takes the long way round when the via does", () => {
+    const points = arcPolyline(east, north, southwest, 0.01);
+
+    // The three quarters run through the far side of the circle, which the
+    // quarter between the same two ends never enters.
+    expect(points.some((point) => point.x < 0 && point.z < 0)).toBe(true);
+  });
+
+  it("is the two ends alone when the three are in a line", () => {
+    expect(arcPolyline(at(0, 0), at(10, 0), at(5, 0), 0.01)).toEqual([
+      at(0, 0),
+      at(10, 0),
+    ]);
+  });
+
+  it("stops subdividing rather than running away on a tolerance of zero", () => {
+    const points = arcPolyline(east, north, northeast, 0);
+
+    expect(points.length).toBeLessThanOrEqual(513);
+    for (const point of points) {
+      expect(distance(at(0, 0), point)).toBeCloseTo(1);
+    }
   });
 });

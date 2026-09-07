@@ -107,6 +107,86 @@ export function arcLength(from: Vec2, to: Vec2, via: Vec2): number {
     : run.circle.radius * Math.abs(run.sweep);
 }
 
+/**
+ * However many chords it takes, an arc is never split past this. Insurance
+ * against a tolerance so fine, or a radius so large, that the count runs
+ * away — at which point the arc is straight enough that nobody will see
+ * where it stopped being subdivided.
+ */
+const MAX_ARC_CHORDS = 512;
+
+/**
+ * The arc `from`–`via`–`to` as a run of straight chords, both endpoints
+ * included, fine enough that no chord strays further than `sagMeters` from
+ * the true curve.
+ *
+ * The tolerance is asked for rather than fixed here, because how close is
+ * close enough depends on what the polyline is for — a drawing answers it
+ * with what the viewer can see, a length or a crossing with what the
+ * network cares about. The math has no opinion.
+ *
+ * Both ends are the positions passed in rather than points computed from
+ * their angles, which would differ from them by a rounding. A section's
+ * ends are its nodes, and they have to land exactly on them.
+ *
+ * A `via` in line with the ends has no circle, so the result is the two
+ * ends and nothing between — the same straight reading `pointOnArc` gives.
+ */
+export function arcPolyline(
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+  sagMeters: number,
+): Vec2[] {
+  const run = arcRun(from, to, via);
+  if (run === null) {
+    return [from, to];
+  }
+
+  const { center, radius } = run.circle;
+  const chords = chordCount(radius, Math.abs(run.sweep), sagMeters);
+
+  const points: Vec2[] = [from];
+  for (let chord = 1; chord < chords; chord++) {
+    const angle = run.startAngle + (run.sweep * chord) / chords;
+    points.push({
+      x: center.x + radius * Math.cos(angle),
+      z: center.z + radius * Math.sin(angle),
+    });
+  }
+  points.push(to);
+  return points;
+}
+
+/**
+ * How many chords an arc of this radius and sweep takes to stay within the
+ * tolerance.
+ *
+ * A chord spanning an angle `t` on a circle of radius `r` sits at its
+ * furthest from the arc halfway along, where the gap — the sagitta — is
+ * `r · (1 − cos(t/2))`: the center is `r·cos(t/2)` from the chord's
+ * midpoint and `r` from the arc above it. Setting that equal to the
+ * tolerance and solving back gives the widest angle one chord may span, and
+ * the sweep divided by it is how many are needed.
+ *
+ * A larger radius does buy longer chords — a gentler curve leaves more room
+ * under it before the gap opens up — but not proportionally: the chords grow
+ * with the square root of the radius while the arc grows with the radius, so
+ * a wide sweeping curve still takes more of them than a tight bend of the
+ * same sweep. Which is the point of counting rather than fixing a number:
+ * each arc gets what its own size asks for.
+ *
+ * The cosine is clamped before `acos`, which is undefined outside −1..1. A
+ * tolerance of zero or less puts it at 1 and the widest angle at 0, and a
+ * tolerance past the diameter puts it below −1; either way the count runs
+ * into a limit rather than off the end of the math.
+ */
+function chordCount(radius: number, sweep: number, sagMeters: number): number {
+  const cosHalfAngle = Math.max(-1, Math.min(1, 1 - sagMeters / radius));
+  const widestAngle = 2 * Math.acos(cosHalfAngle);
+  return Math.min(MAX_ARC_CHORDS, Math.max(1, Math.ceil(sweep / widestAngle)));
+}
+
 /** An arc as an angle to start at and an angle to turn through. */
 interface ArcRun {
   readonly circle: ArcCircle;

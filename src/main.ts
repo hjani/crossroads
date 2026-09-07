@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { RoadNetwork } from "./core/RoadNetwork";
+import { STRAIGHT } from "./core/types";
 import { PanZoomControls } from "./input/PanZoomControls";
 import { SelectionTool } from "./input/SelectionTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
@@ -27,6 +28,27 @@ const grid = new THREE.GridHelper(100, 20);
 scene.add(grid);
 
 const network = new RoadNetwork();
+
+// Scaffolding: no tool places an arc yet, so building a few here is the only
+// way to see one drawn. Goes when the arc tool lands.
+//
+// Straight to the network rather than through `edits.ts`, so nothing is
+// checked for crossings — these are placed clear of each other by hand.
+const curve = network.addSection(
+  { x: -20, z: 10 },
+  { x: 0, z: 10 },
+  { kind: "arc", via: { x: -10, z: 4 } },
+);
+// Carrying on from where the curve ends, so the two kinds of section are
+// visible meeting at one node.
+network.addSection(curve.to, { x: 12, z: 16 }, STRAIGHT);
+// More than half a circle: the via stands further off the chord than the
+// radius, which is what sends the arc the long way round.
+network.addSection(
+  { x: 4, z: -8 },
+  { x: 14, z: -8 },
+  { kind: "arc", via: { x: 9, z: 2 } },
+);
 
 const networkView = new NetworkView(network);
 scene.add(networkView.sceneObject);
