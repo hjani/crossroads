@@ -30,6 +30,10 @@ export function isSamePoint(a: Vec2, b: Vec2): boolean {
   return distance(a, b) <= SAME_POINT_METERS;
 }
 
+export function clamp01(t: number): number {
+  return Math.min(1, Math.max(0, t));
+}
+
 /** The point a fraction `t` of the way from `from` to `to`. */
 export function lerp(from: Vec2, to: Vec2, t: number): Vec2 {
   return {

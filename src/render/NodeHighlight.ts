@@ -8,18 +8,22 @@ import type { Vec2 } from "../core/types";
 const HIGHLIGHT_HEIGHT = 0.035;
 
 /** Blue, which is what the edit's colors reserve for something already
- * there — and a node the cursor has found is exactly that. */
-const HIGHLIGHT_COLOR = 0x66ccff;
+ * there — and a node the cursor has found is exactly that. What a mark is
+ * usually for, so it is the color one takes unless its builder says
+ * otherwise. */
+const FOUND_NODE_COLOR = 0x66ccff;
 
 /** In pixels, and wider than a node, so the mark shows around it. */
 const HIGHLIGHT_SIZE = 15;
 
 /**
- * A mark on a single node: the one an endpoint would weld onto.
+ * A mark on a single place: the node an endpoint would weld onto, or
+ * another one position a tool wants pointed at.
  *
  * Decoration only, and told what to mark rather than reading the model —
  * it is the tool's answer to "where would this click land", which is not
- * something the network knows.
+ * something the network knows. The color says which of those answers it is,
+ * and so is the builder's to choose, as `SectionHighlight`'s is.
  */
 export class NodeHighlight {
   readonly sceneObject: THREE.Points<
@@ -32,14 +36,14 @@ export class NodeHighlight {
     3,
   );
 
-  constructor() {
+  constructor(color: number = FOUND_NODE_COLOR) {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", this.positions);
 
     this.sceneObject = new THREE.Points(
       geometry,
       new THREE.PointsMaterial({
-        color: HIGHLIGHT_COLOR,
+        color,
         size: HIGHLIGHT_SIZE,
         // Fixed pixel size, matching how nodes themselves are drawn.
         sizeAttenuation: false,

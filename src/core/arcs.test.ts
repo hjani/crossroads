@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  arcArcCrossings,
   arcCircle,
+  arcFractionAt,
   arcLength,
   arcPolyline,
   distanceToArc,
   pointOnArc,
+  segmentArcCrossings,
   type ArcCircle,
 } from "./arcs";
 import { distance } from "./points";
@@ -118,6 +121,226 @@ describe("pointOnArc", () => {
 
   it("runs straight between the ends when the three are in a line", () => {
     expectAt(pointOnArc(at(0, 0), at(10, 0), at(5, 0), 0.25), 2.5, 0);
+  });
+});
+
+describe("arcFractionAt", () => {
+  it("reads back what pointOnArc was given", () => {
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const point = pointOnArc(east, north, northeast, t);
+      expect(arcFractionAt(east, north, northeast, point)).toBeCloseTo(t);
+    }
+  });
+
+  it("reads back along an arc that goes the long way round", () => {
+    // The sweep runs backwards here, so a fraction of it is counted down
+    // from a full circle rather than up from nothing — and the ends have to
+    // come out at 0 and 1 all the same.
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const point = pointOnArc(east, north, southwest, t);
+      expect(arcFractionAt(east, north, southwest, point)).toBeCloseTo(t);
+    }
+  });
+
+  it("answers for the place on the curve a position off it points at", () => {
+    // Twice the radius out, in the direction of the arc's midpoint. Not on
+    // the road, but it is halfway along it all the same, which is what a
+    // node landing a little off the curve needs this to say.
+    const outside = at(2 * Math.SQRT1_2, 2 * Math.SQRT1_2);
+    expect(arcFractionAt(east, north, northeast, outside)).toBeCloseTo(0.5);
+  });
+
+  it("clamps a direction the arc never turns to", () => {
+    // Due south: past the start of a quarter running east to north, so the
+    // arc ran out before it got there.
+    expect(arcFractionAt(east, north, northeast, at(0, -1))).toBe(0);
+  });
+
+  it("measures along the segment when the three are in a line", () => {
+    expect(arcFractionAt(at(0, 0), at(10, 0), at(5, 0), at(2.5, 0))).toBeCloseTo(
+      0.25,
+    );
+  });
+});
+
+describe("segmentArcCrossings", () => {
+  // The upper half of the unit circle, running west to east through the top.
+  const west = at(-1, 0);
+  const top = at(0, 1);
+
+  it("finds both places a segment cuts across an arc", () => {
+    // Level with the top of the circle's midriff, so it goes in one side
+    // and out the other.
+    const crossings = segmentArcCrossings(
+      at(-2, Math.SQRT1_2),
+      at(2, Math.SQRT1_2),
+      west,
+      east,
+      top,
+    );
+
+    expect(crossings).toHaveLength(2);
+    expectAt(crossings[0].point, -Math.SQRT1_2, Math.SQRT1_2);
+    expectAt(crossings[1].point, Math.SQRT1_2, Math.SQRT1_2);
+  });
+
+  it("orders them along the segment, not along the arc", () => {
+    // The same line walked the other way: the crossing nearer its start is
+    // the one that was second before.
+    const crossings = segmentArcCrossings(
+      at(2, Math.SQRT1_2),
+      at(-2, Math.SQRT1_2),
+      west,
+      east,
+      top,
+    );
+
+    expectAt(crossings[0].point, Math.SQRT1_2, Math.SQRT1_2);
+    expect(crossings[0].alongA).toBeLessThan(crossings[1].alongA);
+  });
+
+  it("says how far along each of the two the meeting is", () => {
+    // Straight up the middle: it meets the top of the arc halfway along
+    // itself, and halfway along the arc.
+    const [crossing] = segmentArcCrossings(at(0, 0), at(0, 2), west, east, top);
+
+    expect(crossing.alongA).toBeCloseTo(0.5);
+    expect(crossing.alongB).toBeCloseTo(0.5);
+  });
+
+  it("ignores where the circle is met outside the arc's own sweep", () => {
+    // Straight down the middle instead, meeting the circle at its bottom —
+    // which this arc, running over the top, never reaches.
+    const crossings = segmentArcCrossings(at(0, 0), at(0, -2), west, east, top);
+
+    expect(crossings).toEqual([]);
+  });
+
+  it("ignores where the line meets the circle past the segment's end", () => {
+    // Along the same line as above, but stopping a whole radius short of
+    // the circle: the line still meets it twice, and the segment reaches
+    // neither.
+    expect(
+      segmentArcCrossings(at(-3, Math.SQRT1_2), at(-2, Math.SQRT1_2), west, east, top),
+    ).toEqual([]);
+  });
+
+  it("has nothing to report for a segment that passes the circle by", () => {
+    expect(segmentArcCrossings(at(-2, 2), at(2, 2), west, east, top)).toEqual(
+      [],
+    );
+  });
+
+  it("reports a tangent as two roots landing in the same place", () => {
+    // Along the top of the circle, grazing the arc at its midpoint. A
+    // discriminant that is exactly zero is not what rounding leaves, so
+    // both roots come back — as the same place, to far inside the distance
+    // that counts as one. Which of them is a separate junction is a
+    // question about how close is the same place, and the chain answers it.
+    const crossings = segmentArcCrossings(at(-2, 1), at(2, 1), west, east, top);
+
+    expect(crossings).toHaveLength(2);
+    for (const crossing of crossings) {
+      expectAt(crossing.point, 0, 1);
+    }
+  });
+
+  it("crosses a via in line with the ends where the segment crosses it", () => {
+    const [crossing] = segmentArcCrossings(
+      at(5, -5),
+      at(5, 5),
+      at(0, 0),
+      at(10, 0),
+      at(5, 0),
+    );
+
+    expectAt(crossing.point, 5, 0);
+  });
+});
+
+describe("arcArcCrossings", () => {
+  // The upper half of the unit circle, running west to east over the top.
+  const west = at(-1, 0);
+  const top = at(0, 1);
+
+  // The upper half of a second unit circle, centered one to the east, so
+  // the two circles meet at (0.5, ±√3/2) — one of which both arcs reach.
+  const shiftedWest = at(0, 0);
+  const shiftedEast = at(2, 0);
+  const shiftedTop = at(1, 1);
+
+  it("finds where two arcs meet", () => {
+    const crossings = arcArcCrossings(
+      west,
+      east,
+      top,
+      shiftedWest,
+      shiftedEast,
+      shiftedTop,
+    );
+
+    expect(crossings).toHaveLength(1);
+    expectAt(crossings[0].point, 0.5, Math.sqrt(3) / 2);
+  });
+
+  it("says how far along each of the two the meeting is", () => {
+    const [crossing] = arcArcCrossings(
+      west,
+      east,
+      top,
+      shiftedWest,
+      shiftedEast,
+      shiftedTop,
+    );
+
+    // A third of the way round the first, which runs a half circle from due
+    // west, and two thirds along the second, which reaches it later.
+    expect(crossing.alongA).toBeCloseTo(2 / 3);
+    expect(crossing.alongB).toBeCloseTo(1 / 3);
+  });
+
+  it("ignores where the circles meet outside either sweep", () => {
+    // The lower halves of the same two circles as above meet at
+    // (0.5, -√3/2), which neither of these arcs reaches.
+    expect(
+      arcArcCrossings(west, east, top, shiftedWest, shiftedEast, at(1, -1)),
+    ).toEqual([]);
+  });
+
+  it("has nothing to report for circles too far apart to reach", () => {
+    expect(
+      arcArcCrossings(west, east, top, at(9, 0), at(11, 0), at(10, 1)),
+    ).toEqual([]);
+  });
+
+  it("has nothing to report for one circle inside another", () => {
+    // A tenth the radius, sharing the midpoint of the bigger one's sweep.
+    expect(
+      arcArcCrossings(west, east, top, at(-0.1, 0), at(0.1, 0), at(0, 0.1)),
+    ).toEqual([]);
+  });
+
+  it("has nothing to report for two arcs of one circle", () => {
+    // The same circle meets itself everywhere rather than at a point, which
+    // is not a crossing — as two collinear segments are not.
+    expect(
+      arcArcCrossings(west, east, top, east, west, at(0, -1)),
+    ).toEqual([]);
+  });
+
+  it("crosses a via in line with the ends as a straight would", () => {
+    // The first arc is really a line across the middle of the second.
+    const crossings = arcArcCrossings(
+      at(-2, Math.SQRT1_2),
+      at(2, Math.SQRT1_2),
+      at(0, Math.SQRT1_2),
+      west,
+      east,
+      top,
+    );
+
+    expect(crossings).toHaveLength(2);
+    expectAt(crossings[0].point, -Math.SQRT1_2, Math.SQRT1_2);
   });
 });
 

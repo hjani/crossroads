@@ -1,5 +1,11 @@
-import { distanceToArc } from "./arcs";
-import { distanceToSegment, segmentCrossing } from "./segments";
+import { arcArcCrossings, distanceToArc, segmentArcCrossings } from "./arcs";
+import { isSamePoint } from "./points";
+import {
+  distanceToSegment,
+  fromTheOtherSide,
+  segmentCrossing,
+  type Crossing,
+} from "./segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
 import type {
   Node,
@@ -160,18 +166,16 @@ export interface SectionCrossing {
  * Every existing section a new one from `from` to `to` would cross, in the
  * order they are met walking from `from`.
  *
- * Sections already meeting at either endpoint are left out. They touch the
- * new one at a node it is being attached to, which is a join the caller is
- * making rather than a crossing to resolve — and nothing is missed by
- * skipping them, since two straight segments sharing a point meet nowhere
- * else unless they are parallel, which is not a crossing either.
+ * A section can be met more than once, and so appears more than once: a
+ * road drawn across a bend crosses it going in and coming out again.
+ *
+ * A place the new section is already joined on is not a crossing, and is
+ * left out. That is a rule about the place rather than about the section
+ * standing there — two roads sharing a node can still meet somewhere else
+ * once either of them bends, and only the meeting at the shared node is the
+ * join the caller is making.
  *
  * A linear scan over every section, like `nearestNode` over every node.
- *
- * An arc crosses nothing at all for now: the segment math below answers for
- * two straight runs, and the line–arc and arc–arc cases are not written. So
- * an arc is planned as meeting nothing, and runs over other roads without
- * making a junction. This is the one place that changes when they are.
  */
 export function crossingsAlong(
   network: RoadNetwork,
@@ -179,30 +183,24 @@ export function crossingsAlong(
   to: Endpoint,
   geometry: SectionGeometry,
 ): SectionCrossing[] {
-  if (geometry.kind === "arc") {
-    return [];
-  }
-
   const start = positionOf(network, from);
   const end = positionOf(network, to);
-  const joined = new Set([
-    ...sectionsAtEndpoint(network, from),
-    ...sectionsAtEndpoint(network, to),
-  ]);
 
   const crossings: SectionCrossing[] = [];
   for (const section of network.allSections()) {
-    if (joined.has(section.id)) {
-      continue;
-    }
-
-    const crossing = segmentCrossing(
+    const met = shapesCrossing(
       start,
       end,
+      geometry,
       positionOfNode(network, section.from),
       positionOfNode(network, section.to),
+      section.geometry,
     );
-    if (crossing !== null) {
+
+    for (const crossing of met) {
+      if (isCrossingAtJoin(network, from, to, section, crossing.point)) {
+        continue;
+      }
       crossings.push({
         section: section.id,
         point: crossing.point,
@@ -215,10 +213,67 @@ export function crossingsAlong(
   return crossings;
 }
 
-/** The sections meeting at an endpoint — none, for a bare position. */
-function sectionsAtEndpoint(
+/**
+ * Where a stretch of road running one shape meets a stretch running
+ * another, with `alongA` measured along the first of them. In no
+ * particular order.
+ *
+ * The dispatch neither shape module can do: each answers for the shapes it
+ * owns, and which pair is being asked about is the question left over. A
+ * straight meeting an arc is one piece of math read from either end, so the
+ * two mixed pairings share it and one of them turns the answer around.
+ */
+function shapesCrossing(
+  from: Vec2,
+  to: Vec2,
+  geometry: SectionGeometry,
+  otherFrom: Vec2,
+  otherTo: Vec2,
+  otherGeometry: SectionGeometry,
+): Crossing[] {
+  if (geometry.kind === "arc") {
+    if (otherGeometry.kind === "arc") {
+      return arcArcCrossings(
+        from,
+        to,
+        geometry.via,
+        otherFrom,
+        otherTo,
+        otherGeometry.via,
+      );
+    }
+    return segmentArcCrossings(
+      otherFrom,
+      otherTo,
+      from,
+      to,
+      geometry.via,
+    ).map(fromTheOtherSide);
+  }
+
+  if (otherGeometry.kind === "arc") {
+    return segmentArcCrossings(from, to, otherFrom, otherTo, otherGeometry.via);
+  }
+
+  const crossing = segmentCrossing(from, to, otherFrom, otherTo);
+  return crossing === null ? [] : [crossing];
+}
+
+/**
+ * Whether the crossing is exactly at the join of two sections.
+ */
+function isCrossingAtJoin(
   network: RoadNetwork,
-  endpoint: Endpoint,
-): readonly SectionId[] {
-  return isNodeId(endpoint) ? network.sectionsAt(endpoint) : [];
+  plannedFrom: Endpoint,
+  plannedTo: Endpoint,
+  crossed: Section,
+  crossingPoint: Vec2,
+): boolean {
+  for (const node of [crossed.from, crossed.to]) {
+    const shared = node === plannedFrom || node === plannedTo;
+    if (shared && isSamePoint(crossingPoint, positionOfNode(network, node))) {
+      return true;
+    }
+  }
+  return false;
 }

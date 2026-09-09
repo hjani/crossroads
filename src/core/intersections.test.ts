@@ -1,7 +1,14 @@
 import { assert, describe, expect, it } from "vitest";
-import { applySectionPlan, planSection, type SectionPlan } from "./edits";
+import {
+  applySectionPlan,
+  planSection,
+  pointsOf,
+  type SectionPlan,
+} from "./edits";
+import { arcCircle, type ArcCircle } from "./arcs";
+import { distance } from "./points";
 import { segmentCrossing } from "./segments";
-import { positionOf } from "./queries";
+import { nearestNode, positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT, type NodeId, type Vec2 } from "./types";
@@ -23,14 +30,34 @@ function build(
   return plan.buildable ? applySectionPlan(network, plan) : null;
 }
 
+/** The same, for an arc bending through `via`. */
+function buildArc(
+  network: RoadNetwork,
+  from: Endpoint,
+  to: Endpoint,
+  via: Vec2,
+): NodeId | null {
+  const plan = planSection(network, from, to, { kind: "arc", via });
+  return plan.buildable ? applySectionPlan(network, plan) : null;
+}
+
+/** The circle three positions lie on, or a failure saying they do not. */
+function circleThrough(from: Vec2, to: Vec2, via: Vec2): ArcCircle {
+  const circle = arcCircle(from, to, via);
+  if (circle === null) {
+    throw new Error("expected a circle through the three positions");
+  }
+  return circle;
+}
+
 /** Every place a plan runs through, in order. */
 function chainPoints(network: RoadNetwork, plan: SectionPlan): Vec2[] {
-  return plan.points.map((point) => positionOf(network, point.at));
+  return pointsOf(plan).map((point) => positionOf(network, point.at));
 }
 
 /** Where a plan would cut a section in two, in the order it meets them. */
 function cutPoints(network: RoadNetwork, plan: SectionPlan): Vec2[] {
-  return plan.points
+  return pointsOf(plan)
     .filter((point) => point.cuts.length > 0)
     .map((point) => positionOf(network, point.at));
 }
@@ -280,7 +307,7 @@ describe("planning and building a section", () => {
     const plan = planSection(network, corner, at(5, 0), STRAIGHT);
 
     expect(plan.buildable).toBe(false);
-    expect(plan.points).toHaveLength(1);
+    expect(plan.pieces).toHaveLength(0);
   });
 });
 
@@ -331,21 +358,136 @@ describe("planning and building an arc", () => {
     expect(curved.buildable).toBe(true);
   });
 
-  it("crosses nothing, for now, and makes no junction", () => {
+  it("cuts into two arcs rather than two straights", () => {
+    const network = new RoadNetwork();
+    buildArc(network, at(0, 0), at(10, 0), at(5, 2));
+
+    build(network, at(5, -5), at(5, 5));
+
+    const kinds = [...network.allSections()]
+      .map((section) => section.geometry.kind)
+      .sort();
+    expect(kinds).toEqual(["arc", "arc", "straight", "straight"]);
+  });
+
+  it("takes each half's shape off the curve it was cut from", () => {
+    const network = new RoadNetwork();
+    buildArc(network, at(0, 0), at(10, 0), at(5, 2));
+    build(network, at(5, -5), at(5, 5));
+
+    // Each half is fixed by a position halfway along its own stretch of the
+    // original, so both of those positions are on the original's circle —
+    // which is what makes the two halves follow the road they replaced
+    // rather than bending somewhere of their own.
+    const circle = circleThrough(at(0, 0), at(10, 0), at(5, 2));
+    const vias = [...network.allSections()]
+      .map((section) => section.geometry)
+      .filter((geometry) => geometry.kind === "arc")
+      .map((geometry) => geometry.via);
+
+    expect(vias).toHaveLength(2);
+    for (const via of vias) {
+      expect(distance(via, circle.center)).toBeCloseTo(circle.radius);
+    }
+  });
+
+  it("makes a junction on the curve, not on the chord", () => {
     const network = new RoadNetwork();
     build(network, at(5, -5), at(5, 5));
 
-    // The arc runs over that road at (5,2) and neither is cut there: the
-    // line–arc case is not written, so an arc is planned as meeting
-    // nothing. Deliberate, and this is where it will show when it changes.
-    const plan = planSection(network, at(0, 0), at(10, 0), {
-      kind: "arc",
-      via: at(5, 2),
-    });
-    assert(plan.buildable);
-    applySectionPlan(network, plan);
+    // The arc runs over that road at the top of its bend, two meters clear
+    // of the line between its ends. Both are cut there and share the node.
+    buildArc(network, at(0, 0), at(10, 0), at(5, 2));
 
-    expect(layout(network)).toEqual(["(0,0)-(10,0)", "(5,-5)-(5,5)"]);
+    expect(layout(network)).toEqual([
+      "(0,0)-(5,2)",
+      "(5,-5)-(5,2)",
+      "(5,2)-(10,0)",
+      "(5,2)-(5,5)",
+    ]);
+    expect(nodeCount(network)).toBe(5);
+  });
+
+  it("is cut where a straight is drawn across it", () => {
+    const network = new RoadNetwork();
+    buildArc(network, at(0, 0), at(10, 0), at(5, 2));
+
+    // Level with the top of the bend, so it meets the arc there. The same
+    // junction as above, arrived at from the other side.
+    build(network, at(5, -5), at(5, 5));
+
+    expect(layout(network)).toEqual([
+      "(0,0)-(5,2)",
+      "(5,-5)-(5,2)",
+      "(5,2)-(10,0)",
+      "(5,2)-(5,5)",
+    ]);
+    expect(nodeCount(network)).toBe(5);
+  });
+
+  it("is cut twice by a straight drawn across the whole bend", () => {
+    const network = new RoadNetwork();
+    // Half a circle of radius five, standing on its chord.
+    buildArc(network, at(0, 0), at(10, 0), at(5, 5));
+
+    // Level with the middle of it, so it goes in one side and out the
+    // other: two junctions, and the arc left in three pieces.
+    const plan = planSection(network, at(-5, 3), at(15, 3), STRAIGHT);
+    expect(cutPoints(network, plan)).toHaveLength(2);
+
+    build(network, at(-5, 3), at(15, 3));
+    expect(nodeCount(network)).toBe(6);
+    expect(
+      [...network.allSections()].filter((s) => s.geometry.kind === "arc"),
+    ).toHaveLength(3);
+  });
+
+  it("meets another arc and shares a junction with it", () => {
+    const network = new RoadNetwork();
+
+    // Two half circles of radius five whose centers sit five apart, so the
+    // circles cross — and both arcs run over the top, where they do.
+    buildArc(network, at(0, 0), at(10, 0), at(5, 5));
+    buildArc(network, at(5, 0), at(15, 0), at(10, 5));
+
+    expect(nodeCount(network)).toBe(5);
+    expect([...network.allSections()]).toHaveLength(4);
+
+    // Above the line the two centers sit on, which is where circles of
+    // equal radius meet.
+    const junction = nearestNode(network, at(7.5, Math.sqrt(18.75)), 0.01);
+    expect(junction).not.toBeNull();
+  });
+
+  it("crosses an arc it shares a node with, away from that node", () => {
+    const network = new RoadNetwork();
+
+    // Built backwards so the node it leaves behind is the one at the
+    // origin, which the second arc then starts from.
+    const shared = buildArc(network, at(10, 0), at(0, 0), at(5, 5));
+    assert(shared !== null);
+
+    // Quarter turned about the origin, so it leaves by the same node and
+    // runs back over the first at (5,5). Sharing that node settles only
+    // that place: the meeting at (5,5) is a crossing like any other.
+    buildArc(network, shared, at(0, 10), at(5, 5));
+
     expect(nodeCount(network)).toBe(4);
+    expect([...network.allSections()]).toHaveLength(4);
+    expect(network.sectionsAt(shared)).toHaveLength(2);
+  });
+
+  it("joins an arc onto a node it starts from without cutting there", () => {
+    const network = new RoadNetwork();
+    const corner = build(network, at(0, 0), at(10, 0));
+    assert(corner !== null);
+    const before = layout(network);
+
+    // Away from the road it leaves, so the shared node is a join and not a
+    // crossing, and the road it starts from stays whole.
+    buildArc(network, corner, at(10, 10), at(14, 4));
+
+    expect(layout(network)).toEqual([...before, "(10,0)-(10,10)"].sort());
+    expect(nodeCount(network)).toBe(3);
   });
 });

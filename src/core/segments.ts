@@ -1,4 +1,4 @@
-import { lerp } from "./points";
+import { clamp01, lerp } from "./points";
 import type { Vec2 } from "./types";
 
 /**
@@ -7,12 +7,27 @@ import type { Vec2 } from "./types";
  * for why none of this knows about the network.
  */
 
-/** Where two segments meet, and how far along each of them that is. */
+/** Where two stretches of road meet, and how far along each of them that is. */
 export interface Crossing {
   readonly point: Vec2;
-  /** 0 at the first segment's start, 1 at its end. */
+  /** 0 at the first stretch's start, 1 at its end. */
   readonly alongA: number;
   readonly alongB: number;
+}
+
+/**
+ * The same crossing, told from the other stretch's point of view.
+ *
+ * Which of the two is `alongA` is the caller's question, not the geometry's:
+ * a meeting between a straight and a bend is one piece of math whichever of
+ * them is the one being planned.
+ */
+export function fromTheOtherSide(crossing: Crossing): Crossing {
+  return {
+    point: crossing.point,
+    alongA: crossing.alongB,
+    alongB: crossing.alongA,
+  };
 }
 
 /**
@@ -27,9 +42,8 @@ export function distanceToSegment(point: Vec2, from: Vec2, to: Vec2): number {
 }
 
 /**
- * The same distance, squared — for a scan comparing distances only against
- * each other and against a limit, which can square the limit instead and
- * skip a square root per candidate. `nearestNode` does the same.
+ * The same as distanceToSegment, but squared — for a scan comparing
+ * distances only against each other and against a limit,to save a square root.
  *
  * The segment is every point `from + t·along` for `t` between 0 and 1,
  * where `along = to - from`. So the question is which `t` is nearest, and
@@ -60,26 +74,33 @@ export function squaredDistanceToSegment(
   from: Vec2,
   to: Vec2,
 ): number {
+  const t = segmentFractionAt(point, from, to);
+
+  // From the nearest place on the segment to the point itself.
+  const dx = point.x - (from.x + (to.x - from.x) * t);
+  const dz = point.z - (from.z + (to.z - from.z) * t);
+  return dx * dx + dz * dz;
+}
+
+/**
+ * Where along the segment `from`–`to` a position falls: 0 at `from`, 1 at
+ * `to`, and the projection described above in between.
+ *
+ * The `t` `lerp` takes, so a position and the fraction it reads as are two
+ * ways of naming the same place on the road — which is what lets a piece of
+ * a section be described by where its ends fall along the whole.
+ */
+export function segmentFractionAt(point: Vec2, from: Vec2, to: Vec2): number {
   const alongX = to.x - from.x;
   const alongZ = to.z - from.z;
   const squaredLength = alongX * alongX + alongZ * alongZ;
 
-  const t =
-    squaredLength === 0
-      ? 0
-      : clamp01(
-          ((point.x - from.x) * alongX + (point.z - from.z) * alongZ) /
-            squaredLength,
-        );
-
-  // From the nearest place on the segment to the point itself.
-  const dx = point.x - (from.x + alongX * t);
-  const dz = point.z - (from.z + alongZ * t);
-  return dx * dx + dz * dz;
-}
-
-function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value));
+  if (squaredLength === 0) {
+    return 0;
+  }
+  return clamp01(
+    ((point.x - from.x) * alongX + (point.z - from.z) * alongZ) / squaredLength,
+  );
 }
 
 /**

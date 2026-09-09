@@ -189,7 +189,7 @@ export class StraightSectionTool implements Tool {
    * and welding onto one of those would draw a road out of a click that
    * was aimed at the start.
    *
-   * And where the chain comes back as a single point, which is the same
+   * And where the chain comes back with no piece in it, which is the same
    * absence arrived at in meters rather than pixels: the click resolved
    * onto the place the section started from. Zoomed in, a grid cell is
    * wider than the pick radius, so this is the only one of the three that
@@ -212,7 +212,7 @@ export class StraightSectionTool implements Tool {
       end.endpoint,
       STRAIGHT,
     );
-    return plan.points.length < 2 ? null : plan;
+    return plan.pieces.length === 0 ? null : plan;
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */

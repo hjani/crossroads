@@ -1,5 +1,6 @@
-import { arcCircle, arcLength } from "./arcs";
+import { arcCircle, arcFractionAt, arcLength, pointOnArc } from "./arcs";
 import { distance, isSamePoint, SAME_POINT_METERS } from "./points";
+import { segmentFractionAt } from "./segments";
 import {
   crossingsAlong,
   nearestNode,
@@ -58,46 +59,56 @@ export interface PlannedPoint {
 }
 
 /**
- * A section that can be built, as the chain of points it runs through:
- * a piece of road between each pair of them, and a junction wherever a
- * point cuts something.
+ * One stretch of road a plan would build: the shape it runs in, and the
+ * point it reaches.
  *
- * Points in the same place are already merged, so no two are, and there is
- * one piece per gap. What to build is the chain's shape and nothing else.
+ * The shape sits on the piece rather than on the plan because when it
+ * is cut, the cut point can merge into an existing point and that can
+ * change the geometry slightly.
+ */
+export interface PlannedPiece {
+  readonly geometry: SectionGeometry;
+  readonly to: PlannedPoint;
+}
+
+/**
+ * A section that can be built, as the place it starts and the run of pieces
+ * it is made of: a stretch of road each, and a junction wherever a point
+ * cuts something.
  *
- * The type says there are at least two points — a start and an end — which
- * is what makes the section a section. `[T, T, ...T[]]` is a tuple type
- * with a rest element: the compiler knows the first two are there, so
- * reading them needs no check.
+ * Points in the same place are already merged.
  */
 export interface BuildableSectionPlan {
   readonly buildable: true;
-  readonly points: readonly [PlannedPoint, PlannedPoint, ...PlannedPoint[]];
-  /** How the section runs between its points — carried so a plan describes
-   * the whole of what would be built, shape included. */
-  readonly geometry: SectionGeometry;
+  readonly start: PlannedPoint;
+  readonly pieces: readonly [PlannedPiece, ...PlannedPiece[]];
 }
 
 /**
  * A section that cannot be built, as the chain it would have run through.
  *
- * The chain is kept because a refusal still has something to say: where
- * the section was going, and which junctions it was going to make. Nothing
- * here is a promise — none of it will be built — so the points carry no
- * guarantee either, not even that there are two of them. A section whose
- * ends are the same place collapses to one, and that is a refusal like any
+ * The chain is kept because a refusal still has something to say: where the
+ * section was going, in what shape, and which junctions it was going to
+ * make. Nothing here is a promise — none of it will be built — so the
+ * pieces carry no guarantee either, not even that there is one. A section
+ * whose ends are the same place has none, and that is a refusal like any
  * other.
  */
 export interface UnbuildableSectionPlan {
   readonly buildable: false;
-  readonly points: readonly PlannedPoint[];
-  /** The shape it was going to run in, so a refusal can be drawn as the
-   * section that was asked for rather than as the line between its ends. */
-  readonly geometry: SectionGeometry;
+  readonly start: PlannedPoint;
+  readonly pieces: readonly PlannedPiece[];
 }
 
 /** What adding a section would do to the network — or that it cannot. */
 export type SectionPlan = BuildableSectionPlan | UnbuildableSectionPlan;
+
+/**
+ * Every point the plan runs through, start included and in order.
+ */
+export function pointsOf(plan: SectionPlan): PlannedPoint[] {
+  return [plan.start, ...plan.pieces.map((piece) => piece.to)];
+}
 
 /**
  * Works out what adding a section from `from` to `to` would build, without
@@ -125,12 +136,8 @@ export function planSection(
   const points: [PlannedPoint, ...PlannedPoint[]] = [{ at: from, cuts: [] }];
   let buildable = true;
 
-  // Lengths are measured along the crossing points themselves, rather than
-  // along the points being planned: those sit within a centimeter of them,
-  // near enough to build at and not to measure with.
   const begin = positionOf(network, from);
   const end = positionOf(network, to);
-  let measuredFrom = begin;
 
   // An arc is the circle through its ends and its third position, and three
   // positions in a line have none. A refusal rather than a thrown error,
@@ -141,44 +148,62 @@ export function planSection(
   }
 
   for (const crossing of crossingsAlong(network, from, to, geometry)) {
-    if (
-      !isBuildableLength(pieceLength(measuredFrom, crossing.point, geometry))
-    ) {
-      buildable = false;
-    }
     if (!landsCleanly(network, crossing.point)) {
       buildable = false;
     }
-    measuredFrom = crossing.point;
 
     const reached = points[points.length - 1].at;
     const at = pickPoint(network, crossing.point, [reached, to]);
     append(network, points, plannedCrossing(network, crossing.section, at));
   }
-
-  if (!isBuildableLength(pieceLength(measuredFrom, end, geometry))) {
-    buildable = false;
-  }
   append(network, points, { at: to, cuts: [] });
 
-  const [start, next, ...rest] = points;
-  if (next === undefined) {
-    // Everything merged into one point: the section begins and ends in the
-    // same place, and there is no piece of road between them. Not caught
-    // by the piece lengths above, which read a gap of nothing as no piece
-    // to build rather than as one too short to be a road.
-    return { buildable: false, points, geometry };
-  }
-  if (!buildable) {
-    return { buildable: false, points, geometry };
+  // One piece per gap in the chain: the first point is where the section
+  // starts, and every one after it is a piece arriving there.
+  //
+  // A second walk, because neither a piece's shape nor its length can be
+  // settled before the chain is whole. Both are read off where the points
+  // landed rather than off the crossings that sent them there: merging may
+  // have moved one, and the landed places are what the pieces get built
+  // between.
+  const [start, ...reached] = points;
+  const pieces: PlannedPiece[] = [];
+  let previous = positionOf(network, start.at);
+
+  for (const arrival of reached) {
+    const at = positionOf(network, arrival.at);
+
+    const shape = subGeometry(geometry, begin, end, previous, at);
+
+    if (!isBuildableLength(pieceLength(previous, at, shape))) {
+      buildable = false;
+    }
+
+    pieces.push({ geometry: shape, to: arrival });
+    previous = at;
   }
 
-  return { buildable: true, points: [start, next, ...rest], geometry };
+  const [firstPiece, ...restPieces] = pieces;
+  if (firstPiece === undefined) {
+    // Everything merged into one point: the section begins and ends in the
+    // same place.
+    return { buildable: false, start, pieces };
+  }
+  if (!buildable) {
+    return { buildable: false, start, pieces };
+  }
+
+  return { buildable: true, start, pieces: [firstPiece, ...restPieces] };
 }
 
 /**
- * Builds a planned section: cuts what the plan says to cut, and runs a
- * piece of road between each pair of its points.
+ * Builds a planned section: runs a piece of road between each pair of its
+ * points, and cuts what the plan says to cut.
+ *
+ * The road goes in first. Cutting a section means joining it to a node, and
+ * building is what makes the nodes — every place the road crosses something
+ * is a point of its own chain, so by the time it is whole every junction
+ * has a node standing at it.
  *
  * Returns the node at the far end, so a run of roads can carry on from it.
  * Decides nothing — a plan is buildable or it is not, and this one is.
@@ -187,69 +212,143 @@ export function applySectionPlan(
   network: RoadNetwork,
   plan: BuildableSectionPlan,
 ): NodeId {
-  const [start, next, ...rest] = plan.points;
+  const [firstPiece, ...restPieces] = plan.pieces;
 
-  // The first point has no piece before it, so it only supplies the end
-  // the second is joined to. After that each piece carries on from the
-  // node the one before it left.
-  // Every piece runs in the section's own shape. Which is only right while
-  // there is one piece to an arc — an arc cut in two needs a third position
-  // for each half, and neither of them is the one the whole arc was given.
-  // It holds for now, since an arc crosses nothing to be cut at.
-  const first = applyCuts(network, start);
-  let far = network.addSection(
-    first,
-    applyCuts(network, next),
-    plan.geometry,
-  ).to;
-  for (const point of rest) {
-    far = network.addSection(far, applyCuts(network, point), plan.geometry).to;
+  // Where each crossed section is cut, gathered as the road is laid. A
+  // section can be met more than once, and collecting its places rather
+  // than cutting at each of them is what lets it be cut once, into a run,
+  // instead of being split and split again.
+  const cuts = new Map<SectionId, NodeId[]>();
+  const gather = (point: PlannedPoint, node: NodeId): void => {
+    for (const section of point.cuts) {
+      cuts.set(section, [...(cuts.get(section) ?? []), node]);
+    }
+  };
+
+  const first = network.addSection(
+    plan.start.at,
+    firstPiece.to.at,
+    firstPiece.geometry,
+  );
+  gather(plan.start, first.from);
+  gather(firstPiece.to, first.to);
+
+  let prevPoint = first.to;
+  for (const piece of restPieces) {
+    const built = network.addSection(prevPoint, piece.to.at, piece.geometry);
+    gather(piece.to, built.to);
+    prevPoint = built.to;
   }
-  return far;
+
+  for (const [section, at] of cuts) {
+    cutSection(network, section, at);
+  }
+  return prevPoint;
 }
 
 /**
- * Splits a section at a point, and returns the node its halves meet at.
+ * Cuts a section at every one of the given nodes, leaving a run of pieces
+ * where it was.
  *
- * A point that is the same place as one of the section's own endpoints
- * splits nothing and gives back that endpoint's node, so a road meeting
- * another where it already ends joins it rather than cutting it.
+ * The nodes are put in the order the section reaches them, so the pieces
+ * follow it end to end and each runs in its own share of its shape. One
+ * that is already an end of the section cuts nothing and drops out, which
+ * is how a road meeting another where it already ends joins it instead.
  */
-function splitSection(
+function cutSection(
   network: RoadNetwork,
   id: SectionId,
-  at: Endpoint,
-): NodeId {
+  at: readonly NodeId[],
+): void {
   const section = getSection(network, id);
+  const from = positionOfNode(network, section.from);
+  const to = positionOfNode(network, section.to);
 
-  const end = endAt(network, section, positionOf(network, at));
-  if (end !== null) {
-    return end;
+  const places = at
+    .filter((node) => node !== section.from && node !== section.to)
+    .map((node) => {
+      const place = positionOfNode(network, node);
+      return {
+        node,
+        place,
+        along: fractionAlong(section.geometry, from, to, place),
+      };
+    })
+    .sort((left, right) => left.along - right.along);
+
+  if (places.length === 0) {
+    return;
   }
 
-  // Both halves go in before the original comes out: the network discards a
-  // node the moment its last section leaves, so removing first would take
-  // the endpoints with it.
-  const half = network.addSection(section.from, at, STRAIGHT);
-  network.addSection(half.to, section.to, STRAIGHT);
+  // Every piece goes in before the original comes out: the network discards
+  // a node the moment its last section leaves, so removing first would take
+  // the section's own endpoints with it.
+  let previousNode = section.from;
+  let previousPlace = from;
+  for (const { node, place } of places) {
+    network.addSection(
+      previousNode,
+      node,
+      subGeometry(section.geometry, from, to, previousPlace, place),
+    );
+    previousNode = node;
+    previousPlace = place;
+  }
+  network.addSection(
+    previousNode,
+    section.to,
+    subGeometry(section.geometry, from, to, previousPlace, to),
+  );
   network.removeSection(id);
-  return half.to;
 }
 
 /**
- * Cuts what a point of the chain cuts, and gives back the end the pieces of
- * road either side of it attach to.
- *
- * Each cut is made at the node the one before it left, so several sections
- * cut in one place meet at one node rather than at a row of them. A point
- * that cuts nothing is simply the place it already was.
+ * Where along a section's own shape a place falls, 0 at `begin` and 1 at
+ * `end` — measured round the curve of an arc, so the order it puts places
+ * in is the order the road reaches them.
  */
-function applyCuts(network: RoadNetwork, point: PlannedPoint): Endpoint {
-  let at = point.at;
-  for (const cut of point.cuts) {
-    at = splitSection(network, cut, at);
+function fractionAlong(
+  geometry: SectionGeometry,
+  begin: Vec2,
+  end: Vec2,
+  place: Vec2,
+): number {
+  return geometry.kind === "arc"
+    ? arcFractionAt(begin, end, geometry.via, place)
+    : segmentFractionAt(place, begin, end);
+}
+
+/**
+ * The shape a part of a section runs in: `geometry` spans `begin` to `end`,
+ * and the answer covers the stretch of it between `from` and `to`.
+ *
+ * A straight is the same straight however it is divided. An arc leaves an
+ * arc, fixed by the position halfway along that stretch — halfway being the
+ * one place on an arc that is neither of its ends whatever the sweep.
+ *
+ * The stretch is bounded by wherever its ends actually landed, which for a
+ * point merged onto a neighbor is a little off the curve. That is the
+ * point: those places are what the part gets built between, so they are
+ * what its shape has to answer to, and it leaves the part a hair off the
+ * circle it came from as `docs/intersections.md` describes.
+ */
+function subGeometry(
+  geometry: SectionGeometry,
+  begin: Vec2,
+  end: Vec2,
+  from: Vec2,
+  to: Vec2,
+): SectionGeometry {
+  if (geometry.kind !== "arc") {
+    return STRAIGHT;
   }
-  return at;
+
+  const { via } = geometry;
+  const middle =
+    (arcFractionAt(begin, end, via, from) +
+      arcFractionAt(begin, end, via, to)) /
+    2;
+  return { kind: "arc", via: pointOnArc(begin, end, via, middle) };
 }
 
 /**
@@ -280,6 +379,11 @@ function plannedCrossing(
  * none to build. Their cuts are kept, all of them: sections crossed within
  * a centimeter of each other are one junction, and dropping either would
  * leave a road running through another uncut.
+ *
+ * Each of them once, though. A road grazed rather than crossed is met
+ * twice in the same place, and that is one junction on it with one cut to
+ * make — asking for it twice would ask for a piece of it running from the
+ * junction back to itself.
  */
 function append(
   network: RoadNetwork,
@@ -299,8 +403,15 @@ function append(
     // does, since building at the position would leave a second node beside
     // it. Where neither is a node the two are the same position anyway.
     at: isNodeId(last.at) ? last.at : point.at,
-    cuts: [...last.cuts, ...point.cuts],
+    cuts: union(last.cuts, point.cuts),
   };
+}
+
+/**
+ * The two lists as one, in the order they came and with nothing twice.
+ */
+function union<T>(first: readonly T[], second: readonly T[]): T[] {
+  return [...first, ...second.filter((item) => !first.includes(item))];
 }
 
 /**
@@ -371,9 +482,9 @@ function landsCleanly(network: RoadNetwork, point: Vec2): boolean {
  * — along the curve of an arc rather than across it, so a bend is measured
  * as the road a driver takes.
  *
- * An arc is only ever asked for the whole of itself, crossing nothing to be
- * cut at, which is what makes its own third position the right one to
- * measure by. A piece of an arc would need a third position of its own.
+ * Measured in the piece's own shape, not the whole section's: a piece of an
+ * arc has a third position of its own, and the one the whole arc was given
+ * need not lie between its ends at all.
  */
 function pieceLength(from: Vec2, to: Vec2, geometry: SectionGeometry): number {
   return geometry.kind === "arc"
@@ -381,11 +492,7 @@ function pieceLength(from: Vec2, to: Vec2, geometry: SectionGeometry): number {
     : distance(from, to);
 }
 
-/**
- * A length is either no piece at all — the same place twice, where a
- * crossing lands on a point the section already has — or long enough to be
- * a road. In between is the near miss nothing sensible can be made of.
- */
+/** Whether a piece is long enough to be a road. */
 function isBuildableLength(length: number): boolean {
-  return length <= SAME_POINT_METERS || length >= MIN_SECTION_LENGTH_METERS;
+  return length >= MIN_SECTION_LENGTH_METERS;
 }

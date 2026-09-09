@@ -45,12 +45,15 @@ export function tessellate(
 }
 
 /**
- * The same shape, for a stretch of road that is not a section: a piece of
- * one being planned, whose ends are positions rather than nodes.
+ * The same shape, for a stretch of road the network does not have yet: a
+ * piece of a plan, whose ends are positions rather than nodes.
  *
- * Sharing this with `tessellate` is what makes a preview and the section it
- * turns into the same curve — a preview drawn any other way would move
- * under the click that commits it.
+ * `tessellate` is this with the nodes looked up first, and nothing else —
+ * the two exist because one caller has a section and another has the
+ * positions a section would be made from. A planned piece and the section
+ * it becomes are the same two positions in the same geometry, so drawing
+ * them any other way would move the preview under the click that commits
+ * it.
  */
 export function polylineBetween(
   from: Vec2,

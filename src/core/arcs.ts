@@ -1,5 +1,11 @@
 import { distance, lerp } from "./points";
-import { distanceToSegment } from "./segments";
+import {
+  distanceToSegment,
+  fromTheOtherSide,
+  segmentCrossing,
+  segmentFractionAt,
+  type Crossing,
+} from "./segments";
 import type { Vec2 } from "./types";
 
 /**
@@ -100,6 +106,51 @@ export function pointOnArc(from: Vec2, to: Vec2, via: Vec2, t: number): Vec2 {
   };
 }
 
+/**
+ * Where along the arc `from`–`via`–`to` a position falls: 0 at `from` and 1
+ * at `to`. The inverse of `pointOnArc`.
+ *
+ * Read by direction from the center, so a position off the curve answers
+ * for the place on the curve that lies the same way from the middle. That
+ * is what makes this the right question to ask of a node that landed a
+ * little off the road it is cutting: it is the fraction the road reached
+ * when it got to that place, not a claim that the place is on it.
+ *
+ * The turn is counted the way the arc runs: forward for a forward sweep,
+ * and back from a full circle for one going the other way, since a backward
+ * sweep is reached by turning down from `2π` rather than up from zero. A
+ * position exactly at `from` is the exception, having turned nothing either
+ * way — without it the wrap would read that as a full circle backwards.
+ *
+ * A direction the arc never turns to is the fraction's version of a
+ * position past the end of a segment, and answers the same way
+ * `distanceToArc` does: with whichever end the turn ran out at. Measured by
+ * distance rather than by more turning, because the far side of the circle
+ * lies past the end and before the start at once, and only the ends
+ * themselves say which is nearer.
+ *
+ * A `via` in line with the ends measures along the segment between them,
+ * the same straight reading the rest of this module gives one.
+ */
+export function arcFractionAt(
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+  point: Vec2,
+): number {
+  const run = arcRun(from, to, via);
+  if (run === null) {
+    return segmentFractionAt(point, from, to);
+  }
+
+  const fraction = sweptFractionAt(run, point);
+  return fraction !== null
+    ? fraction
+    : distance(point, from) <= distance(point, to)
+      ? 0
+      : 1;
+}
+
 /** The whole arc's length, in meters. */
 export function arcLength(from: Vec2, to: Vec2, via: Vec2): number {
   const run = arcRun(from, to, via);
@@ -144,14 +195,7 @@ export function distanceToArc(
   }
 
   const { center, radius } = run.circle;
-  const turn = turnFrom(run.startAngle, angleAt(center, point));
-
-  // Forward sweeps are reached by turning up to it; backward ones run the
-  // other way, which the same forward count reaches only in its last stretch.
-  const withinSweep =
-    run.sweep >= 0 ? turn <= run.sweep : turn >= run.sweep + 2 * Math.PI;
-
-  return withinSweep
+  return sweptFractionAt(run, point) !== null
     ? Math.abs(distance(point, center) - radius)
     : Math.min(distance(point, from), distance(point, to));
 }
@@ -205,6 +249,196 @@ export function arcPolyline(
   }
   points.push(to);
   return points;
+}
+
+/**
+ * Where the segment `a1`–`a2` meets the arc `from`–`via`–`to`, in the order
+ * they are met walking from `a1`. Up to two: a straight road crossing a
+ * bend meets it going in and coming out again.
+ *
+ * A point on the segment is `a1 + t·d` for the direction `d = a2 − a1`, and
+ * it is on the circle when it stands the radius away from the center.
+ * Squaring that gives `|a1 + t·d − c|² = r²`, and with `f = a1 − c` it
+ * multiplies out to `(d·d)t² + 2(f·d)t + (f·f − r²) = 0` — an ordinary
+ * quadratic, whose two roots are the places the line pierces the circle.
+ *
+ * A discriminant below zero is a line passing the circle by, with nothing
+ * to report. Zero is a tangent, which touches at a point and is a crossing
+ * like any other: whether a junction there is worth building is a question
+ * about how short the pieces come out, not about how shallow the meeting
+ * was. Tested against zero because that is the square root it guards and
+ * nothing more — a grazing line is also expected to return two (very close)
+ * crossings because of precision of the calculation.
+ *
+ * Both are stretches rather than the whole line and the whole circle, so a
+ * root counts only where it falls on both — `t` between 0 and 1, and a
+ * direction the arc actually turns to.
+ *
+ * A `via` in line with the ends is a straight run between them, and meets
+ * the segment wherever `segmentCrossing` says it does.
+ */
+export function segmentArcCrossings(
+  a1: Vec2,
+  a2: Vec2,
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+): Crossing[] {
+  const run = arcRun(from, to, via);
+  if (run === null) {
+    const crossing = segmentCrossing(a1, a2, from, to);
+    return crossing === null ? [] : [crossing];
+  }
+
+  const { center, radius } = run.circle;
+  const directionX = a2.x - a1.x;
+  const directionZ = a2.z - a1.z;
+  const offsetX = a1.x - center.x;
+  const offsetZ = a1.z - center.z;
+
+  const a = directionX * directionX + directionZ * directionZ;
+  if (a === 0) {
+    // Section has no length. We're about to divide by it below, so bail out early.
+    return [];
+  }
+
+  const b = 2 * (offsetX * directionX + offsetZ * directionZ);
+  const c = offsetX * offsetX + offsetZ * offsetZ - radius * radius;
+
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) {
+    return [];
+  }
+
+  const root = Math.sqrt(discriminant);
+  const crossings: Crossing[] = [];
+  // The smaller root first, which is the meeting reached sooner walking
+  // from `a1` — the order the caller is promised.
+  for (const alongA of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
+    if (alongA < 0 || alongA > 1) {
+      continue;
+    }
+
+    const point = lerp(a1, a2, alongA);
+    const alongB = sweptFractionAt(run, point);
+    if (alongB !== null) {
+      crossings.push({ point, alongA, alongB });
+    }
+  }
+  return crossings;
+}
+
+/**
+ * Where the arc `fromA`–`viaA`–`toA` meets the arc `fromB`–`viaB`–`toB`, in
+ * the order they are met walking from `fromA`. Up to two.
+ *
+ * Two circles that meet at all meet on a line square to the one joining
+ * their centers, at equal distance from it either side. With `d` the gap
+ * between the centers, that meeting line stands `alongCenters = (d² + r₁² −
+ * r₂²) / 2d` from the first — what falls out of asking for a place that is
+ * `r₁` from one center and `r₂` from the other — and the two points sit
+ * `offCenters = √(r₁² − alongCenters²)` off it, one each way.
+ *
+ * Circles too far apart to reach, or one swallowed by the other, leave that
+ * square root nothing to work with and there is no meeting. Circles sharing
+ * a center never meet either, and two that are the same circle meet
+ * everywhere rather than at a point, which is not a crossing — the reading
+ * `segmentCrossing` gives two collinear segments.
+ *
+ * Touching circles put both points in the same place, and both are
+ * reported, as a tangent line is by `segmentArcCrossings`.
+ *
+ * Circles meeting is not the same as arcs meeting: each place has to fall
+ * inside both sweeps, since the circles can touch where neither arc, or
+ * only one of them, actually runs.
+ */
+export function arcArcCrossings(
+  fromA: Vec2,
+  toA: Vec2,
+  viaA: Vec2,
+  fromB: Vec2,
+  toB: Vec2,
+  viaB: Vec2,
+): Crossing[] {
+  const runA = arcRun(fromA, toA, viaA);
+  if (runA === null) {
+    return segmentArcCrossings(fromA, toA, fromB, toB, viaB);
+  }
+
+  const runB = arcRun(fromB, toB, viaB);
+  if (runB === null) {
+    // We'll get the results from the B point of view, so we then need to flip them.
+    // Flippling might also change the order, so we need to sort again.
+    return segmentArcCrossings(fromB, toB, fromA, toA, viaA)
+      .map(fromTheOtherSide)
+      .sort((left, right) => left.alongA - right.alongA);
+  }
+
+  const { center: centerA, radius: radiusA } = runA.circle;
+  const { center: centerB, radius: radiusB } = runB.circle;
+  const betweenX = centerB.x - centerA.x;
+  const betweenZ = centerB.z - centerA.z;
+  const between = Math.hypot(betweenX, betweenZ);
+
+  // Tested against zero because that is the division below it guards, and
+  // because a shared center is the one arrangement with no line between
+  // them to measure along.
+  if (between === 0) {
+    return [];
+  }
+
+  const alongCenters =
+    (between * between + radiusA * radiusA - radiusB * radiusB) / (2 * between);
+  const squaredOff = radiusA * radiusA - alongCenters * alongCenters;
+  if (squaredOff < 0) {
+    return [];
+  }
+
+  // The foot of the meeting line on the line between the centers, and the
+  // step from it to either meeting, square to that line.
+  const offCenters = Math.sqrt(squaredOff);
+  const footX = centerA.x + (alongCenters * betweenX) / between;
+  const footZ = centerA.z + (alongCenters * betweenZ) / between;
+  const stepX = (-betweenZ / between) * offCenters;
+  const stepZ = (betweenX / between) * offCenters;
+
+  const crossings: Crossing[] = [];
+  for (const point of [
+    { x: footX + stepX, z: footZ + stepZ },
+    { x: footX - stepX, z: footZ - stepZ },
+  ]) {
+    const alongA = sweptFractionAt(runA, point);
+    const alongB = sweptFractionAt(runB, point);
+    if (alongA !== null && alongB !== null) {
+      crossings.push({ point, alongA, alongB });
+    }
+  }
+  return crossings.sort((left, right) => left.alongA - right.alongA);
+}
+
+/**
+ * How far along the arc a position's direction from the center falls, or
+ * null where the arc never turns that way.
+ *
+ * The one reading every question here shares, so that all of them agree
+ * about where an arc begins and ends.
+ *
+ * The turn is counted the way the arc runs: forward for a forward sweep,
+ * and back from a full circle for one going the other way, since a backward
+ * sweep is reached by turning down from `2π` rather than up from zero. A
+ * position exactly at the start is the exception, having turned nothing
+ * either way — without it the wrap would read that as a full circle
+ * backwards.
+ *
+ * Never negative, the two signs cancelling when the turn is counted in the
+ * sweep's own direction, so running past the end is the only way out.
+ */
+function sweptFractionAt(run: ArcRun, point: Vec2): number | null {
+  const turn = turnFrom(run.startAngle, angleAt(run.circle.center, point));
+  const along = run.sweep >= 0 || turn === 0 ? turn : turn - 2 * Math.PI;
+
+  const fraction = along / run.sweep;
+  return fraction <= 1 ? fraction : null;
 }
 
 /**

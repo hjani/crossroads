@@ -7,7 +7,8 @@ Quick status for picking up where we left.
 M0 through M3 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M4 — Curved sections**
-Next step: cutting an arc, and the crossings that need it
+Next step: the arc tool's gesture — not chaining, and the quarter-circle
+modifier
 
 ## Milestones
 
@@ -82,20 +83,19 @@ Next step: cutting an arc, and the crossings that need it
 - [x] select an arc — picking measures against the arc's circle rather than
       the chords it is drawn with, and the marks follow the same shape the
       section is drawn in
-- [ ] cut an arc: two arcs sharing a new node. Not quite on the same
-      circle — a cut point merged onto a neighbor sits up to a centimeter
-      off the curve, so each half needs a via worked out from where the
-      point actually landed. Which is also when a plan should start
-      carrying a geometry per piece rather than one for the whole section:
-      the vias can only be settled once the chain's merging has, so they
-      are a second pass over the finished chain, and until then
-      `applySectionPlan` and `SectionPlanView` both re-derive the same rule
-      instead of reading one answer
-- [ ] extend intersection detection to arcs (line–arc, arc–arc)
+- [x] arcs that cross: line–arc and arc–arc intersections, and a cut that
+      leaves two arcs rather than two straights
 - [x] interactive placement / curvature control
 - [ ] a modifier that fixes the sweep at a quarter circle, deriving the
       control point instead of placing it: two such arcs exist between the
       ends, and the one on the cursor's side of the chord is planned
+- [ ] the arc tool should not chain. Placing the control point commits the
+      arc and drops straight back into the chord, with the far end already
+      standing as the next start; it should return to the state it began in
+- [ ] start or end a section on an existing road, not only on a node. The
+      road under the cursor highlights as the selection tool marks one, a
+      click lands exactly on it, and the plan cuts it there. Not welding,
+      which reuses a node already standing — this makes one
 
 ### M5 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
@@ -119,6 +119,13 @@ Wanted, but not part of a milestone yet.
 
 Not blocking anything; do them when they start to bite.
 
+- [ ] weigh a `crossings.ts` owning where two shapes meet, instead of each
+      pairing sitting in the module whose shape it names — segment–segment
+      in `segments.ts`, the two involving an arc in `arcs.ts`, and the
+      dispatch between them in `queries.ts`. The cost is that `arcs.ts`
+      would have to publish `arcRun` and the angular helpers it keeps
+      private, so the question is whether that representation is worth
+      being part of the module's face
 - [ ] one named set of ground-plane layer offsets, replacing the heights
       each drawable picks for itself (`NetworkView`, `SectionPlanView`,
       `NodeHighlight`, `SectionHighlight`). Eight of them now, and which

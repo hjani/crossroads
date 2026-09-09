@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { SectionPlan } from "../core/edits";
+import type { PlannedPoint, SectionPlan } from "../core/edits";
 import { positionOf } from "../core/queries";
 import { isNodeId, type RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
@@ -34,9 +34,9 @@ const EXISTING_NODE_SIZE = 15;
 
 /**
  * A planned section, drawn as the whole of what committing it would do:
- * the chain of road it would run, in the shape it would run in, a mark on
- * every node it would make, a mark on every node already there that it
- * would meet, and a mark on every control point placed to shape it.
+ * the chain of road it would run, in the shapes it would run in, a mark on
+ * every node it would make, and a mark on every node already there that it
+ * would meet.
  *
  * One drawable for one plan, because a plan is one answer. Which pieces
  * are drawn and what color they take both follow from it, so there is no
@@ -62,10 +62,6 @@ export class SectionPlanView {
     THREE.BufferGeometry,
     THREE.PointsMaterial
   >;
-  private readonly controlPoints: THREE.Points<
-    THREE.BufferGeometry,
-    THREE.PointsMaterial
-  >;
 
   constructor() {
     this.chain = new THREE.Line(
@@ -76,14 +72,8 @@ export class SectionPlanView {
 
     this.newNodes = makeMarks(BUILDABLE_COLOR, NEW_NODE_SIZE);
     this.existingNodes = makeMarks(EXISTING_NODE_COLOR, EXISTING_NODE_SIZE);
-    this.controlPoints = makeMarks(BUILDABLE_COLOR, NEW_NODE_SIZE);
 
-    this.sceneObject.add(
-      this.chain,
-      this.newNodes,
-      this.existingNodes,
-      this.controlPoints,
-    );
+    this.sceneObject.add(this.chain, this.newNodes, this.existingNodes);
     this.sceneObject.visible = false;
   }
 
@@ -93,48 +83,42 @@ export class SectionPlanView {
     const newNodeCoordinates: number[] = [];
     const existingNodeCoordinates: number[] = [];
 
-    let previous: Vec2 | null = null;
-    for (const point of plan.points) {
-      const position = positionOf(network, point.at);
-
-      // Each piece is drawn in the shape the section runs in, so a planned
-      // curve is a curve. Its first position is the one already written for
-      // the point before it, and writing it twice would leave the line
-      // doubling back on nothing.
-      const piece =
-        previous === null
-          ? [position]
-          : polylineBetween(previous, position, plan.geometry).slice(1);
-      for (const along of piece) {
-        chainCoordinates.push(along.x, CHAIN_HEIGHT, along.z);
-      }
-      previous = position;
-
-      // A point naming a node is one the network already has; one carrying
-      // a position is a node the edit would make there.
+    // A point naming a node is one the network already has; one carrying a
+    // position is a node the edit would make there.
+    const mark = (point: PlannedPoint, position: Vec2): void => {
       const marks = isNodeId(point.at)
         ? existingNodeCoordinates
         : newNodeCoordinates;
       marks.push(position.x, MARK_HEIGHT, position.z);
-    }
+    };
 
-    // Marked like an endpoint, being one of the points that were placed,
-    // though no node is ever made there.
-    const controlCoordinates: number[] = [];
-    if (plan.geometry.kind === "arc") {
-      const { via } = plan.geometry;
-      controlCoordinates.push(via.x, MARK_HEIGHT, via.z);
+    let previous = positionOf(network, plan.start.at);
+    chainCoordinates.push(previous.x, CHAIN_HEIGHT, previous.z);
+    mark(plan.start, previous);
+
+    for (const piece of plan.pieces) {
+      const position = positionOf(network, piece.to.at);
+
+      // Each piece is drawn in the shape it runs in, so a planned curve is a
+      // curve. Its first position is the one already written for the point
+      // before it, and writing it twice would leave the line doubling back
+      // on nothing.
+      const along = polylineBetween(previous, position, piece.geometry);
+      for (const step of along.slice(1)) {
+        chainCoordinates.push(step.x, CHAIN_HEIGHT, step.z);
+      }
+
+      mark(piece.to, position);
+      previous = position;
     }
 
     const verdict = plan.buildable ? BUILDABLE_COLOR : REFUSED_COLOR;
     this.chain.material.color.setHex(verdict);
     this.newNodes.material.color.setHex(verdict);
-    this.controlPoints.material.color.setHex(verdict);
 
     replaceGeometry(this.chain, chainCoordinates);
     replaceGeometry(this.newNodes, newNodeCoordinates);
     replaceGeometry(this.existingNodes, existingNodeCoordinates);
-    replaceGeometry(this.controlPoints, controlCoordinates);
     this.sceneObject.visible = true;
   }
 
@@ -150,8 +134,6 @@ export class SectionPlanView {
     this.newNodes.material.dispose();
     this.existingNodes.geometry.dispose();
     this.existingNodes.material.dispose();
-    this.controlPoints.geometry.dispose();
-    this.controlPoints.material.dispose();
   }
 }
 

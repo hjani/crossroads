@@ -39,6 +39,10 @@ export class ArcSectionTool implements Tool {
   private readonly firstPointHighlight = new NodeHighlight();
   /** The start, and the chord out to where the second end would land. */
   private readonly chordHighlight = new SectionHighlight(IN_PROGRESS_COLOR);
+  /** Where the control point has landed. In the gesture's own color and not
+   * the plan's, since it is a position the cursor is holding rather than
+   * anything the edit would build. */
+  private readonly viaHighlight = new NodeHighlight(IN_PROGRESS_COLOR);
   /** The full plan to build the arc. */
   private readonly planView = new SectionPlanView();
   private readonly decoration = new THREE.Group();
@@ -64,6 +68,7 @@ export class ArcSectionTool implements Tool {
     this.decoration.add(
       this.planView.sceneObject,
       this.chordHighlight.sceneObject,
+      this.viaHighlight.sceneObject,
       this.firstPointHighlight.sceneObject,
     );
 
@@ -170,6 +175,7 @@ export class ArcSectionTool implements Tool {
   private redraw(): void {
     this.planView.hide();
     this.chordHighlight.hide();
+    this.viaHighlight.hide();
     this.firstPointHighlight.hide();
 
     if (this.cursor === null) return;
@@ -178,11 +184,13 @@ export class ArcSectionTool implements Tool {
     if (ground === null) return;
 
     // Both ends down: the arc bending through where the cursor is, which is
-    // the whole of what the next click would build.
+    // the whole of what the next click would build plus the control point.
     if (this.start !== null && this.end !== null) {
-      const plan = this.planThrough(placeControlPoint(ground, this.modifiers));
+      const via = placeControlPoint(ground, this.modifiers);
+      const plan = this.planThrough(via);
       if (plan !== null) {
         this.planView.showPlan(this.network, plan);
+        this.viaHighlight.show(via);
       }
       return;
     }
@@ -256,7 +264,7 @@ export class ArcSectionTool implements Tool {
       this.end.endpoint,
       { kind: "arc", via },
     );
-    return plan.points.length < 2 ? null : plan;
+    return plan.pieces.length === 0 ? null : plan;
   }
 
   /** The mark on where a click would land comes back: it answers where the
@@ -272,6 +280,7 @@ export class ArcSectionTool implements Tool {
     this.unsubscribeViewChanged();
     this.planView.dispose();
     this.chordHighlight.dispose();
+    this.viaHighlight.dispose();
     this.firstPointHighlight.dispose();
   }
 }
