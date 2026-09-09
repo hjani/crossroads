@@ -94,7 +94,7 @@ let the tool work out the curve.
 
 - [ ] start or end a section on an existing road, not only on a node
 - [ ] `docs/tools.md` — design note for the smart arc tool (reasoning in
-      `docs/future/smart-arc.md`)
+      `docs/ideas/smart-arc.md`)
 - [ ] smart arc tool: click a node and mark the directions a road could
       leave it by, one per section meeting it. No plan yet
 - [ ] add bisector directions, for branching into the gap between two
