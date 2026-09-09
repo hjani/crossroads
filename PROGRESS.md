@@ -4,11 +4,11 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0 through M3 are done — M3 came ahead of the curves because a second tool
+M0 through M4 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
-**M4 — Curved sections**
-Next step: the arc tool's gesture — not chaining, and the quarter-circle
-modifier
+**M5 — Placing sections**
+Next step: start or end a section on an existing road, which the smart arc
+tool then builds on
 
 ## Milestones
 
@@ -86,18 +86,36 @@ modifier
 - [x] arcs that cross: line–arc and arc–arc intersections, and a cut that
       leaves two arcs rather than two straights
 - [x] interactive placement / curvature control
-- [ ] a modifier that fixes the sweep at a quarter circle, deriving the
-      control point instead of placing it: two such arcs exist between the
-      ends, and the one on the cursor's side of the chord is planned
-- [ ] the arc tool should not chain. Placing the control point commits the
-      arc and drops straight back into the chord, with the far end already
-      standing as the next start; it should return to the state it began in
-- [ ] start or end a section on an existing road, not only on a node. The
-      road under the cursor highlights as the selection tool marks one, a
-      click lands exactly on it, and the plan cuts it there. Not welding,
-      which reuses a node already standing — this makes one
 
-### M5 — Two-lane visuals (stretch)
+### M5 — Section placement usability
+
+Place sections with less aiming: start one anywhere on the network, and
+let the tool work out the curve.
+
+- [ ] start or end a section on an existing road, not only on a node
+- [ ] `docs/tools.md` — design note for the smart arc tool (reasoning in
+      `docs/future/smart-arc.md`)
+- [ ] smart arc tool: click a node and mark the directions a road could
+      leave it by, one per section meeting it. No plan yet
+- [ ] add bisector directions, for branching into the gap between two
+      roads
+- [ ] add perpendicular directions at a node with a single section
+- [ ] add the plain straight as a direction of its own, for a fork at any
+      angle
+- [ ] directions at a start placed on a road rather than a node: the
+      road's heading there forward and back, plus the two perpendiculars.
+      Needs a section's tangent at a fraction
+- [ ] core: the arc through a point, a direction there, and a second point
+- [ ] place the second point and plan a section per direction, the ones
+      aimed away from it dropped. Full `SectionPlan`s, drawn with their
+      junction marks and refusals, but passive — nothing is built yet
+- [ ] hovering a planned arc marks it as the one a click would build
+- [ ] click a planned arc to build it
+- [ ] directions from the far end as well as the start, drawn dimmer
+- [ ] optional: fit the arc to the cursor path, for when neither end
+      offers a direction
+
+### M6 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
 
 ## Backlog
@@ -114,6 +132,17 @@ Wanted, but not part of a milestone yet.
       the web to a WPF binding. The layer knows nothing of the network,
       Three.js or the tools, so the change would be confined to `src/ui/`
       and a few lines of `main.ts`
+
+## Deferred, probably to be dropped
+
+Written down so the decision is not made again from scratch.
+
+- [ ] a modifier that fixes the sweep at a quarter circle, deriving the
+      control point instead of placing it: two such arcs exist between the
+      ends, and the one on the cursor's side of the chord is planned
+- [ ] the arc tool should not chain. Placing the control point commits the
+      arc and drops straight back into the chord, with the far end already
+      standing as the next start; it should return to the state it began in
 
 ## Deferred cleanups
 
