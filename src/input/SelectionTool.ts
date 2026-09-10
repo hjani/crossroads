@@ -11,19 +11,14 @@ import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { Tool } from "./Tool";
 
 /**
- * How close the cursor must look to a section to pick it. In pixels, so a
- * section is the same size of target at every zoom — the same reasoning as
- * `NODE_PICK_RADIUS_PIXELS` in `StraightSectionTool`.
- */
-const SECTION_PICK_RADIUS_PIXELS = 10;
-
-/**
- * How close the cursor must look to a node to pick it. Its own number
- * rather than the one `StraightSectionTool` welds within: selecting a node
- * and welding onto one are different gestures, free to want different
+ * How close the cursor must look to a node or a section to pick it. In
+ * pixels, so either is the same size of target at every zoom.
+ *
+ * Its own number rather than the one the section tools weld within:
+ * selecting and welding are different gestures, free to want different
  * targets.
  */
-const NODE_PICK_RADIUS_PIXELS = 12;
+const PICK_RADIUS_PIXELS = 12;
 
 /**
  * What the cursor is aimed at: the thing a click would land on or act on.
@@ -188,20 +183,14 @@ export class SelectionTool implements Tool {
    * never be the nearer thing.
    */
   private selectionAt(ground: Vec2): Selection | null {
-    const node = nearestNode(
-      this.network,
-      ground,
-      NODE_PICK_RADIUS_PIXELS * this.viewport.metersPerPixel,
-    );
+    const radius = PICK_RADIUS_PIXELS * this.viewport.metersPerPixel;
+
+    const node = nearestNode(this.network, ground, radius);
     if (node !== null) {
       return { kind: "node", id: node.id };
     }
 
-    const section = nearestSection(
-      this.network,
-      ground,
-      SECTION_PICK_RADIUS_PIXELS * this.viewport.metersPerPixel,
-    );
+    const section = nearestSection(this.network, ground, radius);
     return section === null ? null : { kind: "section", id: section.id };
   }
 

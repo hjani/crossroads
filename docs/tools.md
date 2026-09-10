@@ -145,13 +145,13 @@ Cancelling drops the whole arc rather than stepping back a point.
 Selecting is a tool like any other, and while it is active nothing is
 built: it reads the network and changes none of it.
 
-A click catches a node or a section: the nearest node within the node pick
-radius, or failing that the nearest section within a radius of its own —
+A click catches a node or a section: the nearest node within the pick
+radius, or failing that the nearest section within the same radius —
 distance to the road as it runs, so a click beside the middle of a long one
 finds it, and a click past either end falls back to being near that end.
 That distance is measured against the shape the model holds, not against
 the pieces the section is drawn with, so what a click catches does not
-depend on how finely anything was drawn. Both radii are in pixels, for the
+depend on how finely anything was drawn. The radius is in pixels, for the
 same reason the welding one is: how close the cursor *looks* to something
 should not change with the zoom.
 
