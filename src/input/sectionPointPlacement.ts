@@ -47,9 +47,10 @@ export interface Placement {
  * Decides where a ground position actually puts an endpoint.
  *
  * Welding beats the grid where both could apply — a grid point is never
- * a join. Ctrl skips both: the cursor's own position, over a node as
- * much as anywhere else, which is the only way to reach a point no rule
- * would produce.
+ * a join. Ctrl skips the grid and nothing else: the cursor's own position
+ * wherever there is nothing to weld onto, which is the only way to reach a
+ * point no rule would produce. A point beside a node that must not join it
+ * is placed by zooming in, since the pick radius is in pixels.
  */
 export function placeEndpoint(
   network: RoadNetwork,
@@ -57,13 +58,13 @@ export function placeEndpoint(
   ground: Vec2,
   modifiers: Modifiers,
 ): Placement {
-  if (modifiers.ctrl) {
-    return { kind: "free", endpoint: ground, position: ground };
-  }
-
   const node = nearestNode(network, ground, nodePickRadiusMeters(viewport));
   if (node !== null) {
     return { kind: "node", endpoint: node.id, position: node.position };
+  }
+
+  if (modifiers.ctrl) {
+    return { kind: "free", endpoint: ground, position: ground };
   }
 
   const snapped = snapToGrid(ground);
