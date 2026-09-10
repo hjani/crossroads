@@ -174,11 +174,11 @@ Not blocking anything; do them when they start to bite.
       - `REFUSED` `0xff5555` — what it would create, and will not
 
       `SelectionTool` already names its two this way, pending a shared
-      home for all five. Two of the remappings are decisions rather than
-      bookkeeping. `NodeHighlight`'s blue becomes `AIMED`, which is what
-      fixes the wart of it being blue-for-"already there" while sitting on
-      a bare grid point where nothing exists. And `SectionPlanView`'s
-      existing-node marks become `AIMED` too rather than `EXISTING`: they
+      home for all five. One remapping is a decision rather than
+      bookkeeping. The mark on where a click lands already takes the plan's
+      two node colors, so it follows whatever those become — and
+      `SectionPlanView`'s existing-node marks become `AIMED` rather than
+      `EXISTING`: they
       are the nodes a chain would weld onto, and `EXISTING` would erase
       the made-vs-met distinction those marks exist for. What it costs is
       the nodes' orange — they become `EXISTING` like the sections,

@@ -14,7 +14,7 @@ const CHAIN_HEIGHT = 0.03;
 const MARK_HEIGHT = 0.035;
 
 /** Green for what the edit would create. */
-const BUILDABLE_COLOR = 0x66ee88;
+export const BUILDABLE_COLOR = 0x66ee88;
 /**
  * Red for the same thing when the edit is refused: what it was going to
  * make, and will not. It is the one color that separates a section about
@@ -25,7 +25,7 @@ const REFUSED_COLOR = 0xff5555;
  * Blue for a node that is already there, whether or not the edit lands —
  * so this one does not change with the verdict.
  */
-const EXISTING_NODE_COLOR = 0x66ccff;
+export const EXISTING_NODE_COLOR = 0x66ccff;
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
  * is seen there. An existing node needs a wider one, to show around it. */

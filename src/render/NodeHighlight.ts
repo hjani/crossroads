@@ -7,23 +7,19 @@ import type { Vec2 } from "../core/types";
  */
 const HIGHLIGHT_HEIGHT = 0.035;
 
-/** Blue, which is what the edit's colors reserve for something already
- * there — and a node the cursor has found is exactly that. What a mark is
- * usually for, so it is the color one takes unless its builder says
- * otherwise. */
-const FOUND_NODE_COLOR = 0x66ccff;
-
 /** In pixels, and wider than a node, so the mark shows around it. */
 const HIGHLIGHT_SIZE = 15;
 
 /**
- * A mark on a single place: the node an endpoint would weld onto, or
- * another one position a tool wants pointed at.
+ * A mark on a single place: where an endpoint would land, or another one
+ * position a tool wants pointed at.
  *
  * Decoration only, and told what to mark rather than reading the model —
  * it is the tool's answer to "where would this click land", which is not
- * something the network knows. The color says which of those answers it is,
- * and so is the builder's to choose, as `SectionHighlight`'s is.
+ * something the network knows. The color says what kind of answer it is,
+ * and is given with each mark rather than once: the same mark can move from
+ * a node already there to a place one would be made without the tool
+ * holding a second mark for it.
  */
 export class NodeHighlight {
   readonly sceneObject: THREE.Points<
@@ -36,14 +32,13 @@ export class NodeHighlight {
     3,
   );
 
-  constructor(color: number = FOUND_NODE_COLOR) {
+  constructor() {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", this.positions);
 
     this.sceneObject = new THREE.Points(
       geometry,
       new THREE.PointsMaterial({
-        color,
         size: HIGHLIGHT_SIZE,
         // Fixed pixel size, matching how nodes themselves are drawn.
         sizeAttenuation: false,
@@ -55,10 +50,11 @@ export class NodeHighlight {
     this.sceneObject.visible = false;
   }
 
-  /** Marks a position, and makes the mark visible if it was not. */
-  show(position: Vec2): void {
+  /** Marks a position in a color, and makes the mark visible if it was not. */
+  show(position: Vec2, color: number): void {
     this.positions.setXYZ(0, position.x, HIGHLIGHT_HEIGHT, position.z);
     this.positions.needsUpdate = true;
+    this.sceneObject.material.color.setHex(color);
     this.sceneObject.visible = true;
   }
 

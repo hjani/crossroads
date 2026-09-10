@@ -4,7 +4,11 @@ import { positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import { STRAIGHT, type Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
-import { SectionPlanView } from "../render/SectionPlanView";
+import {
+  BUILDABLE_COLOR,
+  EXISTING_NODE_COLOR,
+  SectionPlanView,
+} from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
   placeEndpoint,
@@ -164,7 +168,10 @@ export class StraightSectionTool implements Tool {
     if (placed.kind === "free") {
       this.highlight.hide();
     } else {
-      this.highlight.show(placed.position);
+      this.highlight.show(
+        placed.position,
+        placed.kind === "node" ? EXISTING_NODE_COLOR : BUILDABLE_COLOR,
+      );
     }
   }
 

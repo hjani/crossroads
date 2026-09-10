@@ -6,7 +6,11 @@ import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";
-import { SectionPlanView } from "../render/SectionPlanView";
+import {
+  BUILDABLE_COLOR,
+  EXISTING_NODE_COLOR,
+  SectionPlanView,
+} from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
   placeControlPoint,
@@ -42,7 +46,7 @@ export class ArcSectionTool implements Tool {
   /** Where the control point has landed. In the gesture's own color and not
    * the plan's, since it is a position the cursor is holding rather than
    * anything the edit would build. */
-  private readonly viaHighlight = new NodeHighlight(IN_PROGRESS_COLOR);
+  private readonly viaHighlight = new NodeHighlight();
   /** The full plan to build the arc. */
   private readonly planView = new SectionPlanView();
   private readonly decoration = new THREE.Group();
@@ -190,7 +194,7 @@ export class ArcSectionTool implements Tool {
       const plan = this.planThrough(via);
       if (plan !== null) {
         this.planView.showPlan(this.network, plan);
-        this.viaHighlight.show(via);
+        this.viaHighlight.show(via, IN_PROGRESS_COLOR);
       }
       return;
     }
@@ -224,7 +228,10 @@ export class ArcSectionTool implements Tool {
       this.modifiers,
     );
     if (placed.kind !== "free") {
-      this.firstPointHighlight.show(placed.position);
+      this.firstPointHighlight.show(
+        placed.position,
+        placed.kind === "node" ? EXISTING_NODE_COLOR : BUILDABLE_COLOR,
+      );
     }
   }
 
