@@ -15,7 +15,7 @@ import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
   placeControlPoint,
   placeEndpoint,
-  withinNodePickRadius,
+  withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
@@ -247,7 +247,7 @@ export class ArcSectionTool implements Tool {
    */
   private reachesBeyondStart(ground: Vec2, placed: Placement): boolean {
     if (this.start === null) return false;
-    if (withinNodePickRadius(this.viewport, ground, this.start.position)) {
+    if (withinPickRadius(this.viewport, ground, this.start.position)) {
       return false;
     }
     return !isSamePoint(placed.position, this.start.position);

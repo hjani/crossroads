@@ -78,7 +78,9 @@ node is that node. Step a centimeter aside while standing in an
 intersection and you are still standing in the same intersection; nothing
 on the ground separates the two positions. This is what makes a road
 ending on another road a T-junction rather than a near miss, and what lets
-a road drawn through an existing node use it.
+a road drawn through an existing node use it. The new section's own ends
+follow the same rule: an end that close to a road is on it, and cuts it
+as a crossing would.
 
 **A road — one meter.** A piece shorter than this is refused. Nothing
 that short is a road section; it is an artifact of a click that was

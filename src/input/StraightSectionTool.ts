@@ -12,7 +12,7 @@ import {
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
   placeEndpoint,
-  withinNodePickRadius,
+  withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
@@ -209,7 +209,7 @@ export class StraightSectionTool implements Tool {
    */
   private planTo(ground: Vec2, end: Placement): SectionPlan | null {
     if (this.pending === null) return null;
-    if (withinNodePickRadius(this.viewport, ground, this.pending.position)) {
+    if (withinPickRadius(this.viewport, ground, this.pending.position)) {
       return null;
     }
 

@@ -7,8 +7,7 @@ Quick status for picking up where we left.
 M0 through M4 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M5 — Placing sections**
-Next step: start or end a section on an existing road, which the smart arc
-tool then builds on
+Next step: `docs/tools.md` design note for the smart arc tool
 
 ## Milestones
 
@@ -92,7 +91,9 @@ tool then builds on
 Place sections with less aiming: start one anywhere on the network, and
 let the tool work out the curve.
 
-- [ ] start or end a section on an existing road, not only on a node
+- [x] start or end a section on an existing road, not only on a node. An
+      end within a centimeter of a road cuts it; the tools weld onto a road
+      within the pick radius, rounded to where it crosses a grid line
 - [ ] `docs/tools.md` — design note for the smart arc tool (reasoning in
       `docs/ideas/smart-arc.md`)
 - [ ] smart arc tool: click a node and mark the directions a road could
@@ -123,6 +124,10 @@ let the tool work out the curve.
 Wanted, but not part of a milestone yet.
 
 - [ ] level of detail for arc tessellation
+- [ ] refuse a straight drawn between two points on the same straight road:
+      both ends cut the road, and the new section lies on top of the piece
+      between them. An arc does the same only if its control point lands on
+      the road's own circle
 - [ ] evaluate a UI framework for `src/ui/`. The panels are hand-written
       DOM, which is fine while they issue commands and starts to hurt when
       one has to reflect model state that changes elsewhere — the first

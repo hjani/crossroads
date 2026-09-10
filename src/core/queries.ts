@@ -1,9 +1,14 @@
-import { arcArcCrossings, distanceToArc, segmentArcCrossings } from "./arcs";
-import { isSamePoint } from "./points";
 import {
-  distanceToSegment,
+  arcArcCrossings,
+  arcFractionAt,
+  pointOnArc,
+  segmentArcCrossings,
+} from "./arcs";
+import { distance, isSamePoint, lerp } from "./points";
+import {
   fromTheOtherSide,
   segmentCrossing,
+  segmentFractionAt,
   type Crossing,
 } from "./segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
@@ -88,24 +93,36 @@ export function nearestSection(
 
 /**
  * How far a position is from a section, in meters, whichever shape it runs
- * in.
- *
- * In meters rather than squared, unlike the scan in `nearestNode`: how far
- * an arc strays from its circle cannot be had without the square root that
- * finds the radius in the first place, so there is none to skip. One per
- * section is nothing beside the linear scan it sits in.
+ * in: the distance to the nearest point on it.
  */
 function distanceToSection(
   network: RoadNetwork,
   section: Section,
   to: Vec2,
 ): number {
+  return distance(to, nearestPointOnSection(network, section, to));
+}
+
+/**
+ * The point on a section nearest a position, whichever shape it runs in.
+ *
+ * It is the point `nearestSection` measures its distance to, so a section
+ * found in range and the point placed on it agree. A position past either
+ * end gives that end.
+ */
+export function nearestPointOnSection(
+  network: RoadNetwork,
+  section: Section,
+  to: Vec2,
+): Vec2 {
   const from = positionOfNode(network, section.from);
   const end = positionOfNode(network, section.to);
 
-  return section.geometry.kind === "arc"
-    ? distanceToArc(to, from, end, section.geometry.via)
-    : distanceToSegment(to, from, end);
+  if (section.geometry.kind === "arc") {
+    const { via } = section.geometry;
+    return pointOnArc(from, end, via, arcFractionAt(from, end, via, to));
+  }
+  return lerp(from, end, segmentFractionAt(to, from, end));
 }
 
 /**

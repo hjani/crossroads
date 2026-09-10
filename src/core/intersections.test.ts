@@ -5,7 +5,7 @@ import {
   pointsOf,
   type SectionPlan,
 } from "./edits";
-import { arcCircle, type ArcCircle } from "./arcs";
+import { arcCircle, pointOnArc, type ArcCircle } from "./arcs";
 import { distance } from "./points";
 import { segmentCrossing } from "./segments";
 import { nearestNode, positionOf } from "./queries";
@@ -205,7 +205,7 @@ describe("planning and building a section", () => {
   it("makes one junction of two roads crossed within a centimeter", () => {
     const network = new RoadNetwork();
     build(network, at(5, -2), at(5, 2));
-    build(network, at(5.005, -2), at(5.005, 2));
+    build(network, at(5.005, -4), at(5.005, 4));
 
     // Half a centimeter apart, which is the same place: the two crossings
     // are one point of the chain, and it cuts both roads.
@@ -223,8 +223,8 @@ describe("planning and building a section", () => {
       "(5,-2)-(5,0)",
       "(5,0)-(10,0)",
       "(5,0)-(5,2)",
-      "(5,0)-(5.005,2)",
-      "(5.005,-2)-(5,0)",
+      "(5,0)-(5.005,4)",
+      "(5.005,-4)-(5,0)",
     ]);
     expect(nodeCount(network)).toBe(7);
   });
@@ -489,5 +489,106 @@ describe("planning and building an arc", () => {
 
     expect(layout(network)).toEqual([...before, "(10,0)-(10,10)"].sort());
     expect(nodeCount(network)).toBe(3);
+  });
+});
+
+describe("starting or ending on a road", () => {
+  it("cuts the roads a section starts and ends part way along", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+    build(network, at(0, 6), at(10, 6));
+    build(network, at(4, 0), at(4, 6));
+
+    expect(layout(network)).toEqual([
+      "(0,0)-(4,0)",
+      "(0,6)-(4,6)",
+      "(4,0)-(10,0)",
+      "(4,0)-(4,6)",
+      "(4,6)-(10,6)",
+    ]);
+    expect(nodeCount(network)).toBe(6);
+  });
+
+  it("cuts a road a start sits half a centimeter off, leading away from it", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+
+    // Never touches the road, so no crossing is found: being that close is
+    // what puts it on the road.
+    const plan = planSection(network, at(4, 0.005), at(4, 6), STRAIGHT);
+    expect(cutPoints(network, plan)).toEqual([at(4, 0.005)]);
+
+    assert(plan.buildable);
+    applySectionPlan(network, plan);
+    expect(nodeCount(network)).toBe(4);
+    expect([...network.allSections()]).toHaveLength(3);
+  });
+
+  it("cuts a road an end stops half a centimeter short of", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+
+    const plan = planSection(network, at(4, 6), at(4, 0.005), STRAIGHT);
+    expect(cutPoints(network, plan)).toEqual([at(4, 0.005)]);
+
+    assert(plan.buildable);
+    applySectionPlan(network, plan);
+    expect(nodeCount(network)).toBe(4);
+    expect([...network.allSections()]).toHaveLength(3);
+  });
+
+  it("leaves a road alone that a start sits two centimeters off", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+    build(network, at(4, 0.02), at(4, 6));
+
+    expect(layout(network)).toEqual(["(0,0)-(10,0)", "(4,0.02)-(4,6)"]);
+  });
+
+  it("starts from the node a start sits beside, not from a second one", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+    build(network, at(10.005, 0), at(10, 6));
+
+    expect(layout(network)).toEqual(["(0,0)-(10,0)", "(10,0)-(10,6)"]);
+    expect(nodeCount(network)).toBe(3);
+  });
+
+  it("cuts an arc a section ends on, at a point computed onto its curve", () => {
+    const network = new RoadNetwork();
+    buildArc(network, at(0, 0), at(10, 0), at(5, 2));
+
+    // Off the curve by whatever the arithmetic leaves, which is the kind of
+    // point a tool placing an end on a road hands over.
+    const onArc = pointOnArc(at(0, 0), at(10, 0), at(5, 2), 0.3);
+    build(network, at(onArc.x, 6), onArc);
+
+    const kinds = [...network.allSections()]
+      .map((section) => section.geometry.kind)
+      .sort();
+    expect(kinds).toEqual(["arc", "arc", "straight"]);
+    expect(nodeCount(network)).toBe(4);
+  });
+
+  it("refuses a start on a road too close to that road's node", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+    const before = layout(network);
+
+    const plan = planSection(network, at(9.5, 0.005), at(9.5, 6), STRAIGHT);
+
+    expect(plan.buildable).toBe(false);
+    expect(layout(network)).toEqual(before);
+  });
+
+  it("refuses an end on a road too close to that road's node", () => {
+    const network = new RoadNetwork();
+    build(network, at(0, 0), at(10, 0));
+    const before = layout(network);
+
+    const plan = planSection(network, at(9.5, 6), at(9.5, 0.005), STRAIGHT);
+
+    expect(plan.buildable).toBe(false);
+    expect(layout(network)).toEqual(before);
   });
 });

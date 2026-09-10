@@ -1,6 +1,5 @@
 import { distance, lerp } from "./points";
 import {
-  distanceToSegment,
   fromTheOtherSide,
   segmentCrossing,
   segmentFractionAt,
@@ -89,7 +88,7 @@ export function arcCircle(from: Vec2, to: Vec2, via: Vec2): ArcCircle | null {
  *
  * Three positions in a line describe that line, so a `via` with no circle
  * through it runs straight between the ends rather than refusing — the same
- * reading `squaredDistanceToSegment` gives a segment of no length. Sections
+ * reading `segmentFractionAt` gives a segment of no length. Sections
  * never arrive here, since the network turns such an arc away, but a road
  * still being dragged out passes through straightness on its way to a curve.
  */
@@ -124,7 +123,7 @@ export function pointOnArc(from: Vec2, to: Vec2, via: Vec2, t: number): Vec2 {
  *
  * A direction the arc never turns to is the fraction's version of a
  * position past the end of a segment, and answers the same way
- * `distanceToArc` does: with whichever end the turn ran out at. Measured by
+ * `segmentFractionAt` does: with whichever end the turn ran out at. Measured by
  * distance rather than by more turning, because the far side of the circle
  * lies past the end and before the start at once, and only the ends
  * themselves say which is nearer.
@@ -157,47 +156,6 @@ export function arcLength(from: Vec2, to: Vec2, via: Vec2): number {
   return run === null
     ? distance(from, to)
     : run.circle.radius * Math.abs(run.sweep);
-}
-
-/**
- * How far `point` is from the arc `from`–`via`–`to`, in meters.
- *
- * Measured against the circle rather than against the chords an arc is drawn
- * with, which makes this the exact answer and the drawing the approximation
- * of it. It is also the shorter way round: every point at the same distance
- * from the center is on the circle, so once the point's direction from the
- * center is known to fall inside the sweep, how far off the curve it is
- * amounts to how much its radius differs from the arc's.
- *
- * A direction outside the sweep is the arc's version of a point past the end
- * of a segment: the nearest place on the curve is then whichever end the
- * turn ran out at, so the distance is to the nearer of the two. Without
- * that, a position across the far side of the circle would read as being on
- * the road.
- *
- * The center itself needs no case of its own. Its direction is whatever
- * `atan2` makes of no offset at all, but both readings come out at the
- * radius — which is the truth, every point of the arc being exactly that far
- * away.
- *
- * A `via` in line with the ends measures against the segment between them,
- * the same straight reading the rest of this module gives one.
- */
-export function distanceToArc(
-  point: Vec2,
-  from: Vec2,
-  to: Vec2,
-  via: Vec2,
-): number {
-  const run = arcRun(from, to, via);
-  if (run === null) {
-    return distanceToSegment(point, from, to);
-  }
-
-  const { center, radius } = run.circle;
-  return sweptFractionAt(run, point) !== null
-    ? Math.abs(distance(point, center) - radius)
-    : Math.min(distance(point, from), distance(point, to));
 }
 
 /**

@@ -68,15 +68,16 @@ the un-snap modifier gives the other for as long as it is held, so the
 choice is made per point rather than set and forgotten.
 
 Snapped, a point within a small radius of an existing node becomes that
-node, so the two sections meet at one shared point. Anywhere else it is
-rounded to a grid. Welding wins where both could apply: a grid point is
-never a join, and a road that reaches an existing one should meet it.
+node, so the two sections meet at one shared point. Failing that, a point
+within a small radius of a road lands on it, where the road crosses the
+nearest grid line. Anywhere else it is rounded to a grid. Welding wins
+where both could apply: a grid point is never a join, and a road that
+reaches an existing one should meet it.
 
-Unsnapped, a point is the exact position under the cursor — over a node
-as much as anywhere else. Nothing welds and nothing rounds, which is what
-makes a position that no rule would produce reachable at all. The price
-is that a join cannot be made in this mode; releasing the modifier is how
-one is.
+Unsnapped, nothing is rounded but welding still applies: a point near a
+node is that node, near a road it is the nearest place on the road, and
+anywhere else it is the exact position under the cursor. A point near the
+network that must not join it is placed by zooming in.
 
 The node pick radius is a distance in pixels, not meters: it is how close
 the cursor looks to a node, so it is the same target however far the view
@@ -127,7 +128,8 @@ only how the road bends — and since the arc is built through that position,
 it runs under the cursor placing it.
 
 The third point is not an endpoint. It snaps to the grid and unsnaps with
-the modifier like any other placed point, but it never welds onto a node:
+the modifier like any other placed point, but it never welds onto a node
+or a road:
 it settles the shape rather than marking a place on the road.
 
 There is no section to plan until the third point is placed, so what is
@@ -199,7 +201,7 @@ one of the ways the answer changes underneath it.
 - Right button — pan. The browser context menu is suppressed.
 - Escape — cancel the edit in progress.
 - Delete, Backspace — remove the selection.
-- Ctrl, held — place the point exactly under the cursor, without snapping.
+- Ctrl, held — place the point without rounding it; welding still applies.
 
 Middle-button gestures stay unclaimed, for an orbiting camera later.
 

@@ -2,7 +2,7 @@ import { clamp01, lerp } from "./points";
 import type { Vec2 } from "./types";
 
 /**
- * Straight sections as plane geometry: how far a position is from one, and
+ * Straight sections as plane geometry: where along one a position falls, and
  * where two of them meet. Positions in, answers in meters — see `points.ts`
  * for why none of this knows about the network.
  */
@@ -31,19 +31,8 @@ export function fromTheOtherSide(crossing: Crossing): Crossing {
 }
 
 /**
- * How far `point` is from the segment `from`–`to`, in meters.
- *
- * Not the distance to the infinite line through the two: a point past
- * either end measures to that end, which is what makes this the distance to
- * a road rather than to the direction it happens to run in.
- */
-export function distanceToSegment(point: Vec2, from: Vec2, to: Vec2): number {
-  return Math.sqrt(squaredDistanceToSegment(point, from, to));
-}
-
-/**
- * The same as distanceToSegment, but squared — for a scan comparing
- * distances only against each other and against a limit,to save a square root.
+ * Where along the segment `from`–`to` a position falls: 0 at `from`, 1 at
+ * `to` — the fraction of the place on the segment nearest the position.
  *
  * The segment is every point `from + t·along` for `t` between 0 and 1,
  * where `along = to - from`. So the question is which `t` is nearest, and
@@ -51,40 +40,18 @@ export function distanceToSegment(point: Vec2, from: Vec2, to: Vec2): number {
  *
  * The 2D dot product `a·b = ax·bx + az·bz` measures how much of `a` points
  * the same way as `b`, scaled by both their lengths. Taking it of
- * `point - from` against `along` therefore gives how far along the segment
- * `point` lies — but multiplied by the segment's length, since that length
- * is baked into the result. Dividing by `along·along`, which is the length
- * squared, cancels that factor and divides by the length once more, turning
- * the distance into a fraction of the segment. Hence `t` from one dot
- * product over another.
+ * `point - from` against `along` gives how far along the segment `point`
+ * lies, multiplied by the segment's length. Dividing by `along·along`, the
+ * length squared, cancels that and divides by the length once more, turning
+ * the distance into a fraction of the segment.
  *
  * `t` outside 0..1 means the nearest place on the *line* is off the end of
  * the *segment*, so it is clamped: the nearest place on the segment is then
- * that endpoint, and the distance is measured to it. That is the whole
- * difference between this and a point-to-line distance, and it is why a
- * cursor beyond the end of a road is still near the road's end rather than
- * near the road.
+ * that end. That is why a cursor beyond the end of a road is near the road's
+ * end rather than near the line it runs along.
  *
  * A segment of no length has no direction to project onto — `along·along`
- * is zero and the division would be undefined — but it is also a single
- * place, so `t` is 0 and the distance is to that place.
- */
-export function squaredDistanceToSegment(
-  point: Vec2,
-  from: Vec2,
-  to: Vec2,
-): number {
-  const t = segmentFractionAt(point, from, to);
-
-  // From the nearest place on the segment to the point itself.
-  const dx = point.x - (from.x + (to.x - from.x) * t);
-  const dz = point.z - (from.z + (to.z - from.z) * t);
-  return dx * dx + dz * dz;
-}
-
-/**
- * Where along the segment `from`–`to` a position falls: 0 at `from`, 1 at
- * `to`, and the projection described above in between.
+ * is zero — but it is also a single place, so `t` is 0.
  *
  * The `t` `lerp` takes, so a position and the fraction it reads as are two
  * ways of naming the same place on the road — which is what lets a piece of

@@ -4,6 +4,7 @@ import { segmentFractionAt } from "./segments";
 import {
   crossingsAlong,
   nearestNode,
+  nearestSection,
   nodeWithin,
   positionOf,
   positionOfNode,
@@ -133,11 +134,18 @@ export function planSection(
 ): SectionPlan {
   // Non-empty from the first line and never shrinks, so the chain always
   // has a last point to measure the next one against.
-  const points: [PlannedPoint, ...PlannedPoint[]] = [{ at: from, cuts: [] }];
+  const points: [PlannedPoint, ...PlannedPoint[]] = [
+    plannedPointAt(network, from),
+  ];
   let buildable = true;
 
   const begin = positionOf(network, from);
   const end = positionOf(network, to);
+
+  if (points[0].cuts.length > 0 && !landsCleanly(network, begin)) {
+    // The plan starts on a section, but a junction is not possible there.
+    buildable = false;
+  }
 
   // An arc is the circle through its ends and its third position, and three
   // positions in a line have none. A refusal rather than a thrown error,
@@ -156,7 +164,12 @@ export function planSection(
     const at = pickPoint(network, crossing.point, [reached, to]);
     append(network, points, plannedCrossing(network, crossing.section, at));
   }
-  append(network, points, { at: to, cuts: [] });
+  const finish = plannedPointAt(network, to);
+  append(network, points, finish);
+  if (finish.cuts.length > 0 && !landsCleanly(network, end)) {
+    // plan ends on a section, but a junction is not possible there.
+    buildable = false;
+  }
 
   // One piece per gap in the chain: the first point is where the section
   // starts, and every one after it is a piece arriving there.
@@ -366,6 +379,21 @@ function plannedCrossing(
   const place = positionOf(network, at);
   const end = endAt(network, getSection(network, section), place);
   return end === null ? { at, cuts: [section] } : { at: end, cuts: [] };
+}
+
+/**
+ * Plans a point for the plan to run through. An existing node, a new node on
+ * open ground, or a crossing if on a section.
+ */
+function plannedPointAt(network: RoadNetwork, place: Endpoint): PlannedPoint {
+  if (isNodeId(place)) {
+    return { at: place, cuts: [] };
+  }
+
+  const road = nearestSection(network, place, SAME_POINT_METERS);
+  return road === null
+    ? { at: place, cuts: [] }
+    : plannedCrossing(network, road.id, place);
 }
 
 /**
