@@ -2,18 +2,20 @@ import * as THREE from "three";
 import {
   bisectorDirectionsAt,
   continuingDirectionsAt,
+  midSectionDirectionsAt,
   perpendicularDirectionsAt,
 } from "../core/directions";
+import { isSamePoint } from "../core/points";
 import type { RoadNetwork } from "../core/RoadNetwork";
-import type { NodeId, Vec2 } from "../core/types";
+import type { Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
-import { placeSectionEnd } from "./sectionPointPlacement";
+import { placeSectionEnd, type Placement } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
- * The node a click would start from. Named as in `SelectionTool`, and the
+ * The place a click would start from. Named as in `SelectionTool`, and the
  * same yellow, until the scene's colors have a shared home.
  */
 const AIMED_COLOR = 0xffdd44;
@@ -31,16 +33,22 @@ const IN_PROGRESS_COLOR = 0xcc88ff;
 const DIRECTION_MARK_PIXELS = 100;
 
 /**
+ * A place an arc can start from: a node, or a place along a road. Open ground
+ * has no direction to offer, so it is never a start.
+ */
+type Start = Extract<Placement, { kind: "node" | "section" }>;
+
+/**
  * Draws an arc that takes its direction from the network it starts on,
  * rather than from a control point aimed by hand.
  *
- * So far it only picks the start: a click on a node marks it along with the
- * directions a road could leave it by, and a click anywhere else drops it.
- * The node a click would catch is marked before the click, as in
+ * So far it only picks the start: a click on a node or a road marks it along
+ * with the directions a road could leave it by, and a click anywhere else
+ * drops it. The place a click would catch is marked before the click, as in
  * `SelectionTool`.
  *
  * The start is found by the same rule the section tools weld an endpoint
- * with, so a click catches exactly the node they would join onto.
+ * with, so a click catches exactly the node or road they would join onto.
  */
 export class SmartArcTool implements Tool {
   private readonly aimedMark = new NodeHighlight();
@@ -48,7 +56,7 @@ export class SmartArcTool implements Tool {
   private readonly directionMarks = new SectionHighlight(IN_PROGRESS_COLOR);
   private readonly decoration = new THREE.Group();
 
-  private start: NodeId | null = null;
+  private start: Start | null = null;
 
   constructor(
     private readonly network: RoadNetwork,
@@ -84,10 +92,7 @@ export class SmartArcTool implements Tool {
       this.startMark.hide();
       this.directionMarks.hide();
     } else {
-      this.startMark.show(
-        this.network.getNode(this.start).position,
-        SELECTED_COLOR,
-      );
+      this.startMark.show(this.start.position, SELECTED_COLOR);
       this.directionMarks.show(this.directionStubs(this.start), []);
     }
 
@@ -96,11 +101,16 @@ export class SmartArcTool implements Tool {
     const aimed = ground === null ? null : this.startAt(ground, modifiers);
 
     // Nothing is painted over the start itself, there being nothing worth
-    // saying on top of it.
-    if (aimed === null || aimed === this.start) {
+    // saying on top of it. Compared by place, since a start on a road has no
+    // id to compare.
+    const onStart =
+      aimed !== null &&
+      this.start !== null &&
+      isSamePoint(aimed.position, this.start.position);
+    if (aimed === null || onStart) {
       this.aimedMark.hide();
     } else {
-      this.aimedMark.show(this.network.getNode(aimed).position, AIMED_COLOR);
+      this.aimedMark.show(aimed.position, AIMED_COLOR);
     }
   }
 
@@ -108,26 +118,29 @@ export class SmartArcTool implements Tool {
    * A short line out of the start along each direction it offers. Measured
    * at the current zoom, which is why it is redrawn on a change of view.
    */
-  private directionStubs(start: NodeId): Vec2[][] {
+  private directionStubs(start: Start): Vec2[][] {
     const length = DIRECTION_MARK_PIXELS * this.viewport.metersPerPixel;
-    const from = this.network.getNode(start).position;
-    const directions = [
-      ...continuingDirectionsAt(this.network, start),
-      ...bisectorDirectionsAt(this.network, start),
-      ...perpendicularDirectionsAt(this.network, start),
-    ];
+    const from = start.position;
+    const directions =
+      start.kind === "node"
+        ? [
+            ...continuingDirectionsAt(this.network, start.node),
+            ...bisectorDirectionsAt(this.network, start.node),
+            ...perpendicularDirectionsAt(this.network, start.node),
+          ]
+        : midSectionDirectionsAt(this.network, start.section, start.position);
     return directions.map((direction) => [
       from,
       { x: from.x + direction.x * length, z: from.z + direction.z * length },
     ]);
   }
 
-  /** The node a click at `ground` would start from, or null for none. */
-  private startAt(ground: Vec2, modifiers: Modifiers): NodeId | null {
+  /** The place a click at `ground` would start from, or null for none. */
+  private startAt(ground: Vec2, modifiers: Modifiers): Start | null {
     const placed = placeSectionEnd(this.network, this.viewport, ground, {
       useGrid: !modifiers.ctrl,
     });
-    return placed.kind === "node" ? placed.node : null;
+    return placed.kind === "node" || placed.kind === "section" ? placed : null;
   }
 
   /** Releases the marks' GPU buffers. The tool is unusable after. */

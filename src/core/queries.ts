@@ -111,12 +111,29 @@ export function nearestPointOnSection(
 ): Vec2 {
   const from = network.getNode(section.from).position;
   const end = network.getNode(section.to).position;
+  const t = sectionFractionAt(network, section, to);
 
-  if (section.geometry.kind === "arc") {
-    const { via } = section.geometry;
-    return pointOnArc(from, end, via, arcFractionAt(from, end, via, to));
-  }
-  return lerp(from, end, segmentFractionAt(to, from, end));
+  return section.geometry.kind === "arc"
+    ? pointOnArc(from, end, section.geometry.via, t)
+    : lerp(from, end, t);
+}
+
+/**
+ * Where along a section a place falls, 0 at its `from` node and 1 at its `to`
+ * — the `t` that `sectionDirectionAt` takes. Measured round the curve of an
+ * arc, and a place off the section reads as the nearest place on it.
+ */
+export function sectionFractionAt(
+  network: RoadNetwork,
+  section: Section,
+  place: Vec2,
+): number {
+  const from = network.getNode(section.from).position;
+  const end = network.getNode(section.to).position;
+
+  return section.geometry.kind === "arc"
+    ? arcFractionAt(from, end, section.geometry.via, place)
+    : segmentFractionAt(place, from, end);
 }
 
 /**

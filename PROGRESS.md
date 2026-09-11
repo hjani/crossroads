@@ -103,9 +103,8 @@ let the tool work out the curve.
 - [x] add perpendicular directions at a node with a single section
 - [ ] add the plain straight as a direction of its own, for a fork at any
       angle
-- [ ] directions at a start placed on a road rather than a node: the
-      road's heading there forward and back, plus the two perpendiculars.
-      Needs a section's tangent at a fraction
+- [x] directions at a start placed on a road rather than a node: the
+      road's heading there forward and back, plus the two perpendiculars
 - [ ] core: the arc through a point, a direction there, and a second point
 - [ ] place the second point and plan a section per direction, the ones
       aimed away from it dropped. Full `SectionPlan`s, drawn with their

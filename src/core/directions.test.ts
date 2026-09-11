@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   bisectorDirectionsAt,
   continuingDirectionsAt,
+  midSectionDirectionsAt,
   perpendicularDirectionsAt,
 } from "./directions";
 import { distance } from "./points";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type NodeId, type Vec2 } from "./types";
+import { STRAIGHT, type NodeId, type SectionId, type Vec2 } from "./types";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };
@@ -186,5 +187,47 @@ describe("perpendicularDirectionsAt", () => {
     expect(perpendicularDirectionsAt(new RoadNetwork(), 99 as NodeId)).toEqual(
       [],
     );
+  });
+});
+
+describe("midSectionDirectionsAt", () => {
+  it("runs both ways along a straight and square to it", () => {
+    const network = new RoadNetwork();
+    const section = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
+
+    expectDirectionsInAnyOrder(
+      midSectionDirectionsAt(network, section.id, at(5, 0)),
+      [at(1, 0), at(-1, 0), at(0, 1), at(0, -1)],
+    );
+  });
+
+  it("follows an arc's tangent at the place, not its chord", () => {
+    const network = new RoadNetwork();
+    // A half circle about (5, 0), asked about 30° round from its start. Not
+    // 45°: the four directions repeat every 90°, so there the place mirrored
+    // across the arc's middle would give the same four, and a fraction
+    // measured from the wrong end would pass.
+    const arc = network.addSection(at(0, 0), at(10, 0), {
+      kind: "arc",
+      via: at(5, 5),
+    });
+    const half = 0.5;
+    const root3Half = Math.sqrt(3) / 2;
+
+    expectDirectionsInAnyOrder(
+      midSectionDirectionsAt(network, arc.id, at(5 - 5 * root3Half, 5 * half)),
+      [
+        at(half, root3Half),
+        at(-half, -root3Half),
+        at(-root3Half, half),
+        at(root3Half, -half),
+      ],
+    );
+  });
+
+  it("throws for a section the network does not have", () => {
+    expect(() =>
+      midSectionDirectionsAt(new RoadNetwork(), 99 as SectionId, at(0, 0)),
+    ).toThrow();
   });
 });

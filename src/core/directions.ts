@@ -1,9 +1,10 @@
-import { sectionDirectionAt } from "./queries";
+import { sectionDirectionAt, sectionFractionAt } from "./queries";
 import type { RoadNetwork } from "./RoadNetwork";
-import type { NodeId, Vec2 } from "./types";
+import type { NodeId, SectionId, Vec2 } from "./types";
 
 /**
- * The directions a new road could leave a node by.
+ * The directions a new road could leave a node, or a place along a section,
+ * by.
  */
 
 /**
@@ -66,6 +67,35 @@ export function perpendicularDirectionsAt(
 
   const { x, z } = entering[0];
   return [
+    { x: -z, z: x },
+    { x: z, z: -x },
+  ];
+}
+
+/**
+ * The directions at a place along a section rather than at either end of it:
+ * the way the road heads there, forward and back, and the two directions square
+ * to it. Unit vectors pointing away from `at`, in no promised order. Throws for
+ * an unknown section.
+ *
+ * What a node there would be offered once the road is cut at it: two sections
+ * heading opposite ways, carried on past it, and the two half-turn gaps between
+ * them split.
+ */
+export function midSectionDirectionsAt(
+  network: RoadNetwork,
+  section: SectionId,
+  at: Vec2,
+): Vec2[] {
+  const road = network.getSection(section);
+  const { x, z } = sectionDirectionAt(
+    network,
+    road,
+    sectionFractionAt(network, road, at),
+  );
+  return [
+    { x, z },
+    { x: -x, z: -z },
     { x: -z, z: x },
     { x: z, z: -x },
   ];
