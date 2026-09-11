@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
   bisectorDirectionsAt,
   continuingDirectionsAt,
+  perpendicularDirectionsAt,
 } from "../core/directions";
 import { isNodeId, type RoadNetwork } from "../core/RoadNetwork";
 import type { Node, Vec2 } from "../core/types";
@@ -110,6 +111,7 @@ export class SmartArcTool implements Tool {
     const directions = [
       ...continuingDirectionsAt(this.network, start.id),
       ...bisectorDirectionsAt(this.network, start.id),
+      ...perpendicularDirectionsAt(this.network, start.id),
     ];
     return directions.map((direction) => [
       from,

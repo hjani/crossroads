@@ -52,6 +52,26 @@ export function bisectorDirectionsAt(
 }
 
 /**
+ * The two directions square to the road at a dead end, for a turn off its open
+ * end. There the bisector has nothing to split but the full turn, and points
+ * back down the road. Unit vectors pointing away from the node, in no promised
+ * order. Empty for a node with any other number of sections.
+ */
+export function perpendicularDirectionsAt(
+  network: RoadNetwork,
+  node: NodeId,
+): Vec2[] {
+  const entering = enteringDirectionsAt(network, node);
+  if (entering.length !== 1) return [];
+
+  const { x, z } = entering[0];
+  return [
+    { x: -z, z: x },
+    { x: z, z: -x },
+  ];
+}
+
+/**
  * One direction per section meeting the node: the way that section is entered
  * from the node, pointing into it. The gaps between roads lie between these.
  * Empty for an unknown node.

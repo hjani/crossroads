@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { bisectorDirectionsAt, continuingDirectionsAt } from "./directions";
+import {
+  bisectorDirectionsAt,
+  continuingDirectionsAt,
+  perpendicularDirectionsAt,
+} from "./directions";
 import { distance } from "./points";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT, type NodeId, type Vec2 } from "./types";
@@ -142,5 +146,45 @@ describe("bisectorDirectionsAt", () => {
 
   it("is empty for a node the network does not have", () => {
     expect(bisectorDirectionsAt(new RoadNetwork(), 99 as NodeId)).toEqual([]);
+  });
+});
+
+describe("perpendicularDirectionsAt", () => {
+  it("gives both sides of a straight dead end", () => {
+    const network = new RoadNetwork();
+    const section = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
+
+    expectDirectionsInAnyOrder(perpendicularDirectionsAt(network, section.to), [
+      at(0, 1),
+      at(0, -1),
+    ]);
+  });
+
+  it("is square to an arc's tangent, not to its chord", () => {
+    const network = new RoadNetwork();
+    // Leaves its start straight up, square to the chord along the x axis.
+    const arc = network.addSection(at(0, 0), at(10, 0), {
+      kind: "arc",
+      via: at(5, 5),
+    });
+
+    expectDirectionsInAnyOrder(perpendicularDirectionsAt(network, arc.from), [
+      at(1, 0),
+      at(-1, 0),
+    ]);
+  });
+
+  it("is empty at a through-node, where the bisectors cover it", () => {
+    const network = new RoadNetwork();
+    const west = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
+    network.addSection(west.to, at(20, 0), STRAIGHT);
+
+    expect(perpendicularDirectionsAt(network, west.to)).toEqual([]);
+  });
+
+  it("is empty for a node the network does not have", () => {
+    expect(perpendicularDirectionsAt(new RoadNetwork(), 99 as NodeId)).toEqual(
+      [],
+    );
   });
 });
