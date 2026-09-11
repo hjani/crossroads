@@ -25,6 +25,12 @@ export function distance(from: Vec2, to: Vec2): number {
   return Math.hypot(to.x - from.x, to.z - from.z);
 }
 
+/** The vector one meter long pointing from `from` toward `to`. */
+export function unitDirection(from: Vec2, to: Vec2): Vec2 {
+  const length = distance(from, to);
+  return { x: (to.x - from.x) / length, z: (to.z - from.z) / length };
+}
+
 /** Whether two positions are the same place — see `SAME_POINT_METERS`. */
 export function isSamePoint(a: Vec2, b: Vec2): boolean {
   return distance(a, b) <= SAME_POINT_METERS;

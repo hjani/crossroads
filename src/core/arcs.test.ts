@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   arcArcCrossings,
   arcCircle,
+  arcDirectionAt,
   arcFractionAt,
   arcLength,
   arcPolyline,
@@ -112,6 +113,24 @@ describe("pointOnArc", () => {
 
   it("runs straight between the ends when the three are in a line", () => {
     expectAt(pointOnArc(at(0, 0), at(10, 0), at(5, 0), 0.25), 2.5, 0);
+  });
+});
+
+describe("arcDirectionAt", () => {
+  it("heads along the circle at either end", () => {
+    // Counterclockwise from due east: setting off north, arriving heading west.
+    expectAt(arcDirectionAt(east, north, northeast, 0), 0, 1);
+    expectAt(arcDirectionAt(east, north, northeast, 1), -1, 0);
+  });
+
+  it("heads the other way round for a via on the other side", () => {
+    // Clockwise through the south: setting off south, arriving heading east.
+    expectAt(arcDirectionAt(east, north, southwest, 0), 0, -1);
+    expectAt(arcDirectionAt(east, north, southwest, 1), 1, 0);
+  });
+
+  it("heads from one end to the other when the three are in a line", () => {
+    expectAt(arcDirectionAt(at(0, 0), at(10, 0), at(5, 0), 0.25), 1, 0);
   });
 });
 

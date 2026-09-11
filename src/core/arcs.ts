@@ -1,4 +1,4 @@
-import { distance, lerp } from "./points";
+import { distance, lerp, unitDirection } from "./points";
 import {
   fromTheOtherSide,
   segmentCrossing,
@@ -103,6 +103,33 @@ export function pointOnArc(from: Vec2, to: Vec2, via: Vec2, t: number): Vec2 {
     x: run.circle.center.x + run.circle.radius * Math.cos(angle),
     z: run.circle.center.z + run.circle.radius * Math.sin(angle),
   };
+}
+
+/**
+ * Which way the arc `from`–`via`–`to` is heading a fraction `t` of the way
+ * along, as a unit vector pointing from `from` toward `to`.
+ *
+ * On a circle the heading is square to the radius, so it is the direction
+ * from the center turned a quarter — forward for a forward sweep, back for
+ * a backward one.
+ *
+ * Three positions in a line head straight from one end to the other, the
+ * same straight reading `pointOnArc` gives them.
+ */
+export function arcDirectionAt(
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+  t: number,
+): Vec2 {
+  const run = arcRun(from, to, via);
+  if (run === null) {
+    return unitDirection(from, to);
+  }
+
+  const angle = run.startAngle + run.sweep * t;
+  const turn = Math.sign(run.sweep);
+  return { x: -turn * Math.sin(angle), z: turn * Math.cos(angle) };
 }
 
 /**

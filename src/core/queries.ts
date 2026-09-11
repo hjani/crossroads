@@ -1,10 +1,11 @@
 import {
   arcArcCrossings,
+  arcDirectionAt,
   arcFractionAt,
   pointOnArc,
   segmentArcCrossings,
 } from "./arcs";
-import { distance, isSamePoint, lerp } from "./points";
+import { distance, isSamePoint, lerp, unitDirection } from "./points";
 import {
   fromTheOtherSide,
   segmentCrossing,
@@ -123,6 +124,24 @@ export function nearestPointOnSection(
     return pointOnArc(from, end, via, arcFractionAt(from, end, via, to));
   }
   return lerp(from, end, segmentFractionAt(to, from, end));
+}
+
+/**
+ * Which way a section is heading a fraction `t` of the way along it, 0 at
+ * its `from` node and 1 at its `to`, as a unit vector pointing the way it
+ * runs from one to the other. A straight heads the same way all along.
+ */
+export function sectionDirectionAt(
+  network: RoadNetwork,
+  section: Section,
+  t: number,
+): Vec2 {
+  const from = positionOfNode(network, section.from);
+  const end = positionOfNode(network, section.to);
+
+  return section.geometry.kind === "arc"
+    ? arcDirectionAt(from, end, section.geometry.via, t)
+    : unitDirection(from, end);
 }
 
 /**
