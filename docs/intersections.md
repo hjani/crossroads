@@ -61,6 +61,10 @@ the edit it was, rather than as nothing at all. It is only the buildable
 answer that promises anything, and only that one carries the guarantee
 that there is a section there to build.
 
+An arc whose third position is in line with its ends is the exception: it
+has no circle, so there is no shape to describe. Its refusal is the
+straight between the ends, with no junctions along it.
+
 The whole edit lands at once or not at all. A section that crosses three
 others adds every piece and every junction together; a refused one is
 refused before anything is created, so the network is untouched rather than

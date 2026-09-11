@@ -1,4 +1,4 @@
-import { arcCircle, arcFractionAt, arcLength, pointOnArc } from "./arcs";
+import { arcFractionAt, arcLength, isArcValid, pointOnArc } from "./arcs";
 import { distance, isSamePoint, SAME_POINT_METERS } from "./points";
 import { segmentFractionAt } from "./segments";
 import {
@@ -141,16 +141,12 @@ export function planSection(
   const begin = positionOf(network, from);
   const end = positionOf(network, to);
 
-  if (points[0].cuts.length > 0 && !landsCleanly(network, begin)) {
-    // The plan starts on a section, but a junction is not possible there.
-    buildable = false;
+  if (geometry.kind === "arc" && !isArcValid(begin, end, geometry.via)) {
+    return refusedAsStraight(network, from, to);
   }
 
-  // An arc is the circle through its ends and its third position, and three
-  // positions in a line have none. A refusal rather than a thrown error,
-  // because a third position dragged from one side of the road to the other
-  // crosses the line every time, and the user is aiming through it.
-  if (geometry.kind === "arc" && arcCircle(begin, end, geometry.via) === null) {
+  if (points[0].cuts.length > 0 && !landsCleanly(network, begin)) {
+    // The plan starts on a section, but a junction is not possible there.
     buildable = false;
   }
 
@@ -361,6 +357,24 @@ function subGeometry(
       arcFractionAt(begin, end, via, to)) /
     2;
   return { kind: "arc", via: pointOnArc(begin, end, via, middle) };
+}
+
+/**
+ * Just a refused plan with the two ends connected by a straight.
+ */
+function refusedAsStraight(
+  network: RoadNetwork,
+  from: Endpoint,
+  to: Endpoint,
+): UnbuildableSectionPlan {
+  const start = plannedPointAt(network, from);
+  const pieces: PlannedPiece[] = isSamePoint(
+    positionOf(network, from),
+    positionOf(network, to),
+  )
+    ? []
+    : [{ geometry: STRAIGHT, to: plannedPointAt(network, to) }];
+  return { buildable: false, start, pieces };
 }
 
 /**

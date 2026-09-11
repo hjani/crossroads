@@ -79,6 +79,14 @@ export function arcCircle(from: Vec2, to: Vec2, via: Vec2): ArcCircle | null {
 }
 
 /**
+ * Whether the three positions make an arc at all: a circle runs through
+ * them. Says nothing about whether it is long enough to be a road.
+ */
+export function isArcValid(from: Vec2, to: Vec2, via: Vec2): boolean {
+  return arcCircle(from, to, via) !== null;
+}
+
+/**
  * The point a fraction `t` of the way along the arc `from`–`via`–`to`, 0 at
  * `from` and 1 at `to`.
  *

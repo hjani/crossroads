@@ -1,4 +1,4 @@
-import { arcCircle } from "./arcs";
+import { isArcValid } from "./arcs";
 import type {
   Node,
   NodeId,
@@ -61,7 +61,7 @@ export class RoadNetwork {
     }
     if (
       geometry.kind === "arc" &&
-      arcCircle(fromPosition, toPosition, geometry.via) === null
+      !isArcValid(fromPosition, toPosition, geometry.via)
     ) {
       throw new Error("Arc runs through a position in line with its ends");
     }

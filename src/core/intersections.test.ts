@@ -342,6 +342,23 @@ describe("planning and building an arc", () => {
     expect(layout(network)).toEqual([]);
   });
 
+  it("refuses a third position in line as the straight between the ends", () => {
+    const network = new RoadNetwork();
+    build(network, at(3, -2), at(7, 5));
+
+    // The third position on an end, with a road across the chord. The
+    // crossing lands a rounding off the chord, so cutting the arc there
+    // would give pieces almost in a line: circles of enormous radius.
+    const plan = planSection(network, at(-6, 0), at(12, 1), {
+      kind: "arc",
+      via: at(-6, 0),
+    });
+
+    expect(plan.buildable).toBe(false);
+    expect(plan.pieces.map((piece) => piece.geometry)).toEqual([STRAIGHT]);
+    expect(cutPoints(network, plan)).toEqual([]);
+  });
+
   it("measures an arc along its curve rather than across it", () => {
     const network = new RoadNetwork();
 
