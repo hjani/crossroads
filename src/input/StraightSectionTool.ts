@@ -10,7 +10,8 @@ import {
 } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
-  placeEndpoint,
+  endpointFrom,
+  placeSectionEnd,
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
@@ -54,7 +55,9 @@ export class StraightSectionTool implements Tool {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
-    const end = placeEndpoint(this.network, this.viewport, ground, modifiers);
+    const end = placeSectionEnd(this.network, this.viewport, ground, {
+      useGrid: !modifiers.ctrl,
+    });
 
     if (this.pending === null) {
       this.pending = end;
@@ -74,7 +77,7 @@ export class StraightSectionTool implements Tool {
     // was already there, a centimeter from where it was made.
     this.pending = {
       kind: "node",
-      endpoint: far,
+      node: far,
       position: this.network.getNode(far).position,
     };
   }
@@ -108,12 +111,9 @@ export class StraightSectionTool implements Tool {
       return;
     }
 
-    const placed = placeEndpoint(
-      this.network,
-      this.viewport,
-      ground,
-      modifiers,
-    );
+    const placed = placeSectionEnd(this.network, this.viewport, ground, {
+      useGrid: !modifiers.ctrl,
+    });
     const plan = this.planTo(ground, placed);
 
     if (plan !== null) {
@@ -168,8 +168,8 @@ export class StraightSectionTool implements Tool {
 
     const plan = planSection(
       this.network,
-      this.pending.endpoint,
-      end.endpoint,
+      endpointFrom(this.pending),
+      endpointFrom(end),
       STRAIGHT,
     );
     return plan.pieces.length === 0 ? null : plan;

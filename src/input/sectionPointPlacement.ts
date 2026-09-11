@@ -7,10 +7,15 @@ import {
   nodeWithin,
 } from "../core/queries";
 import type { Endpoint, RoadNetwork } from "../core/RoadNetwork";
-import { STRAIGHT, type Section, type Vec2 } from "../core/types";
+import {
+  STRAIGHT,
+  type NodeId,
+  type Section,
+  type SectionId,
+  type Vec2,
+} from "../core/types";
 import type { Viewport } from "../render/Viewport";
 import { GRID_PITCH_METERS, snapToGrid } from "./gridSnap";
-import type { Modifiers } from "./Tool";
 
 /**
  * Where a click puts one of the points a section is made of, shared by
@@ -37,67 +42,77 @@ import type { Modifiers } from "./Tool";
 const PICK_RADIUS_PIXELS = 12;
 
 /**
- * Where a click puts an endpoint: how the point was arrived at, what the
- * model is told — an existing node once welded, a bare position otherwise
- * — and the point to draw it at, which is the node's own position when
- * the two differ.
+ * Where a section's end will be placed.
  *
- * `kind` is what a tool reasons about; the endpoint alone cannot tell a
- * grid point from an unsnapped one, or either from a point on a road, since
- * all of them reach the model as a bare position.
+ * `kind` is what a tool reasons about. A grid point, an unsnapped one and a
+ * point on a road all reach the model as a bare position, which cannot tell
+ * them apart.
  */
-export interface Placement {
-  readonly kind: "node" | "section" | "grid" | "free";
-  readonly endpoint: Endpoint;
-  readonly position: Vec2;
+export type Placement =
+  | {
+      readonly kind: "node";
+      readonly node: NodeId;
+      readonly position: Vec2;
+    }
+  | {
+      readonly kind: "section";
+      readonly section: SectionId;
+      readonly position: Vec2;
+    }
+  | {
+      readonly kind: "grid" | "free";
+      readonly position: Vec2;
+    };
+
+/**
+ * An Endpoint for network planning, created from a Placement.
+ */
+export function endpointFrom(placement: Placement): Endpoint {
+  return placement.kind === "node" ? placement.node : placement.position;
 }
 
 /**
- * Decides where a ground position actually puts an endpoint.
+ * Decides where a section's end at `ground` lands: on a nearby node, else on
+ * a nearby road, else on the grid — or exactly at `ground` without `useGrid`.
  *
  * Welding beats the grid where both could apply — a grid point is never
  * a join — and a node beats the road it sits on, since the end of a road is
- * where most joins are made. Ctrl skips only the grid snapping but not the
- * welding.
+ * where most joins are made. Turning `useGrid` off skips only the grid
+ * snapping but not the welding.
  */
-export function placeEndpoint(
+export function placeSectionEnd(
   network: RoadNetwork,
   viewport: Viewport,
   ground: Vec2,
-  modifiers: Modifiers,
+  { useGrid }: { useGrid: boolean },
 ): Placement {
   const radius = pickRadiusMeters(viewport);
 
   const node = nearestNode(network, ground, radius);
   if (node !== null) {
-    return { kind: "node", endpoint: node.id, position: node.position };
+    return { kind: "node", node: node.id, position: node.position };
   }
 
   const section = nearestSection(network, ground, radius);
   if (section !== null) {
     const onRoad = nearestPointOnSection(network, section, ground);
-    const position = modifiers.ctrl
-      ? onRoad
-      : roundAlongSection(network, section, onRoad, ground);
+    const position = useGrid
+      ? roundAlongSection(network, section, onRoad, ground)
+      : onRoad;
 
     // Rounding can land on a node of the road.
     const landedOn = nodeWithin(network, position, SAME_POINT_METERS);
     if (landedOn !== null) {
-      return {
-        kind: "node",
-        endpoint: landedOn.id,
-        position: landedOn.position,
-      };
+      return { kind: "node", node: landedOn.id, position: landedOn.position };
     }
-    return { kind: "section", endpoint: position, position };
+    return { kind: "section", section: section.id, position };
   }
 
-  if (modifiers.ctrl) {
-    return { kind: "free", endpoint: ground, position: ground };
+  if (!useGrid) {
+    return { kind: "free", position: ground };
   }
 
-  const snapped = snapToGrid(ground);
-  return { kind: "grid", endpoint: snapped, position: snapped };
+  return { kind: "grid", position: snapToGrid(ground) };
 }
 
 /**
@@ -146,7 +161,7 @@ function roundAlongSection(
 
 /**
  * Decides where a ground position puts a control point: the nearest grid
- * point, or the cursor's own with Ctrl held.
+ * point, or the cursor's own without `useGrid`.
  *
  * No welding, unlike an endpoint. A control point says what the road does
  * rather than where it ends, and a node that happens to be near the cursor
@@ -154,8 +169,11 @@ function roundAlongSection(
  * nothing for a `Placement` to say about it — a position is the whole
  * answer.
  */
-export function placeControlPoint(ground: Vec2, modifiers: Modifiers): Vec2 {
-  return modifiers.ctrl ? ground : snapToGrid(ground);
+export function placeControlPoint(
+  ground: Vec2,
+  { useGrid }: { useGrid: boolean },
+): Vec2 {
+  return useGrid ? snapToGrid(ground) : ground;
 }
 
 /**

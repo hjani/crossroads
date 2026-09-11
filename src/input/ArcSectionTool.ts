@@ -12,8 +12,9 @@ import {
 } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
+  endpointFrom,
+  placeSectionEnd,
   placeControlPoint,
-  placeEndpoint,
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
@@ -75,22 +76,16 @@ export class ArcSectionTool implements Tool {
     if (ground === null) return;
 
     if (this.start === null) {
-      this.start = placeEndpoint(
-        this.network,
-        this.viewport,
-        ground,
-        modifiers,
-      );
+      this.start = placeSectionEnd(this.network, this.viewport, ground, {
+        useGrid: !modifiers.ctrl,
+      });
       return;
     }
 
     if (this.end === null) {
-      const placed = placeEndpoint(
-        this.network,
-        this.viewport,
-        ground,
-        modifiers,
-      );
+      const placed = placeSectionEnd(this.network, this.viewport, ground, {
+        useGrid: !modifiers.ctrl,
+      });
       if (!this.reachesBeyondStart(ground, placed)) return;
 
       this.end = placed;
@@ -99,7 +94,9 @@ export class ArcSectionTool implements Tool {
 
     // Nothing is added when the arc is refused, and the ends stay put so
     // the third click can be made again somewhere it works.
-    const plan = this.planThrough(placeControlPoint(ground, modifiers));
+    const plan = this.planThrough(
+      placeControlPoint(ground, { useGrid: !modifiers.ctrl }),
+    );
     if (plan === null || !plan.buildable) return;
 
     const far = applySectionPlan(this.network, plan);
@@ -110,7 +107,7 @@ export class ArcSectionTool implements Tool {
     // already there, a centimeter from where it was made.
     this.start = {
       kind: "node",
-      endpoint: far,
+      node: far,
       position: this.network.getNode(far).position,
     };
     this.end = null;
@@ -151,7 +148,7 @@ export class ArcSectionTool implements Tool {
     // Both ends down: the arc bending through where the cursor is, which is
     // the whole of what the next click would build plus the control point.
     if (this.start !== null && this.end !== null) {
-      const via = placeControlPoint(ground, modifiers);
+      const via = placeControlPoint(ground, { useGrid: !modifiers.ctrl });
       const plan = this.planThrough(via);
       if (plan !== null) {
         this.planView.showPlan(this.network, plan);
@@ -164,12 +161,9 @@ export class ArcSectionTool implements Tool {
     // would land. No chord where the click would land back on the start,
     // which is a click with no length to it and is refused.
     if (this.start !== null) {
-      const placed = placeEndpoint(
-        this.network,
-        this.viewport,
-        ground,
-        modifiers,
-      );
+      const placed = placeSectionEnd(this.network, this.viewport, ground, {
+        useGrid: !modifiers.ctrl,
+      });
       if (!this.reachesBeyondStart(ground, placed)) {
         this.chordHighlight.show([], [this.start.position]);
         return;
@@ -182,12 +176,9 @@ export class ArcSectionTool implements Tool {
 
     // Nothing placed: only where the first click would land, and not even
     // that when it would land on the cursor's own position.
-    const placed = placeEndpoint(
-      this.network,
-      this.viewport,
-      ground,
-      modifiers,
-    );
+    const placed = placeSectionEnd(this.network, this.viewport, ground, {
+      useGrid: !modifiers.ctrl,
+    });
     if (placed.kind !== "free") {
       this.firstPointHighlight.show(
         placed.position,
@@ -228,8 +219,8 @@ export class ArcSectionTool implements Tool {
 
     const plan = planSection(
       this.network,
-      this.start.endpoint,
-      this.end.endpoint,
+      endpointFrom(this.start),
+      endpointFrom(this.end),
       { kind: "arc", via },
     );
     return plan.pieces.length === 0 ? null : plan;

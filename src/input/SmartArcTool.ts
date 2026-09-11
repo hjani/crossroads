@@ -4,12 +4,12 @@ import {
   continuingDirectionsAt,
   perpendicularDirectionsAt,
 } from "../core/directions";
-import { isNodeId, type RoadNetwork } from "../core/RoadNetwork";
-import type { Node, Vec2 } from "../core/types";
+import type { RoadNetwork } from "../core/RoadNetwork";
+import type { NodeId, Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
-import { placeEndpoint } from "./sectionPointPlacement";
+import { placeSectionEnd } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -48,7 +48,7 @@ export class SmartArcTool implements Tool {
   private readonly directionMarks = new SectionHighlight(IN_PROGRESS_COLOR);
   private readonly decoration = new THREE.Group();
 
-  private start: Node | null = null;
+  private start: NodeId | null = null;
 
   constructor(
     private readonly network: RoadNetwork,
@@ -84,7 +84,10 @@ export class SmartArcTool implements Tool {
       this.startMark.hide();
       this.directionMarks.hide();
     } else {
-      this.startMark.show(this.start.position, SELECTED_COLOR);
+      this.startMark.show(
+        this.network.getNode(this.start).position,
+        SELECTED_COLOR,
+      );
       this.directionMarks.show(this.directionStubs(this.start), []);
     }
 
@@ -94,10 +97,10 @@ export class SmartArcTool implements Tool {
 
     // Nothing is painted over the start itself, there being nothing worth
     // saying on top of it.
-    if (aimed === null || aimed.id === this.start?.id) {
+    if (aimed === null || aimed === this.start) {
       this.aimedMark.hide();
     } else {
-      this.aimedMark.show(aimed.position, AIMED_COLOR);
+      this.aimedMark.show(this.network.getNode(aimed).position, AIMED_COLOR);
     }
   }
 
@@ -105,13 +108,13 @@ export class SmartArcTool implements Tool {
    * A short line out of the start along each direction it offers. Measured
    * at the current zoom, which is why it is redrawn on a change of view.
    */
-  private directionStubs(start: Node): Vec2[][] {
+  private directionStubs(start: NodeId): Vec2[][] {
     const length = DIRECTION_MARK_PIXELS * this.viewport.metersPerPixel;
-    const from = start.position;
+    const from = this.network.getNode(start).position;
     const directions = [
-      ...continuingDirectionsAt(this.network, start.id),
-      ...bisectorDirectionsAt(this.network, start.id),
-      ...perpendicularDirectionsAt(this.network, start.id),
+      ...continuingDirectionsAt(this.network, start),
+      ...bisectorDirectionsAt(this.network, start),
+      ...perpendicularDirectionsAt(this.network, start),
     ];
     return directions.map((direction) => [
       from,
@@ -120,16 +123,11 @@ export class SmartArcTool implements Tool {
   }
 
   /** The node a click at `ground` would start from, or null for none. */
-  private startAt(ground: Vec2, modifiers: Modifiers): Node | null {
-    const placed = placeEndpoint(
-      this.network,
-      this.viewport,
-      ground,
-      modifiers,
-    );
-    return isNodeId(placed.endpoint)
-      ? { id: placed.endpoint, position: placed.position }
-      : null;
+  private startAt(ground: Vec2, modifiers: Modifiers): NodeId | null {
+    const placed = placeSectionEnd(this.network, this.viewport, ground, {
+      useGrid: !modifiers.ctrl,
+    });
+    return placed.kind === "node" ? placed.node : null;
   }
 
   /** Releases the marks' GPU buffers. The tool is unusable after. */
