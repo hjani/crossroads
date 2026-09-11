@@ -1,5 +1,8 @@
 import * as THREE from "three";
-import { continuingDirectionsAt } from "../core/directions";
+import {
+  bisectorDirectionsAt,
+  continuingDirectionsAt,
+} from "../core/directions";
 import { isNodeId, type RoadNetwork } from "../core/RoadNetwork";
 import type { Node, Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -104,7 +107,11 @@ export class SmartArcTool implements Tool {
   private directionStubs(start: Node): Vec2[][] {
     const length = DIRECTION_MARK_PIXELS * this.viewport.metersPerPixel;
     const from = start.position;
-    return continuingDirectionsAt(this.network, start.id).map((direction) => [
+    const directions = [
+      ...continuingDirectionsAt(this.network, start.id),
+      ...bisectorDirectionsAt(this.network, start.id),
+    ];
+    return directions.map((direction) => [
       from,
       { x: from.x + direction.x * length, z: from.z + direction.z * length },
     ]);

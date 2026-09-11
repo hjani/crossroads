@@ -98,7 +98,7 @@ let the tool work out the curve.
       `docs/ideas/smart-arc.md`)
 - [x] smart arc tool: click a node and mark the natural directions a road
       could leave it by, one per section meeting it. No plan yet
-- [ ] add bisector directions, for branching into the gap between two
+- [x] add bisector directions, for branching into the gap between two
       roads
 - [ ] add perpendicular directions at a node with a single section
 - [ ] add the plain straight as a direction of its own, for a fork at any
@@ -110,6 +110,7 @@ let the tool work out the curve.
 - [ ] place the second point and plan a section per direction, the ones
       aimed away from it dropped. Full `SectionPlan`s, drawn with their
       junction marks and refusals, but passive — nothing is built yet
+- [ ] think about deduplicating and simplifying the set of alternatives
 - [ ] hovering a planned arc marks it as the one a click would build
 - [ ] click a planned arc to build it
 - [ ] directions from the far end as well as the start, drawn dimmer
