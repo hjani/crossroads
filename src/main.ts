@@ -33,7 +33,7 @@ const network = new RoadNetwork();
 const networkView = new NetworkView(network);
 scene.add(networkView.sceneObject);
 
-const tools = new ToolManager(renderer.domElement, window);
+const tools = new ToolManager(renderer.domElement, window, viewport);
 scene.add(tools.sceneObject);
 
 // Where the layers meet: the palette names the tools, and this is what the

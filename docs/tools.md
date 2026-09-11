@@ -49,9 +49,14 @@ A tool taking several points has a stage where there is not yet an edit to
 ask about. What it draws there is neither of those two answers, and takes a
 color of its own to say so.
 
-A tool has to expect the camera to move at any moment, unannounced and
-between any two events it hears — panning and zooming are not its own and
-happen whatever it is in the middle of.
+A tool has to expect the camera to move at any moment, between any two
+events it hears — panning and zooming are not its own and happen whatever
+it is in the middle of. A camera move, or a modifier pressed while the
+cursor stands still, changes what is under the cursor with no pointer
+event to say so. So the framework tells the active tool after every event
+it hands it and after every change of view, with where the pointer was
+last seen and which modifiers are held. It says only that something
+happened; what that means, usually a redraw, is the tool's to decide.
 
 Switching tools cancels whatever the old one had in progress and takes its
 preview off the screen. A tool leaves behind neither state nor geometry

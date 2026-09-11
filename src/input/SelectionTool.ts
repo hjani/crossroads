@@ -70,6 +70,10 @@ function sameSelection(
  * Clicking clear of everything deselects, which is how a selection is
  * dropped without leaving the tool.
  *
+ * The selected mark is drawn where the selection changes, since it depends
+ * on nothing else. The aimed mark depends on the cursor and the camera too,
+ * so it is drawn after every input and change of view.
+ *
  * The selection lives here and dies with the tool, since the manager
  * disposes a tool it switches away from.
  */
@@ -80,12 +84,6 @@ export class SelectionTool implements Tool {
 
   private selected: Selection | null = null;
 
-  /** Where the cursor was last seen, so the aimed mark can be redrawn
-   * without it having moved. Null until the pointer is first heard from. */
-  private cursor: ScreenPoint | null = null;
-
-  private readonly unsubscribeViewChanged: () => void;
-
   constructor(
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
@@ -94,8 +92,6 @@ export class SelectionTool implements Tool {
       this.aimedMark.sceneObject,
       this.selectedMark.sceneObject,
     );
-
-    this.unsubscribeViewChanged = viewport.onViewChanged(() => this.redraw());
   }
 
   get overlay(): THREE.Object3D {
@@ -106,19 +102,7 @@ export class SelectionTool implements Tool {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
-    this.cursor = point;
-    this.selected = this.selectionAt(ground);
-
-    // Both marks are redrawn under a cursor that has not moved: the click
-    // changed what is selected, and with it whether the aimed mark is the
-    // one being suppressed.
-    this.showSelected();
-    this.showAimed(ground);
-  }
-
-  onPointerMove(point: ScreenPoint): void {
-    this.cursor = point;
-    this.redraw();
+    this.select(this.selectionAt(ground));
   }
 
   /**
@@ -147,32 +131,26 @@ export class SelectionTool implements Tool {
     }
 
     // Dropped before anything is drawn: the marks read the network for
-    // what they draw, and what this named is no longer in it. The aimed
-    // mark is then asked again under a cursor that has not moved, deleting
-    // being one of the ways the answer changes underneath it.
-    this.selected = null;
-    this.selectedMark.hide();
-    this.redraw();
+    // what they draw, and what this named is no longer in it.
+    this.select(null);
   }
 
   /** Escape drops the selection. The aimed mark stays: it answers where the
-   * cursor is, not what was being held — and it is drawn again, since
-   * dropping the selection is what un-suppresses it. */
+   * cursor is, not what was being held. */
   cancel(): void {
-    this.selected = null;
-    this.selectedMark.hide();
-    this.redraw();
+    this.select(null);
   }
 
-  /** Draws the aimed mark from where the cursor was last seen, for when the
-   * answer changed under a cursor that has not moved. */
-  private redraw(): void {
-    if (this.cursor === null) return;
-
-    const ground = this.viewport.screenToGround(this.cursor);
-    if (ground === null) return;
-
+  afterInputOrViewChange(cursor: ScreenPoint | null): void {
+    const ground =
+      cursor === null ? null : this.viewport.screenToGround(cursor);
     this.showAimed(ground);
+  }
+
+  /** Changes what is selected, and the mark on it with it. */
+  private select(selection: Selection | null): void {
+    this.selected = selection;
+    this.showSelected();
   }
 
   /**
@@ -195,18 +173,18 @@ export class SelectionTool implements Tool {
   }
 
   /**
-   * Marks what the cursor is aimed at — that thing alone: a section is its
-   * line, a node the one mark. Marking what hangs off it as well would be
-   * a lot of movement for a question the line, or the node, has already
-   * answered.
+   * Marks what the cursor at `ground` is aimed at — that thing alone: a
+   * section is its line, a node the one mark. Marking what hangs off it as
+   * well would be a lot of movement for a question the line, or the node,
+   * has already answered.
    *
    * Nothing is drawn over what is already selected, there being nothing
    * worth painting over the selection to say. Over that exact thing only,
    * though: a section meeting the selected node is still marked, since
    * clicking it would change the selection.
    */
-  private showAimed(ground: Vec2): void {
-    const aimed = this.selectionAt(ground);
+  private showAimed(ground: Vec2 | null): void {
+    const aimed = ground === null ? null : this.selectionAt(ground);
     if (aimed === null || sameSelection(aimed, this.selected)) {
       this.aimedMark.hide();
       return;
@@ -270,7 +248,6 @@ export class SelectionTool implements Tool {
 
   /** Releases the marks' GPU buffers. The tool is unusable after. */
   dispose(): void {
-    this.unsubscribeViewChanged();
     this.aimedMark.dispose();
     this.selectedMark.dispose();
   }

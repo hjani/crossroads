@@ -55,16 +55,6 @@ export class ArcSectionTool implements Tool {
   private start: Placement | null = null;
   private end: Placement | null = null;
 
-  /** Where the cursor was last seen, so the decoration can be redrawn
-   * without it having moved. Null until the pointer is first heard from. */
-  private cursor: ScreenPoint | null = null;
-
-  /** What was held the last time either was heard from, since a redraw can
-   * be asked for by something that carries neither — the camera moving. */
-  private modifiers: Modifiers = { ctrl: false };
-
-  private readonly unsubscribeViewChanged: () => void;
-
   constructor(
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
@@ -75,8 +65,6 @@ export class ArcSectionTool implements Tool {
       this.viaHighlight.sceneObject,
       this.firstPointHighlight.sceneObject,
     );
-
-    this.unsubscribeViewChanged = viewport.onViewChanged(() => this.redraw());
   }
 
   get overlay(): THREE.Object3D {
@@ -84,9 +72,6 @@ export class ArcSectionTool implements Tool {
   }
 
   onPointerDown(point: ScreenPoint, modifiers: Modifiers): void {
-    this.cursor = point;
-    this.modifiers = modifiers;
-
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
@@ -97,10 +82,6 @@ export class ArcSectionTool implements Tool {
         ground,
         modifiers,
       );
-
-      // The mark on where a click lands gives way to the gesture, and the
-      // cursor has not moved to ask for it.
-      this.redraw();
       return;
     }
 
@@ -114,7 +95,6 @@ export class ArcSectionTool implements Tool {
       if (!this.reachesBeyondStart(ground, placed)) return;
 
       this.end = placed;
-      this.redraw();
       return;
     }
 
@@ -135,36 +115,13 @@ export class ArcSectionTool implements Tool {
       position: positionOfNode(this.network, far),
     };
     this.end = null;
-
-    this.redraw();
   }
 
-  /** Follows the cursor whether or not an arc is being drawn — the mark has
-   * to show before the first click, or there is no way to see that a click
-   * would join rather than start something new. */
-  onPointerMove(point: ScreenPoint, modifiers: Modifiers): void {
-    this.cursor = point;
-    this.modifiers = modifiers;
-    this.redraw();
-  }
-
-  /**
-   * Ctrl moves where the cursor would place a point without the cursor
-   * itself moving, so the decoration has to be redrawn from where it was
-   * last seen — otherwise the mark keeps claiming a snap that pressing the
-   * key has already called off.
-   */
-  onKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Control") this.setCtrl(true);
-  }
-
-  onKeyUp(event: KeyboardEvent): void {
-    if (event.key === "Control") this.setCtrl(false);
-  }
-
-  private setCtrl(ctrl: boolean): void {
-    this.modifiers = { ctrl };
-    this.redraw();
+  /** The mark on where a click would land comes back: it answers where the
+   * cursor is, not what was being drawn. */
+  cancel(): void {
+    this.start = null;
+    this.end = null;
   }
 
   /**
@@ -173,24 +130,29 @@ export class ArcSectionTool implements Tool {
    * each branch only has to put its own back. Which is also what leaves
    * nothing behind when there is no answer to draw at all.
    *
-   * Asked of the cursor and the modifiers as last seen, so it answers for
-   * whatever moved — the cursor, the modifier, or the camera under both.
+   * Drawn from scratch after every input and change of view, so it answers
+   * for whatever changed — the cursor, Ctrl, the camera, or how far the
+   * gesture has got. The mark on where the first click lands shows before
+   * that click, or there is no way to see that it would join rather than
+   * start something new.
    */
-  private redraw(): void {
+  afterInputOrViewChange(
+    cursor: ScreenPoint | null,
+    modifiers: Modifiers,
+  ): void {
     this.planView.hide();
     this.chordHighlight.hide();
     this.viaHighlight.hide();
     this.firstPointHighlight.hide();
 
-    if (this.cursor === null) return;
-
-    const ground = this.viewport.screenToGround(this.cursor);
+    const ground =
+      cursor === null ? null : this.viewport.screenToGround(cursor);
     if (ground === null) return;
 
     // Both ends down: the arc bending through where the cursor is, which is
     // the whole of what the next click would build plus the control point.
     if (this.start !== null && this.end !== null) {
-      const via = placeControlPoint(ground, this.modifiers);
+      const via = placeControlPoint(ground, modifiers);
       const plan = this.planThrough(via);
       if (plan !== null) {
         this.planView.showPlan(this.network, plan);
@@ -207,7 +169,7 @@ export class ArcSectionTool implements Tool {
         this.network,
         this.viewport,
         ground,
-        this.modifiers,
+        modifiers,
       );
       if (!this.reachesBeyondStart(ground, placed)) {
         this.chordHighlight.show([], [this.start.position]);
@@ -225,7 +187,7 @@ export class ArcSectionTool implements Tool {
       this.network,
       this.viewport,
       ground,
-      this.modifiers,
+      modifiers,
     );
     if (placed.kind !== "free") {
       this.firstPointHighlight.show(
@@ -274,17 +236,8 @@ export class ArcSectionTool implements Tool {
     return plan.pieces.length === 0 ? null : plan;
   }
 
-  /** The mark on where a click would land comes back: it answers where the
-   * cursor is, not what was being drawn. */
-  cancel(): void {
-    this.start = null;
-    this.end = null;
-    this.redraw();
-  }
-
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
   dispose(): void {
-    this.unsubscribeViewChanged();
     this.planView.dispose();
     this.chordHighlight.dispose();
     this.viaHighlight.dispose();

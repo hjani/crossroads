@@ -40,23 +40,11 @@ export class StraightSectionTool implements Tool {
 
   private pending: Placement | null = null;
 
-  /** Where the cursor was last seen, so the decoration can be redrawn
-   * without it having moved. Null until the pointer is first heard from. */
-  private cursor: ScreenPoint | null = null;
-
-  /** What was held the last time either was heard from, since a redraw can
-   * be asked for by something that carries neither — the camera moving. */
-  private modifiers: Modifiers = { ctrl: false };
-
-  private readonly unsubscribeViewChanged: () => void;
-
   constructor(
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
     this.decoration.add(this.planView.sceneObject, this.highlight.sceneObject);
-
-    this.unsubscribeViewChanged = viewport.onViewChanged(() => this.redraw());
   }
 
   get overlay(): THREE.Object3D {
@@ -64,9 +52,6 @@ export class StraightSectionTool implements Tool {
   }
 
   onPointerDown(point: ScreenPoint, modifiers: Modifiers): void {
-    this.cursor = point;
-    this.modifiers = modifiers;
-
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
@@ -93,64 +78,42 @@ export class StraightSectionTool implements Tool {
       endpoint: far,
       position: positionOfNode(this.network, far),
     };
-
-    // The decoration was drawn against the network as it was, where the
-    // section's points were nodes that would be made. They have been, so
-    // it is redrawn before the cursor moves and answers a question that
-    // has already changed under it.
-    this.redraw();
   }
 
-  /** Follows the cursor whether or not a section is being drawn — the mark
-   * has to show before the first click, or there is no way to see that a
-   * click would join rather than start something new. */
-  onPointerMove(point: ScreenPoint, modifiers: Modifiers): void {
-    this.cursor = point;
-    this.modifiers = modifiers;
-    this.redraw();
-  }
-
-  /**
-   * Ctrl moves where the cursor would place a point without the cursor
-   * itself moving, so the decoration has to be redrawn from where it was
-   * last seen — otherwise the mark keeps claiming a snap that pressing the
-   * key has already called off.
-   *
-   * Which handler ran says what the modifier now is, so the event's own
-   * `ctrlKey` is not consulted: browsers have not always agreed on what it
-   * reads on the press and release of the very key it describes.
-   */
-  onKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Control") this.setCtrl(true);
-  }
-
-  onKeyUp(event: KeyboardEvent): void {
-    if (event.key === "Control") this.setCtrl(false);
-  }
-
-  private setCtrl(ctrl: boolean): void {
-    this.modifiers = { ctrl };
-    this.redraw();
+  /** The node highlight comes back: it answers where the cursor is, not
+   * what was being drawn. */
+  cancel(): void {
+    this.pending = null;
   }
 
   /**
    * Draws what a click would do: the section it would build where there is
    * one to plan, and otherwise a mark on where the click would land.
    *
-   * Asked of the cursor and the modifiers as last seen, so it answers for
-   * whatever moved — the cursor, the modifier, or the camera under both.
+   * Drawn from scratch after every input and change of view, so it answers
+   * for whatever changed — the cursor, Ctrl, the camera, or the network once
+   * a click has built a section.
+   *
+   * The mark shows before the first click too, or there is no way to see
+   * that a click would join rather than start something new.
    */
-  private redraw(): void {
-    if (this.cursor === null) return;
-
-    const ground = this.viewport.screenToGround(this.cursor);
-    if (ground === null) return;
+  afterInputOrViewChange(
+    cursor: ScreenPoint | null,
+    modifiers: Modifiers,
+  ): void {
+    const ground =
+      cursor === null ? null : this.viewport.screenToGround(cursor);
+    if (ground === null) {
+      this.planView.hide();
+      this.highlight.hide();
+      return;
+    }
 
     const placed = placeEndpoint(
       this.network,
       this.viewport,
       ground,
-      this.modifiers,
+      modifiers,
     );
     const plan = this.planTo(ground, placed);
 
@@ -173,15 +136,6 @@ export class StraightSectionTool implements Tool {
         placed.kind === "node" ? EXISTING_NODE_COLOR : BUILDABLE_COLOR,
       );
     }
-  }
-
-  /** The node highlight stays: it answers where the cursor is, not what was
-   * being drawn — and it is drawn again, since the plan it stood aside for
-   * is gone. */
-  cancel(): void {
-    this.pending = null;
-    this.planView.hide();
-    this.redraw();
   }
 
   /**
@@ -224,7 +178,6 @@ export class StraightSectionTool implements Tool {
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
   dispose(): void {
-    this.unsubscribeViewChanged();
     this.planView.dispose();
     this.highlight.dispose();
   }

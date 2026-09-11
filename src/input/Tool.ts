@@ -2,12 +2,13 @@ import type * as THREE from "three";
 import type { ScreenPoint } from "../render/Viewport";
 
 /**
- * The modifier keys held as a pointer event was reported.
+ * The modifier keys held.
  *
- * Taken from the event itself rather than tracked across keydown and
- * keyup, so it describes the moment the click or move happened and cannot
- * drift out of step with it — a key released while the window had no
- * focus, say. What a modifier means is the tool's to decide.
+ * A pointer handler gets them from its own event, so they describe the
+ * moment the click or move happened. `afterInputOrViewChange` gets the
+ * manager's record instead, kept from pointer events and from Ctrl being
+ * pressed and released — a camera move has no event of its own to read them
+ * from. What a modifier means is the tool's to decide.
  */
 export interface Modifiers {
   readonly ctrl: boolean;
@@ -38,6 +39,19 @@ export interface Tool {
 
   onKeyDown?(event: KeyboardEvent): void;
   onKeyUp?(event: KeyboardEvent): void;
+
+  /**
+   * Called after every event the manager hands this tool, `cancel` included,
+   * and after every change of view. What to do about it is the tool's to
+   * decide; redrawing the preview is the usual answer.
+   *
+   * `cursor` is where the pointer was last seen over the canvas, null until
+   * it has been.
+   */
+  afterInputOrViewChange?(
+    cursor: ScreenPoint | null,
+    modifiers: Modifiers,
+  ): void;
 
   /**
    * Abandon any edit in progress and clear the preview, leaving the tool
