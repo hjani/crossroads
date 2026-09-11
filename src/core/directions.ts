@@ -17,10 +17,6 @@ export function continuingDirectionsAt(
 ): Vec2[] {
   return network.sectionsAt(node).map((id) => {
     const section = network.getSection(id);
-    if (section === undefined) {
-      throw new Error(`Unknown section ${id}`);
-    }
-
     if (section.to === node) {
       return sectionDirectionAt(network, section, 1);
     }

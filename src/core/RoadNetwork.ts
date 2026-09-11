@@ -108,12 +108,25 @@ export class RoadNetwork {
     }
   }
 
-  getNode(id: NodeId): Node | undefined {
-    return this.nodes.get(id);
+  /**
+   * Throws for an unknown node, as `addSection` does: an id held by anything
+   * reading the network is expected to be one the network still knows.
+   */
+  getNode(id: NodeId): Node {
+    const node = this.nodes.get(id);
+    if (node === undefined) {
+      throw new Error(`Unknown node ${id}`);
+    }
+    return node;
   }
 
-  getSection(id: SectionId): Section | undefined {
-    return this.sections.get(id);
+  /** Throws for an unknown section, as `getNode` does for a node. */
+  getSection(id: SectionId): Section {
+    const section = this.sections.get(id);
+    if (section === undefined) {
+      throw new Error(`Unknown section ${id}`);
+    }
+    return section;
   }
 
   /**
@@ -143,23 +156,9 @@ export class RoadNetwork {
     this.currentVersion++;
   }
 
-  /**
-   * Where an endpoint is, throwing if it names a node that does not exist.
-   *
-   * Checking and reading the position are one step because the caller needs
-   * both, and a position it could not read is the very thing the check is
-   * about.
-   */
+  /** Where an endpoint is, throwing if it names a node that does not exist. */
   private requirePosition(endpoint: Endpoint): Vec2 {
-    if (!isNodeId(endpoint)) {
-      return endpoint;
-    }
-
-    const node = this.nodes.get(endpoint);
-    if (node === undefined) {
-      throw new Error(`Unknown node ${endpoint}`);
-    }
-    return node.position;
+    return isNodeId(endpoint) ? this.getNode(endpoint).position : endpoint;
   }
 
   private resolve(endpoint: Endpoint): NodeId {

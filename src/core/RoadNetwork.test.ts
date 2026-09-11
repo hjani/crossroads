@@ -10,8 +10,8 @@ function at(x: number, z: number): Vec2 {
  *  asserted whole without naming ids. */
 function layout(network: RoadNetwork): string[] {
   const ends = (id: NodeId): string => {
-    const node = network.getNode(id);
-    return node === undefined ? "?" : `(${node.position.x},${node.position.z})`;
+    const { position } = network.getNode(id);
+    return `(${position.x},${position.z})`;
   };
 
   return [...network.allSections()]

@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
 import { isSamePoint } from "../core/points";
-import { positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -112,7 +111,7 @@ export class ArcSectionTool implements Tool {
     this.start = {
       kind: "node",
       endpoint: far,
-      position: positionOfNode(this.network, far),
+      position: this.network.getNode(far).position,
     };
     this.end = null;
   }

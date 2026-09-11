@@ -1,5 +1,4 @@
 import { arcPolyline } from "../core/arcs";
-import { positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Section, SectionGeometry, Vec2 } from "../core/types";
 
@@ -38,8 +37,8 @@ export function tessellate(
   section: Section,
 ): readonly Vec2[] {
   return polylineBetween(
-    positionOfNode(network, section.from),
-    positionOfNode(network, section.to),
+    network.getNode(section.from).position,
+    network.getNode(section.to).position,
     section.geometry,
   );
 }

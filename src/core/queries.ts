@@ -13,14 +13,7 @@ import {
   type Crossing,
 } from "./segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import type {
-  Node,
-  NodeId,
-  Section,
-  SectionGeometry,
-  SectionId,
-  Vec2,
-} from "./types";
+import type { Node, Section, SectionGeometry, SectionId, Vec2 } from "./types";
 
 /**
  * Geometric questions asked of the network from outside it.
@@ -116,8 +109,8 @@ export function nearestPointOnSection(
   section: Section,
   to: Vec2,
 ): Vec2 {
-  const from = positionOfNode(network, section.from);
-  const end = positionOfNode(network, section.to);
+  const from = network.getNode(section.from).position;
+  const end = network.getNode(section.to).position;
 
   if (section.geometry.kind === "arc") {
     const { via } = section.geometry;
@@ -136,8 +129,8 @@ export function sectionDirectionAt(
   section: Section,
   t: number,
 ): Vec2 {
-  const from = positionOfNode(network, section.from);
-  const end = positionOfNode(network, section.to);
+  const from = network.getNode(section.from).position;
+  const end = network.getNode(section.to).position;
 
   return section.geometry.kind === "arc"
     ? arcDirectionAt(from, end, section.geometry.via, t)
@@ -172,22 +165,9 @@ export function nodeWithin(
   return null;
 }
 
-/**
- * Where a node is. Throws if the network does not have it, as `addSection`
- * does — an id held by anything reading the network is expected to be one
- * the network still knows.
- */
-export function positionOfNode(network: RoadNetwork, id: NodeId): Vec2 {
-  const node = network.getNode(id);
-  if (node === undefined) {
-    throw new Error(`Unknown node ${id}`);
-  }
-  return node.position;
-}
-
 /** Where an endpoint is, whether it names a node or carries a position. */
 export function positionOf(network: RoadNetwork, endpoint: Endpoint): Vec2 {
-  return isNodeId(endpoint) ? positionOfNode(network, endpoint) : endpoint;
+  return isNodeId(endpoint) ? network.getNode(endpoint).position : endpoint;
 }
 
 /** A place where a section between two endpoints would cross an existing one. */
@@ -228,8 +208,8 @@ export function crossingsAlong(
       start,
       end,
       geometry,
-      positionOfNode(network, section.from),
-      positionOfNode(network, section.to),
+      network.getNode(section.from).position,
+      network.getNode(section.to).position,
       section.geometry,
     );
 
@@ -303,7 +283,7 @@ function isCrossingAtJoin(
 ): boolean {
   for (const node of [crossed.from, crossed.to]) {
     const shared = node === plannedFrom || node === plannedTo;
-    if (shared && isSamePoint(crossingPoint, positionOfNode(network, node))) {
+    if (shared && isSamePoint(crossingPoint, network.getNode(node).position)) {
       return true;
     }
   }

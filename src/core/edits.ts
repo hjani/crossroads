@@ -7,7 +7,6 @@ import {
   nearestSection,
   nodeWithin,
   positionOf,
-  positionOfNode,
 } from "./queries";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
 import {
@@ -273,14 +272,14 @@ function cutSection(
   id: SectionId,
   at: readonly NodeId[],
 ): void {
-  const section = getSection(network, id);
-  const from = positionOfNode(network, section.from);
-  const to = positionOfNode(network, section.to);
+  const section = network.getSection(id);
+  const from = network.getNode(section.from).position;
+  const to = network.getNode(section.to).position;
 
   const places = at
     .filter((node) => node !== section.from && node !== section.to)
     .map((node) => {
-      const place = positionOfNode(network, node);
+      const place = network.getNode(node).position;
       return {
         node,
         place,
@@ -377,7 +376,7 @@ function plannedCrossing(
   at: Endpoint,
 ): PlannedPoint {
   const place = positionOf(network, at);
-  const end = endAt(network, getSection(network, section), place);
+  const end = endAt(network, network.getSection(section), place);
   return end === null ? { at, cuts: [section] } : { at: end, cuts: [] };
 }
 
@@ -473,22 +472,13 @@ function endAt(
   section: Section,
   place: Vec2,
 ): NodeId | null {
-  if (isSamePoint(place, positionOfNode(network, section.from))) {
+  if (isSamePoint(place, network.getNode(section.from).position)) {
     return section.from;
   }
-  if (isSamePoint(place, positionOfNode(network, section.to))) {
+  if (isSamePoint(place, network.getNode(section.to).position)) {
     return section.to;
   }
   return null;
-}
-
-/** Throws for an unknown section, as `positionOfNode` does for a node. */
-function getSection(network: RoadNetwork, id: SectionId): Section {
-  const section = network.getSection(id);
-  if (section === undefined) {
-    throw new Error(`Unknown section ${id}`);
-  }
-  return section;
 }
 
 /**

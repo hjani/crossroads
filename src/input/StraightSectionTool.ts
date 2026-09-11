@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
-import { positionOfNode } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import { STRAIGHT, type Vec2 } from "../core/types";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -76,7 +75,7 @@ export class StraightSectionTool implements Tool {
     this.pending = {
       kind: "node",
       endpoint: far,
-      position: positionOfNode(this.network, far),
+      position: this.network.getNode(far).position,
     };
   }
 

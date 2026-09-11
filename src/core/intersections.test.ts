@@ -69,9 +69,9 @@ function cutPoints(network: RoadNetwork, plan: SectionPlan): Vec2[] {
 function layout(network: RoadNetwork): string[] {
   return [...network.allSections()]
     .map((section) => {
-      const from = network.getNode(section.from)?.position;
-      const to = network.getNode(section.to)?.position;
-      return `(${from?.x},${from?.z})-(${to?.x},${to?.z})`;
+      const from = network.getNode(section.from).position;
+      const to = network.getNode(section.to).position;
+      return `(${from.x},${from.z})-(${to.x},${to.z})`;
     })
     .sort();
 }

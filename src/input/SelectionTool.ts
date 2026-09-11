@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { nearestNode, nearestSection, positionOfNode } from "../core/queries";
+import { nearestNode, nearestSection } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
-import type { NodeId, Section, SectionId, Vec2 } from "../core/types";
+import type { NodeId, SectionId, Vec2 } from "../core/types";
 import {
   SectionHighlight,
   type HighlightedSection,
@@ -191,7 +191,7 @@ export class SelectionTool implements Tool {
     }
 
     if (aimed.kind === "node") {
-      this.aimedMark.show([], [positionOfNode(this.network, aimed.id)]);
+      this.aimedMark.show([], [this.network.getNode(aimed.id).position]);
     } else {
       this.aimedMark.show([this.highlightOf(aimed.id)], []);
     }
@@ -214,15 +214,15 @@ export class SelectionTool implements Tool {
     if (selected.kind === "node") {
       this.selectedMark.show(
         this.network.sectionsAt(selected.id).map((id) => this.highlightOf(id)),
-        [positionOfNode(this.network, selected.id)],
+        [this.network.getNode(selected.id).position],
       );
     } else {
-      const section = this.sectionOf(selected.id);
+      const section = this.network.getSection(selected.id);
       this.selectedMark.show(
         [tessellate(this.network, section)],
         [
-          positionOfNode(this.network, section.from),
-          positionOfNode(this.network, section.to),
+          this.network.getNode(section.from).position,
+          this.network.getNode(section.to).position,
         ],
       );
     }
@@ -230,20 +230,7 @@ export class SelectionTool implements Tool {
 
   /** The shape a section is drawn in, which is what the mark on it draws. */
   private highlightOf(id: SectionId): HighlightedSection {
-    return tessellate(this.network, this.sectionOf(id));
-  }
-
-  /**
-   * The section an id names. Throws for one the network does not have, as
-   * `positionOfNode` does: what is selected came from a query a moment
-   * earlier, and nothing else edits the network while this tool is active.
-   */
-  private sectionOf(id: SectionId): Section {
-    const section = this.network.getSection(id);
-    if (section === undefined) {
-      throw new Error(`Unknown section ${id}`);
-    }
-    return section;
+    return tessellate(this.network, this.network.getSection(id));
   }
 
   /** Releases the marks' GPU buffers. The tool is unusable after. */
