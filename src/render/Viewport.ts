@@ -52,7 +52,14 @@ export class Viewport {
   private readonly viewChangedListeners = new Set<() => void>();
 
   constructor(readonly domElement: HTMLElement) {
-    this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, NEAR_PLANE, FAR_PLANE);
+    this.camera = new THREE.OrthographicCamera(
+      -1,
+      1,
+      1,
+      -1,
+      NEAR_PLANE,
+      FAR_PLANE,
+    );
     this.camera.position.set(0, CAMERA_HEIGHT, 0);
     // Looking straight down, screen up is world -Z, so screen right is world +X.
     this.camera.up.set(0, 0, -1);
@@ -119,7 +126,10 @@ export class Viewport {
     );
 
     this.raycaster.setFromCamera(this.normalizedPoint, this.camera);
-    const hit = this.raycaster.ray.intersectPlane(GROUND_PLANE, this.worldPoint);
+    const hit = this.raycaster.ray.intersectPlane(
+      GROUND_PLANE,
+      this.worldPoint,
+    );
     return hit === null ? null : { x: hit.x, z: hit.z };
   }
 

@@ -106,7 +106,10 @@ function appendPolyline(points: readonly Vec2[], coordinates: number[]): void {
 
 function makeGeometry(points: readonly number[]): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(points, 3),
+  );
   return geometry;
 }
 

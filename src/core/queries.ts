@@ -259,13 +259,9 @@ function shapesCrossing(
         otherGeometry.via,
       );
     }
-    return segmentArcCrossings(
-      otherFrom,
-      otherTo,
-      from,
-      to,
-      geometry.via,
-    ).map(fromTheOtherSide);
+    return segmentArcCrossings(otherFrom, otherTo, from, to, geometry.via).map(
+      fromTheOtherSide,
+    );
   }
 
   if (otherGeometry.kind === "arc") {

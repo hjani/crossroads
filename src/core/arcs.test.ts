@@ -95,20 +95,12 @@ describe("pointOnArc", () => {
   });
 
   it("passes through the via halfway when the via is the midpoint", () => {
-    expectAt(
-      pointOnArc(east, north, northeast, 0.5),
-      northeast.x,
-      northeast.z,
-    );
+    expectAt(pointOnArc(east, north, northeast, 0.5), northeast.x, northeast.z);
   });
 
   it("goes the other way round for a via on the other side", () => {
     // Halfway along the three-quarter arc is due southwest, not northeast.
-    expectAt(
-      pointOnArc(east, north, southwest, 0.5),
-      southwest.x,
-      southwest.z,
-    );
+    expectAt(pointOnArc(east, north, southwest, 0.5), southwest.x, southwest.z);
   });
 
   it("mirrors when the ends are swapped", () => {
@@ -156,9 +148,9 @@ describe("arcFractionAt", () => {
   });
 
   it("measures along the segment when the three are in a line", () => {
-    expect(arcFractionAt(at(0, 0), at(10, 0), at(5, 0), at(2.5, 0))).toBeCloseTo(
-      0.25,
-    );
+    expect(
+      arcFractionAt(at(0, 0), at(10, 0), at(5, 0), at(2.5, 0)),
+    ).toBeCloseTo(0.25);
   });
 });
 
@@ -220,7 +212,13 @@ describe("segmentArcCrossings", () => {
     // the circle: the line still meets it twice, and the segment reaches
     // neither.
     expect(
-      segmentArcCrossings(at(-3, Math.SQRT1_2), at(-2, Math.SQRT1_2), west, east, top),
+      segmentArcCrossings(
+        at(-3, Math.SQRT1_2),
+        at(-2, Math.SQRT1_2),
+        west,
+        east,
+        top,
+      ),
     ).toEqual([]);
   });
 
@@ -322,9 +320,7 @@ describe("arcArcCrossings", () => {
   it("has nothing to report for two arcs of one circle", () => {
     // The same circle meets itself everywhere rather than at a point, which
     // is not a crossing — as two collinear segments are not.
-    expect(
-      arcArcCrossings(west, east, top, east, west, at(0, -1)),
-    ).toEqual([]);
+    expect(arcArcCrossings(west, east, top, east, west, at(0, -1))).toEqual([]);
   });
 
   it("crosses a via in line with the ends as a straight would", () => {
@@ -404,8 +400,9 @@ describe("arcPolyline", () => {
     const circle = circleThrough(east, north, northeast);
 
     for (const tolerance of [0.5, 0.1, 0.01, 0.0001]) {
-      expect(worstSag(arcPolyline(east, north, northeast, tolerance), circle))
-        .toBeLessThanOrEqual(tolerance);
+      expect(
+        worstSag(arcPolyline(east, north, northeast, tolerance), circle),
+      ).toBeLessThanOrEqual(tolerance);
     }
   });
 

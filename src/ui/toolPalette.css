@@ -13,7 +13,9 @@
      nothing to separate it from the black the canvas clears to. */
   background: rgba(26, 28, 34, 0.82);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  font: 13px/1 system-ui, sans-serif;
+  font:
+    13px/1 system-ui,
+    sans-serif;
   /* A click here is a command, not a text selection: dragging across the
      buttons must not leave labels highlighted. */
   user-select: none;
