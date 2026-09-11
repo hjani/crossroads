@@ -167,8 +167,7 @@ export function withinPickRadius(
   ground: Vec2,
   of: Vec2,
 ): boolean {
-  const distance = Math.hypot(ground.x - of.x, ground.z - of.z);
-  return distance <= pickRadiusMeters(viewport);
+  return distance(ground, of) <= pickRadiusMeters(viewport);
 }
 
 /** The weld radius as a distance on the ground, at the current zoom. */
