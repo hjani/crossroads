@@ -96,8 +96,8 @@ let the tool work out the curve.
       within the pick radius, rounded to where it crosses a grid line
 - [ ] `docs/tools.md` — design note for the smart arc tool (reasoning in
       `docs/ideas/smart-arc.md`)
-- [ ] smart arc tool: click a node and mark the directions a road could
-      leave it by, one per section meeting it. No plan yet
+- [x] smart arc tool: click a node and mark the natural directions a road
+      could leave it by, one per section meeting it. No plan yet
 - [ ] add bisector directions, for branching into the gap between two
       roads
 - [ ] add perpendicular directions at a node with a single section

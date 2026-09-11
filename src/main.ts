@@ -3,6 +3,7 @@ import { RoadNetwork } from "./core/RoadNetwork";
 import { ArcSectionTool } from "./input/ArcSectionTool";
 import { PanZoomControls } from "./input/PanZoomControls";
 import { SelectionTool } from "./input/SelectionTool";
+import { SmartArcTool } from "./input/SmartArcTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
 import { NetworkView } from "./render/NetworkView";
@@ -54,6 +55,11 @@ const palette = new ToolPalette(document.body, [
     id: "arc",
     label: "Arc",
     activate: () => tools.setActiveTool(new ArcSectionTool(network, viewport)),
+  },
+  {
+    id: "smart-arc",
+    label: "Smart Arc",
+    activate: () => tools.setActiveTool(new SmartArcTool(network, viewport)),
   },
 ]);
 palette.select("straight");
