@@ -87,6 +87,60 @@ export function isArcValid(from: Vec2, to: Vec2, via: Vec2): boolean {
 }
 
 /**
+ * Finds the arc that starts at `from`, leaves it in `direction`, and ends at
+ * `to`. Returns the arc's midpoint, to be used as its `via`.
+ *
+ * Returns null when there is no such arc:
+ * - `direction` points exactly away from `to` (the arc would be a full circle)
+ * - `from` and `to` are the same point, or `direction` is zero
+ *
+ * Let `d = to − from` be the chord, `m` its midpoint, `p = (−d.z, d.x)` the
+ * chord rotated by 90°, and θ the angle between `direction` and `d`.
+ *
+ * - The arc turns through 2θ (tangent–chord angle theorem).
+ * - The arc's midpoint is on the line through `m` perpendicular to the chord,
+ *   at distance `(|d| / 2) · tan(θ/2)` from `m`, on the side `direction`
+ *   points to.
+ * - With `tan(θ/2) = sin θ / (1 + cos θ)`, where
+ *   `sin θ = direction·p / (|direction| |d|)` (its sign gives the side) and
+ *   `cos θ = direction·d / (|direction| |d|)`, this becomes:
+ *
+ *       via = m + p · (direction·p) / (2 · (|direction| |d| + direction·d))
+ *
+ * No angle is computed, and `direction` does not need to be a unit vector.
+ *
+ * If `direction` points exactly at `to`, the result is `m`: three points in a
+ * line, which this module treats as a straight. If it points away from `to`,
+ * the result is the long arc, more than a half circle. The zero check only
+ * guards the division, as in `arcCircle`.
+ */
+export function arcViaLeaving(
+  from: Vec2,
+  direction: Vec2,
+  to: Vec2,
+): Vec2 | null {
+  const chordX = to.x - from.x;
+  const chordZ = to.z - from.z;
+  // p: the chord rotated by 90°.
+  const perpX = -chordZ;
+  const perpZ = chordX;
+
+  const lengths =
+    Math.hypot(direction.x, direction.z) * Math.hypot(chordX, chordZ);
+  const alongChord = direction.x * chordX + direction.z * chordZ;
+  const denominator = 2 * (lengths + alongChord);
+  if (denominator === 0) {
+    return null;
+  }
+
+  const offset = (direction.x * perpX + direction.z * perpZ) / denominator;
+  return {
+    x: from.x + chordX / 2 + perpX * offset,
+    z: from.z + chordZ / 2 + perpZ * offset,
+  };
+}
+
+/**
  * The point a fraction `t` of the way along the arc `from`–`via`–`to`, 0 at
  * `from` and 1 at `to`.
  *

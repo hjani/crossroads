@@ -105,7 +105,7 @@ let the tool work out the curve.
       angle
 - [x] directions at a start placed on a road rather than a node: the
       road's heading there forward and back, plus the two perpendiculars
-- [ ] core: the arc through a point, a direction there, and a second point
+- [x] core: the arc through a point, a direction there, and a second point
 - [ ] place the second point and plan a section per direction, the ones
       aimed away from it dropped. Full `SectionPlan`s, drawn with their
       junction marks and refusals, but passive — nothing is built yet

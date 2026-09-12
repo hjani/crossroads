@@ -6,6 +6,7 @@ import {
   arcFractionAt,
   arcLength,
   arcPolyline,
+  arcViaLeaving,
   pointOnArc,
   segmentArcCrossings,
   type ArcCircle,
@@ -86,6 +87,73 @@ describe("arcCircle", () => {
   it("is null for a via sitting on an end", () => {
     expect(arcCircle(east, north, east)).toBeNull();
     expect(arcCircle(east, north, north)).toBeNull();
+  });
+});
+
+/** The via, or a failure saying so rather than one about null. */
+function viaLeaving(from: Vec2, direction: Vec2, to: Vec2): Vec2 {
+  const via = arcViaLeaving(from, direction, to);
+  if (via === null) {
+    throw new Error("expected an arc leaving in that direction");
+  }
+  return via;
+}
+
+describe("arcViaLeaving", () => {
+  it("gives the midpoint of a quarter circle", () => {
+    // From east heading north, to north: a quarter of the unit circle.
+    expectAt(viaLeaving(east, at(0, 1), north), northeast.x, northeast.z);
+  });
+
+  it("bends to the side the direction points to", () => {
+    // From east heading west, to north: a quarter of the circle around (1, 1).
+    expectAt(
+      viaLeaving(east, at(-1, 0), north),
+      1 - Math.SQRT1_2,
+      1 - Math.SQRT1_2,
+    );
+  });
+
+  it("takes the long way round for a direction pointing away from the end", () => {
+    // From east heading south, to north: three quarters of the unit circle.
+    expectAt(viaLeaving(east, at(0, -1), north), southwest.x, southwest.z);
+  });
+
+  it("gives a half circle for a direction perpendicular to the chord", () => {
+    expectAt(viaLeaving(at(0, 0), at(0, 1), at(10, 0)), 5, 5);
+  });
+
+  it("gives an arc that leaves in the direction and has the via halfway", () => {
+    // The chord points at 135°. These directions avoid 135° and 315°, and
+    // include some that point away from the end (long arcs).
+    const from = at(3, -2);
+    const to = at(-4, 5);
+    for (const angle of [0.3, 1.2, 2.0, 3.5, 4.5]) {
+      const direction = at(Math.cos(angle), Math.sin(angle));
+      const via = viaLeaving(from, direction, to);
+
+      expectAt(arcDirectionAt(from, to, via, 0), direction.x, direction.z);
+      expectAt(pointOnArc(from, to, via, 0.5), via.x, via.z);
+    }
+  });
+
+  it("gives a via in line with the ends for a direction aimed at the end", () => {
+    const via = viaLeaving(at(0, 0), at(1, 0), at(10, 0));
+
+    expectAt(via, 5, 0);
+    expect(arcCircle(at(0, 0), at(10, 0), via)).toBeNull();
+  });
+
+  it("does not depend on the direction's length", () => {
+    expectAt(viaLeaving(at(0, 0), at(0, 3), at(10, 0)), 5, 5);
+  });
+
+  it("is null for a direction pointing exactly away from the end", () => {
+    expect(arcViaLeaving(at(0, 0), at(-1, 0), at(10, 0))).toBeNull();
+  });
+
+  it("is null when the ends are the same point", () => {
+    expect(arcViaLeaving(east, at(0, 1), east)).toBeNull();
   });
 });
 
