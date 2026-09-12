@@ -145,6 +145,34 @@ them.
 
 Cancelling drops the whole arc rather than stepping back a point.
 
+## Placing a smart arc
+
+A three-point arc meets the roads at its ends at whatever angle its points
+give, so a smooth join has to be hunted for by eye. The smart arc takes its
+direction from where it starts instead: the join is given, and the far end
+is all that is left to place.
+
+A click places the start, by the same rules as any section end. The start
+offers the directions a road would naturally leave it by:
+
+- at a node: each road carried on past it, the middle of each gap between
+  roads, and square to each road
+- along a road: its heading both ways, and square to it
+- on open ground: none
+
+The cursor is the far end, and a flick chooses the direction. Where the
+cursor first leaves a capture circle around the start, wider than the pick
+radius, picks the offered direction nearest the way it went — or on open
+ground, that way itself, rounded to 15°. The pick holds until the cursor is
+back inside the pick radius, so a short road keeps it. Until there is one,
+nothing is planned.
+
+The road leaving the start in the picked direction and reaching the far end
+is planned and drawn like any other edit, unless it would turn more than
+three quarters of a circle. A click builds it, and its far end starts the
+next arc, so a run of curves joins smoothly without aiming any join.
+Cancelling ends the run and keeps what was built.
+
 ## Selection
 
 Selecting is a tool like any other, and while it is active nothing is
@@ -207,6 +235,7 @@ one of the ways the answer changes underneath it.
 - Escape — cancel the edit in progress.
 - Delete, Backspace — remove the selection.
 - Ctrl, held — place the point without rounding it; welding still applies.
+- C — smart arc: show the plan for every offered direction, as a debug view.
 
 Middle-button gestures stay unclaimed, for an orbiting camera later.
 

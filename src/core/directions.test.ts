@@ -4,6 +4,7 @@ import {
   continuingDirectionsAt,
   geometryLeaving,
   midSectionDirectionsAt,
+  nearestDirection,
   perpendicularDirectionsAt,
 } from "./directions";
 import { distance } from "./points";
@@ -242,6 +243,37 @@ describe("midSectionDirectionsAt", () => {
     expect(() =>
       midSectionDirectionsAt(new RoadNetwork(), 99 as SectionId, at(0, 0)),
     ).toThrow();
+  });
+});
+
+describe("nearestDirection", () => {
+  const compass = [at(1, 0), at(0, 1), at(-1, 0), at(0, -1)];
+
+  it("picks the direction at the smallest angle to the aim", () => {
+    // 30° round from east toward north.
+    expect(nearestDirection(compass, at(Math.sqrt(3) / 2, 0.5))).toEqual(
+      at(1, 0),
+    );
+  });
+
+  it("does not depend on how long the aim is", () => {
+    expect(nearestDirection(compass, at(0.001, 0.003))).toEqual(at(0, 1));
+    expect(nearestDirection(compass, at(100, 300))).toEqual(at(0, 1));
+  });
+
+  it("picks the least far round where every direction points away", () => {
+    expect(nearestDirection([at(-1, 0), at(0, -1)], at(1, 0.1))).toEqual(
+      at(0, -1),
+    );
+  });
+
+  it("keeps the first of two tied directions", () => {
+    // Exactly between east and north.
+    expect(nearestDirection(compass, at(1, 1))).toBe(compass[0]);
+  });
+
+  it("is null without directions", () => {
+    expect(nearestDirection([], at(1, 0))).toBeNull();
   });
 });
 

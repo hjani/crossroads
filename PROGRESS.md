@@ -4,10 +4,10 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0 through M4 are done — M3 came ahead of the curves because a second tool
-needs a way to be chosen, and because nothing could be deleted. Current:
-**M5 — Placing sections**
-Next step: `docs/tools.md` design note for the smart arc tool
+M0 through M5 are done — M3 came ahead of the curves because a second tool
+needs a way to be chosen, and because nothing could be deleted.
+Next step: not chosen yet — M6 is a stretch goal, and the backlog is the
+alternative
 
 ## Milestones
 
@@ -94,16 +94,14 @@ let the tool work out the curve.
 - [x] start or end a section on an existing road, not only on a node. An
       end within a centimeter of a road cuts it; the tools weld onto a road
       within the pick radius, rounded to where it crosses a grid line
-- [ ] `docs/tools.md` — design note for the smart arc tool (reasoning in
-      `docs/ideas/smart-arc.md`)
+- [x] `docs/tools.md` — design note for the smart arc tool (reasoning in
+      `docs/ideas/smart-arc.md`), written once the workflow had settled
 - [x] smart arc tool: click a node and mark the natural directions a road
       could leave it by, one per section meeting it. No plan yet
 - [x] add bisector directions, for branching into the gap between two
       roads
 - [x] add perpendicular directions: a pair per section meeting the node,
       so a road can branch off any junction at a right angle
-- [ ] add the plain straight as a direction of its own, for a fork at any
-      angle
 - [x] directions at a start placed on a road rather than a node: the
       road's heading there forward and back, plus the two perpendiculars
 - [x] core: the arc through a point, a direction there, and a second point
@@ -111,12 +109,19 @@ let the tool work out the curve.
       the ones that turn further than three quarters of a circle. Full
       `SectionPlan`s, drawn with their junction marks and refusals, but
       passive — nothing is built yet
-- [ ] think about deduplicating and simplifying the set of alternatives
-- [ ] hovering a planned arc marks it as the one a click would build
-- [ ] click a planned arc to build it
-- [ ] directions from the far end as well as the start, drawn dimmer
-- [ ] optional: fit the arc to the cursor path, for when neither end
-      offers a direction
+- [x] choose the direction with a flick: where the cursor first leaves a
+      capture circle around the start, wider than the pick radius, locks
+      the direction aimed most nearly that way. Only that one is planned
+      from then on, out to the cursor, and it plans nothing where it would
+      turn too far. The lock is released back inside the pick radius, not
+      the capture circle, so a short section keeps its flick. Every
+      direction's plan is still there as a debug view, toggled with C
+- [x] click to build the planned arc, instead of fixing the far end. It
+      chains like the straight tool: the far end starts the next arc, whose
+      continuing direction is the tangent of the one just built
+- [x] start on open ground, which offers no direction: the flick keeps its
+      own heading, rounded to 15°. Replaces fitting the arc to the cursor
+      path
 
 ### M6 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
@@ -130,6 +135,10 @@ Wanted, but not part of a milestone yet.
       both ends cut the road, and the new section lies on top of the piece
       between them. An arc does the same only if its control point lands on
       the road's own circle
+- [ ] straight tool: offer the smart arc tool's directions at the start, and
+      pull the section onto one when the cursor is close to it. Unlike an
+      arc's, the far end then moves off the cursor, so it needs a guide drawn
+      along the direction to show why
 - [ ] evaluate a UI framework for `src/ui/`. The panels are hand-written
       DOM, which is fine while they issue commands and starts to hurt when
       one has to reflect model state that changes elsewhere — the first

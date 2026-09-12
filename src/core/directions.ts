@@ -107,6 +107,40 @@ export function midSectionDirectionsAt(
 }
 
 /**
+ * The one of `directions` aimed most nearly along `toward`, or null where there
+ * are no directions.
+ *
+ * Let `dᵢ` be each direction, and θᵢ the angle between `dᵢ` and `toward`.
+ *
+ * - `dᵢ·toward = |dᵢ| |toward| cos θᵢ`
+ * - `|dᵢ| = 1` for every direction, and `|toward|` is the same for all of them,
+ *   so the dot product orders them as cos θᵢ does.
+ * - θᵢ is in 0..π, where cos is decreasing, so the smallest angle has the
+ *   largest dot product:
+ *
+ *       nearest = argmax dᵢ·toward
+ *
+ * No angle or length is computed, and `toward` does not need to be a unit
+ * vector. A tie keeps the first of the tied directions, which a zero `toward`
+ * makes of all of them.
+ */
+export function nearestDirection(
+  directions: readonly Vec2[],
+  toward: Vec2,
+): Vec2 | null {
+  let nearest: Vec2 | null = null;
+  let largestDot = -Infinity;
+  for (const direction of directions) {
+    const dot = direction.x * toward.x + direction.z * toward.z;
+    if (dot > largestDot) {
+      nearest = direction;
+      largestDot = dot;
+    }
+  }
+  return nearest;
+}
+
+/**
  * The shape of the road that leaves `from` in `direction` and ends at `to`:
  * an arc, or a straight where that arc bends too little to tell from one.
  *

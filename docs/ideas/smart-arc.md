@@ -1,8 +1,8 @@
 # Smart Arc — brainstorming notes
 
-Not a design note. Nothing here is decided, and none of it is a plan to
-build. It is a record of one discussion, kept so the reasoning does not
-have to be found again. "Smart arc" is a working name.
+Not a design note: what was built is in `docs/tools.md`, under "Placing a
+smart arc", and parts of it went another way than here. This is a record of
+one discussion, kept so the reasoning does not have to be found again.
 
 ## The complaint
 
@@ -216,3 +216,46 @@ around it is the part worth getting right.
 - How many ghosts is too many.
 - Whether nice radii — 25 m, 50 m, 100 m — should pull the result, which
   would compose with any of this and belongs to none of it.
+
+## Another alternative: choosing with a flick
+
+A later round, made while building it, replaced the picker. Showing
+candidates and ranking them keeps the tool guessing, and every guess has to
+be explained on screen. Instead the user chooses, with a gesture made before
+the far end is aimed:
+
+- the cursor leaving a small circle around the start picks the offered
+  direction nearest the way it went
+- that one direction is the only one planned from then on, out to the
+  cursor
+- moving back onto the start releases it, to flick again
+
+This splits the gesture in two, which is what the path-fitting idea could
+not do: the flick settles the bend, then the hand aims the end without
+changing it. After the flick, the result again depends only on where the
+cursor is.
+
+The flick is released only back inside the pick radius, not on re-entering
+the circle, so a road ending close to its start keeps it. Without a
+flick nothing is planned rather than guessed; a very short road is flicked
+out and back, or drawn zoomed in. The candidates survive only as a debug
+view.
+
+It also answers the **Neither** case above. Open ground offers no
+direction, so the flick's own heading is used, rounded to 15°: the flick
+spends the freedom that nothing else does, and path fitting is not needed.
+
+And it chains. A click builds the road and its far end starts the next one,
+where the continuing direction is the tangent of the road just built — so a
+run of curves joins smoothly without aiming any join.
+
+What dropped away with it:
+
+- preferring the least curved, and the ghosts — the flick is the choice
+- the plain straight always offered: its direction is wherever the cursor
+  is, so there is nothing for a flick to lock. A fork at any angle is the
+  straight tool's
+- directions pointing back along a road: at a dead end they give a cusp,
+  which no driver can follow
+- preferring a buildable plan among directions a flick cannot tell apart,
+  which did not come up in use
