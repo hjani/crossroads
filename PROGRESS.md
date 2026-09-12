@@ -5,9 +5,9 @@ Quick status for picking up where we left.
 ## Current status
 
 M0 through M5 are done — M3 came ahead of the curves because a second tool
-needs a way to be chosen, and because nothing could be deleted.
-Next step: not chosen yet — M6 is a stretch goal, and the backlog is the
-alternative
+needs a way to be chosen, and because nothing could be deleted. Current:
+**M6 — Backlog cleanup**
+Next step: layer offsets and colors, together
 
 ## Milestones
 
@@ -123,54 +123,11 @@ let the tool work out the curve.
       own heading, rounded to 15°. Replaces fitting the arc to the cursor
       path
 
-### M6 — Two-lane visuals (stretch)
-- [ ] extrude road ribbons from centerlines
+### M6 — Backlog cleanup
 
-## Backlog
+Deferred cleanups the ribbons would make worse — more layers, more colors,
+more drawn on every pointer move — plus the plan version check.
 
-Wanted, but not part of a milestone yet.
-
-- [ ] level of detail for arc tessellation
-- [ ] refuse a straight drawn between two points on the same straight road:
-      both ends cut the road, and the new section lies on top of the piece
-      between them. An arc does the same only if its control point lands on
-      the road's own circle
-- [ ] straight tool: offer the smart arc tool's directions at the start, and
-      pull the section onto one when the cursor is close to it. Unlike an
-      arc's, the far end then moves off the cursor, so it needs a guide drawn
-      along the direction to show why
-- [ ] evaluate a UI framework for `src/ui/`. The panels are hand-written
-      DOM, which is fine while they issue commands and starts to hurt when
-      one has to reflect model state that changes elsewhere — the first
-      panel that displays a selection is when to look. Signal-based ones
-      first (Solid, Svelte, or Preact signals): they track which values a
-      piece of UI read and update only that, which is the nearest thing on
-      the web to a WPF binding. The layer knows nothing of the network,
-      Three.js or the tools, so the change would be confined to `src/ui/`
-      and a few lines of `main.ts`
-
-## Deferred, probably to be dropped
-
-Written down so the decision is not made again from scratch.
-
-- [ ] a modifier that fixes the sweep at a quarter circle, deriving the
-      control point instead of placing it: two such arcs exist between the
-      ends, and the one on the cursor's side of the chord is planned
-- [ ] the arc tool should not chain. Placing the control point commits the
-      arc and drops straight back into the chord, with the far end already
-      standing as the next start; it should return to the state it began in
-
-## Deferred cleanups
-
-Not blocking anything; do them when they start to bite.
-
-- [ ] weigh a `crossings.ts` owning where two shapes meet, instead of each
-      pairing sitting in the module whose shape it names — segment–segment
-      in `segments.ts`, the two involving an arc in `arcs.ts`, and the
-      dispatch between them in `queries.ts`. The cost is that `arcs.ts`
-      would have to publish `arcRun` and the angular helpers it keeps
-      private, so the question is whether that representation is worth
-      being part of the module's face
 - [ ] one named set of ground-plane layer offsets, replacing the heights
       each drawable picks for itself (`NetworkView`, `SectionPlanView`,
       `NodeHighlight`, `SectionHighlight`). Eight of them now, and which
@@ -203,15 +160,6 @@ Not blocking anything; do them when they start to bite.
       nodes *within* the class rather than another color. Scene colors
       only — `src/ui/toolPalette.css` is a different layer in a different
       medium
-- [ ] revisit the two intersection tolerances once sections have width —
-      how close two junctions may sit follows from how wide the roads are
-      (`SAME_POINT_METERS`, `MIN_SECTION_LENGTH_METERS`). A section that
-      crosses nothing but passes close by a node needs an answer then too:
-      with width it is running into that junction, however clear of it the
-      centerlines are
-- [ ] decide how shallow a crossing is still a crossing — near-parallel
-      sections currently cross like any other, and the junction they make
-      moves a long way for a small change in either road
 - [ ] stamp `network.version` on a plan and check it before applying, so a
       plan made against a network that has since changed is caught rather
       than half-built. Nothing plans further ahead than the click that
@@ -228,3 +176,56 @@ Not blocking anything; do them when they start to bite.
       churn is, and a fixed-capacity attribute with `setDrawRange` would
       match the neighbors. It bites when a second thing starts redrawing
       per move, or on a machine where this one is already felt
+
+### M7 — Two-lane visuals (stretch)
+- [ ] extrude road ribbons from centerlines
+
+## Backlog
+
+Wanted, but not part of a milestone yet.
+
+- [ ] level of detail for arc tessellation
+- [ ] refuse a straight drawn between two points on the same straight road:
+      both ends cut the road, and the new section lies on top of the piece
+      between them. An arc does the same only if its control point lands on
+      the road's own circle
+- [ ] straight tool: offer the smart arc tool's directions at the start, and
+      pull the section onto one when the cursor is close to it. Unlike an
+      arc's, the far end then moves off the cursor, so it needs a guide drawn
+      along the direction to show why
+- [ ] evaluate a UI framework for `src/ui/`. The panels are hand-written
+      DOM, which is fine while they issue commands and starts to hurt when
+      one has to reflect model state that changes elsewhere — the first
+      panel that displays a selection is when to look. Signal-based ones
+      first (Solid, Svelte, or Preact signals): they track which values a
+      piece of UI read and update only that, which is the nearest thing on
+      the web to a WPF binding. The layer knows nothing of the network,
+      Three.js or the tools, so the change would be confined to `src/ui/`
+      and a few lines of `main.ts`
+
+## Deferred, probably to be dropped
+
+Written down so the decision is not made again from scratch.
+
+- empty now
+
+## Deferred cleanups
+
+Not blocking anything; do them when they start to bite.
+
+- [ ] weigh a `crossings.ts` owning where two shapes meet, instead of each
+      pairing sitting in the module whose shape it names — segment–segment
+      in `segments.ts`, the two involving an arc in `arcs.ts`, and the
+      dispatch between them in `queries.ts`. The cost is that `arcs.ts`
+      would have to publish `arcRun` and the angular helpers it keeps
+      private, so the question is whether that representation is worth
+      being part of the module's face
+- [ ] revisit the two intersection tolerances once sections have width —
+      how close two junctions may sit follows from how wide the roads are
+      (`SAME_POINT_METERS`, `MIN_SECTION_LENGTH_METERS`). A section that
+      crosses nothing but passes close by a node needs an answer then too:
+      with width it is running into that junction, however clear of it the
+      centerlines are
+- [ ] decide how shallow a crossing is still a crossing — near-parallel
+      sections currently cross like any other, and the junction they make
+      moves a long way for a small change in either road
