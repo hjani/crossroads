@@ -21,36 +21,32 @@ export interface ArcCircle {
 }
 
 /**
- * The circle through three positions, or null if they are in a line.
+ * The circle through three positions, or null if there is none.
  *
- * Everything below is measured from `from`, which both simplifies the
- * algebra and keeps the squares in it from being swamped by a position that
- * may be kilometers from the world origin. Call the other two `e` and `v`
- * once shifted, and the center `u`.
+ * Let `e = to − from`, `v = via − from`, `u` the center relative to `from`,
+ * and `e × v = e.x·v.z − e.z·v.x` the 2D cross product. Everything is
+ * relative to `from` so the squares stay small when the positions are far
+ * from the world origin.
  *
- * `u` is whatever is equally far from all three. Equally far from the
- * origin and from `e` means `|u|² = |u − e|²`, and expanding the right side
- * gives `|u|² − 2u·e + |e|²`. The `|u|²` cancels off both sides, leaving
- * `2u·e = |e|²`, or written out, `2·ex·ux + 2·ez·uz = |e|²`. That is the
- * equation of a line: the coordinates of `u` appear multiplied by constants
- * and added, nothing more. It is the perpendicular bisector of the chord —
- * a line's coefficients are the direction it stands perpendicular to, and
- * here they are the chord itself. Against `v` the same gives a second one,
- * `2u·v = |v|²`, and the center is the point sitting on both.
+ * - `u` is as far from `0` as from `e`:
+ *   `|u|² = |u − e|² = |u|² − 2u·e + |e|²`. The `|u|²` cancels, leaving a
+ *   line (the chord's perpendicular bisector):
  *
- * Two lines, two unknowns, solved by Cramer's rule: each coordinate is a
- * determinant over the one the pair shares. Every entry of the system
- * carries a factor of 2, so the shared determinant comes out as four times
- * the cross product `e × v` and each numerator as twice one of its own;
- * cancelling a 2 through leaves the doubled cross product `denominator`
- * holds below.
+ *       2u·e = |e|²
  *
- * A cross product of zero is two parallel chords — the three positions in a
- * line, their bisectors parallel too, and no circle to find. It is also
- * what a `via` sitting on either end comes out as, since that chord and the
- * other are then the same one. Tested against zero because that is the
- * division it guards and nothing more: how gentle a curve is still worth
- * building is not a question about chords.
+ * - The same for `v`: `2u·v = |v|²`.
+ * - Solve the two equations with Cramer's rule. The determinant is
+ *   `4(e × v)`, and a factor of 2 cancels:
+ *
+ *       u.x = (v.z·|e|² − e.z·|v|²) / 2(e × v)
+ *       u.z = (e.x·|v|² − v.x·|e|²) / 2(e × v)
+ *
+ * - The radius is `|u|`.
+ *
+ * Returns null when `e × v = 0`: the three positions are in a line, `via`
+ * is on one of the ends, or the ends are the same point. The zero check
+ * only guards the division. It says nothing about which curves are too
+ * gentle to build.
  */
 export function arcCircle(from: Vec2, to: Vec2, via: Vec2): ArcCircle | null {
   const endX = to.x - from.x;
@@ -58,17 +54,17 @@ export function arcCircle(from: Vec2, to: Vec2, via: Vec2): ArcCircle | null {
   const viaX = via.x - from.x;
   const viaZ = via.z - from.z;
 
+  // 2(e × v)
   const denominator = 2 * (endX * viaZ - endZ * viaX);
   if (denominator === 0) {
     return null;
   }
 
-  // What each bisector equals: the right-hand sides, |e|² and |v|².
+  // |e|² and |v|²
   const endSquared = endX * endX + endZ * endZ;
   const viaSquared = viaX * viaX + viaZ * viaZ;
 
-  // Still measured from `from`, so this doubles as the radius: how far the
-  // center is from `from` is the length of the offset between them.
+  // u
   const offsetX = (viaZ * endSquared - endZ * viaSquared) / denominator;
   const offsetZ = (endX * viaSquared - viaX * endSquared) / denominator;
 
@@ -299,30 +295,35 @@ export function arcPolyline(
 }
 
 /**
- * Where the segment `a1`–`a2` meets the arc `from`–`via`–`to`, in the order
- * they are met walking from `a1`. Up to two: a straight road crossing a
- * bend meets it going in and coming out again.
+ * Where the segment `a1`–`a2` meets the arc `from`–`via`–`to`, in order of
+ * distance from `a1`. Up to two.
  *
- * A point on the segment is `a1 + t·d` for the direction `d = a2 − a1`, and
- * it is on the circle when it stands the radius away from the center.
- * Squaring that gives `|a1 + t·d − c|² = r²`, and with `f = a1 − c` it
- * multiplies out to `(d·d)t² + 2(f·d)t + (f·f − r²) = 0` — an ordinary
- * quadratic, whose two roots are the places the line pierces the circle.
+ * Let `d = a2 − a1`, `f = a1 − center`, and `r` the radius.
  *
- * A discriminant below zero is a line passing the circle by, with nothing
- * to report. Zero is a tangent, which touches at a point and is a crossing
- * like any other: whether a junction there is worth building is a question
- * about how short the pieces come out, not about how shallow the meeting
- * was. Tested against zero because that is the square root it guards and
- * nothing more — a grazing line is also expected to return two (very close)
- * crossings because of precision of the calculation.
+ * - A point on the segment: `a1 + t·d`, with t in 0..1.
+ * - It is on the circle when `|f + t·d|² = r²`, which expands to
+ *   `a·t² + b·t + c = 0` with
  *
- * Both are stretches rather than the whole line and the whole circle, so a
- * root counts only where it falls on both — `t` between 0 and 1, and a
- * direction the arc actually turns to.
+ *       a = d·d
+ *       b = 2(f·d)
+ *       c = f·f − r²
  *
- * A `via` in line with the ends is a straight run between them, and meets
- * the segment wherever `segmentCrossing` says it does.
+ * - The roots, the `−` one first (smaller t, so met first from `a1`):
+ *
+ *       t = (−b ± √(b² − 4ac)) / 2a
+ *
+ * - A root counts only if t is in 0..1 and the arc's sweep reaches the point.
+ *
+ * Returns no crossings when:
+ * - `a = 0`: the segment has no length.
+ * - `b² − 4ac < 0`: the line misses the circle.
+ *
+ * `b² − 4ac = 0` is a tangent, which counts as a crossing. With rounding, a
+ * line that only touches the circle often gives two very close crossings
+ * instead. The zero check only guards the square root.
+ *
+ * A `via` in line with the ends is a straight, and this returns what
+ * `segmentCrossing` returns.
  */
 export function segmentArcCrossings(
   a1: Vec2,
@@ -359,8 +360,7 @@ export function segmentArcCrossings(
 
   const root = Math.sqrt(discriminant);
   const crossings: Crossing[] = [];
-  // The smaller root first, which is the meeting reached sooner walking
-  // from `a1` — the order the caller is promised.
+  // The − root first.
   for (const alongA of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
     if (alongA < 0 || alongA > 1) {
       continue;
@@ -377,27 +377,38 @@ export function segmentArcCrossings(
 
 /**
  * Where the arc `fromA`–`viaA`–`toA` meets the arc `fromB`–`viaB`–`toB`, in
- * the order they are met walking from `fromA`. Up to two.
+ * order along the first arc. Up to two.
  *
- * Two circles that meet at all meet on a line square to the one joining
- * their centers, at equal distance from it either side. With `d` the gap
- * between the centers, that meeting line stands `alongCenters = (d² + r₁² −
- * r₂²) / 2d` from the first — what falls out of asking for a place that is
- * `r₁` from one center and `r₂` from the other — and the two points sit
- * `offCenters = √(r₁² − alongCenters²)` off it, one each way.
+ * Let `cA, rA` and `cB, rB` be the two circles, `w = cB − cA`, `D = |w|`.
+ * In coordinates with `cA` at the origin and the x axis along `w`:
  *
- * Circles too far apart to reach, or one swallowed by the other, leave that
- * square root nothing to work with and there is no meeting. Circles sharing
- * a center never meet either, and two that are the same circle meet
- * everywhere rather than at a point, which is not a crossing — the reading
- * `segmentCrossing` gives two collinear segments.
+ * - A meeting point is on both circles:
  *
- * Touching circles put both points in the same place, and both are
- * reported, as a tangent line is by `segmentArcCrossings`.
+ *       x² + y² = rA²
+ *       (x − D)² + y² = rB²
  *
- * Circles meeting is not the same as arcs meeting: each place has to fall
- * inside both sweeps, since the circles can touch where neither arc, or
- * only one of them, actually runs.
+ * - Subtract the second from the first (removes y²) and solve:
+ *
+ *       x = (D² + rA² − rB²) / 2D        (alongCenters)
+ *       y = ±√(rA² − x²)                 (offCenters)
+ *
+ * - Back in world coordinates, with `n = (−w.z, w.x) / D`:
+ *
+ *       point = cA + x·w/D ± y·n         (foot ± step)
+ *
+ * - A point counts only if both arcs' sweeps reach it.
+ *
+ * Returns no crossings when:
+ * - `D = 0`: same center. Different radii never meet, and the same circle
+ *   has no single meeting points. The zero check only guards the division.
+ * - `rA² − x² < 0`: the circles are too far apart, or one is inside the
+ *   other.
+ *
+ * `rA² − x² = 0` is two circles touching: both points are the same, and both
+ * are returned, as for a tangent in `segmentArcCrossings`.
+ *
+ * A `via` in line with its ends is a straight, and the answer comes from
+ * `segmentArcCrossings`.
  */
 export function arcArcCrossings(
   fromA: Vec2,
@@ -427,9 +438,7 @@ export function arcArcCrossings(
   const betweenZ = centerB.z - centerA.z;
   const between = Math.hypot(betweenX, betweenZ);
 
-  // Tested against zero because that is the division below it guards, and
-  // because a shared center is the one arrangement with no line between
-  // them to measure along.
+  // Same center.
   if (between === 0) {
     return [];
   }
@@ -441,8 +450,7 @@ export function arcArcCrossings(
     return [];
   }
 
-  // The foot of the meeting line on the line between the centers, and the
-  // step from it to either meeting, square to that line.
+  // foot = cA + x·w/D, step = y·n
   const offCenters = Math.sqrt(squaredOff);
   const footX = centerA.x + (alongCenters * betweenX) / between;
   const footZ = centerA.z + (alongCenters * betweenZ) / between;
@@ -489,27 +497,27 @@ function sweptFractionAt(run: ArcRun, point: Vec2): number | null {
 }
 
 /**
- * How many chords an arc of this radius and sweep takes to stay within the
- * tolerance.
+ * How many chords an arc of radius `r` and sweep `s` needs, so that no chord
+ * is more than `sag` away from the arc.
  *
- * A chord spanning an angle `t` on a circle of radius `r` sits at its
- * furthest from the arc halfway along, where the gap — the sagitta — is
- * `r · (1 − cos(t/2))`: the center is `r·cos(t/2)` from the chord's
- * midpoint and `r` from the arc above it. Setting that equal to the
- * tolerance and solving back gives the widest angle one chord may span, and
- * the sweep divided by it is how many are needed.
+ * Let α be the angle one chord spans.
  *
- * A larger radius does buy longer chords — a gentler curve leaves more room
- * under it before the gap opens up — but not proportionally: the chords grow
- * with the square root of the radius while the arc grows with the radius, so
- * a wide sweeping curve still takes more of them than a tight bend of the
- * same sweep. Which is the point of counting rather than fixing a number:
- * each arc gets what its own size asks for.
+ * - The largest gap between chord and arc is at the chord's midpoint
+ *   (the sagitta): `r · (1 − cos(α/2))`.
+ * - Set it equal to `sag` and solve for α:
  *
- * The cosine is clamped before `acos`, which is undefined outside −1..1. A
- * tolerance of zero or less puts it at 1 and the widest angle at 0, and a
- * tolerance past the diameter puts it below −1; either way the count runs
- * into a limit rather than off the end of the math.
+ *       α = 2 · acos(1 − sag / r)
+ *
+ * - Chords needed: `ceil(s / α)`, limited to 1..MAX_ARC_CHORDS.
+ *
+ * For small α, one chord's length is `≈ 2 · √(2 · r · sag)`. It grows with
+ * √r, while the arc grows with r, so a wide curve needs more chords than a
+ * tight one with the same sweep.
+ *
+ * `1 − sag / r` is clamped to −1..1 first, because `acos` is undefined
+ * outside that range:
+ * - `sag ≤ 0` → α = 0 → the count is MAX_ARC_CHORDS
+ * - `sag ≥ 2r` → α = 2π → the count is 1
  */
 function chordCount(radius: number, sweep: number, sagMeters: number): number {
   const cosHalfAngle = Math.max(-1, Math.min(1, 1 - sagMeters / radius));

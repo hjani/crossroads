@@ -41,6 +41,18 @@ TypeScript 7 + Three.js + Vite, running in the browser.
   either, it carries its unit: `metersPerPixel`, `widthPixels`.
 - Grid snapping is applied at the input layer only — `src/core/` stores
   exact, unsnapped positions.
+- Math-heavy functions (a closed-form result, a formula that can't be
+  recognized from the code) get a doc comment that derives it in math
+  notation — symbols, equations and short bullets, not prose. The math is
+  easier to follow than English sentences about it. This is the one place
+  where a long comment is preferred over a short one:
+  - what it returns, in plain words, and when there is no answer
+  - the symbols, named once (`d = to − from`, θ the angle between …)
+  - the derivation as short steps, naming any theorem used
+  - the final formula on its own indented line, matching the code
+  - what follows from it: what is never computed, what input needn't be
+    normalized, how the edge cases come out
+  `arcViaLeaving` in `src/core/arcs.ts` is the reference example.
 
 ## Design notes
 

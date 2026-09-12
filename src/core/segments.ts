@@ -32,30 +32,21 @@ export function fromTheOtherSide(crossing: Crossing): Crossing {
 
 /**
  * Where along the segment `from`–`to` a position falls: 0 at `from`, 1 at
- * `to` — the fraction of the place on the segment nearest the position.
+ * `to`. This is the `t` of the nearest point on the segment, the same `t`
+ * that `lerp` takes.
  *
- * The segment is every point `from + t·along` for `t` between 0 and 1,
- * where `along = to - from`. So the question is which `t` is nearest, and
- * the answer is a projection.
+ * Let `d = to − from` and `p = point − from`.
  *
- * The 2D dot product `a·b = ax·bx + az·bz` measures how much of `a` points
- * the same way as `b`, scaled by both their lengths. Taking it of
- * `point - from` against `along` gives how far along the segment `point`
- * lies, multiplied by the segment's length. Dividing by `along·along`, the
- * length squared, cancels that and divides by the length once more, turning
- * the distance into a fraction of the segment.
+ * - A point on the line: `from + t·d`.
+ * - The nearest one to `point` has `p − t·d` perpendicular to `d`:
+ *   `(p − t·d)·d = 0`, so
  *
- * `t` outside 0..1 means the nearest place on the *line* is off the end of
- * the *segment*, so it is clamped: the nearest place on the segment is then
- * that end. That is why a cursor beyond the end of a road is near the road's
- * end rather than near the line it runs along.
+ *       t = (p·d) / (d·d)
  *
- * A segment of no length has no direction to project onto — `along·along`
- * is zero — but it is also a single place, so `t` is 0.
+ * - Clamped to 0..1: past an end, the nearest point on the segment is that
+ *   end.
  *
- * The `t` `lerp` takes, so a position and the fraction it reads as are two
- * ways of naming the same place on the road — which is what lets a piece of
- * a section be described by where its ends fall along the whole.
+ * Returns 0 when `d·d = 0`: the segment is a single point.
  */
 export function segmentFractionAt(point: Vec2, from: Vec2, to: Vec2): number {
   const alongX = to.x - from.x;
@@ -71,21 +62,29 @@ export function segmentFractionAt(point: Vec2, from: Vec2, to: Vec2): number {
 }
 
 /**
- * Where the segments a1–a2 and b1–b2 meet, or null if they do not.
+ * Where the segments `a1`–`a2` and `b1`–`b2` meet, or null if they don't.
  *
- * Solved parametrically: a point on the first segment is `a1 + s·A` for the
- * direction `A = a2 - a1` and `s` from 0 to 1, and likewise `b1 + t·B`.
- * Equating the two gives `s·A - t·B = d`, where `d = b1 - a1`. Taking the
- * 2D cross product of both sides with `B` drops the `t` term, since
- * `B × B` is zero, and leaves `s` on its own; crossing with `A` instead
- * leaves `t`. Outside 0 to 1 the lines meet beyond the end of a segment.
+ * Let `A = a2 − a1`, `B = b2 − b1`, `d = b1 − a1`, and `u × v` the 2D cross
+ * product `u.x·v.z − u.z·v.x` (so `v × v = 0`).
  *
- * Parallel segments have no crossing to report, collinear ones included:
- * they lie along each other rather than meeting at a point. Touching at an
- * endpoint, on the other hand, is a crossing like any other and reported as
- * one — whether it means a new junction or a join that already exists is
- * the caller's to decide, since only it knows whether the two already share
- * a node.
+ * - A point on each segment: `a1 + s·A` and `b1 + t·B`, with s, t in 0..1.
+ * - They are the same point when `s·A − t·B = d`.
+ * - Cross both sides with `B` (removes t), then with `A` (removes s):
+ *
+ *       s = (d × B) / (A × B)
+ *       t = (d × A) / (A × B)
+ *
+ * `s` is `alongA` and `t` is `alongB`.
+ *
+ * Returns null when:
+ * - `A × B = 0`: parallel segments, collinear ones included (they overlap
+ *   rather than meet at a point), or a segment with no length. The zero
+ *   check only guards the division.
+ * - `s` or `t` is outside 0..1: the lines meet past the end of a segment.
+ *
+ * Touching at an endpoint (`s` or `t` exactly 0 or 1) is a crossing. The
+ * caller decides whether that is a new junction or an existing join, since
+ * only it knows whether the two segments share a node.
  */
 export function segmentCrossing(
   a1: Vec2,
@@ -98,10 +97,7 @@ export function segmentCrossing(
   const bx = b2.x - b1.x;
   const bz = b2.z - b1.z;
 
-  // The 2D cross product of the two directions: the signed area they span,
-  // which is zero exactly when they are parallel. Tested against zero
-  // because that is the division it guards and nothing more — how shallow a
-  // crossing is still worth building is not a question about vectors.
+  // A × B
   const denominator = ax * bz - az * bx;
   if (denominator === 0) {
     return null;
