@@ -1,10 +1,17 @@
+import { arcViaLeaving } from "./arcs";
+import { isSamePoint, lerp } from "./points";
 import { sectionDirectionAt, sectionFractionAt } from "./queries";
 import type { RoadNetwork } from "./RoadNetwork";
-import type { NodeId, SectionId, Vec2 } from "./types";
+import {
+  STRAIGHT,
+  type NodeId,
+  type SectionGeometry,
+  type SectionId,
+  type Vec2,
+} from "./types";
 
 /**
- * The directions a new road could leave a node, or a place along a section,
- * by.
+ * The natural directions a new road is suggested to leave a location by.
  */
 
 /**
@@ -53,23 +60,21 @@ export function bisectorDirectionsAt(
 }
 
 /**
- * The two directions square to the road at a dead end, for a turn off its open
- * end. There the bisector has nothing to split but the full turn, and points
- * back down the road. Unit vectors pointing away from the node, in no promised
- * order. Empty for a node with any other number of sections.
+ * Two directions per section meeting the node, perpendicular to it on either
+ * side, for a turn off that road at a right angle. Unit vectors pointing away
+ * from the node, in no promised order. Empty for an unknown node.
+ *
+ * At a straight through-node both sections give the same two, which are also
+ * the bisectors there.
  */
 export function perpendicularDirectionsAt(
   network: RoadNetwork,
   node: NodeId,
 ): Vec2[] {
-  const entering = enteringDirectionsAt(network, node);
-  if (entering.length !== 1) return [];
-
-  const { x, z } = entering[0];
-  return [
+  return enteringDirectionsAt(network, node).flatMap(({ x, z }) => [
     { x: -z, z: x },
     { x: z, z: -x },
-  ];
+  ]);
 }
 
 /**
@@ -99,6 +104,45 @@ export function midSectionDirectionsAt(
     { x: -z, z: x },
     { x: z, z: -x },
   ];
+}
+
+/**
+ * The shape of the road that leaves `from` in `direction` and ends at `to`:
+ * an arc, or a straight where that arc bends too little to tell from one.
+ *
+ * Returns null where `arcViaLeaving` has no arc: `direction` points exactly
+ * away from `to` (a full circle), `direction` is zero, or `from` is on `to`.
+ *
+ * Let `m = from + (to − from)/2` be the chord's midpoint.
+ *
+ * - `via = arcViaLeaving(from, direction, to)` is the arc's midpoint, so
+ *   `|via − m|` is the sagitta: how far the arc bulges from its chord.
+ * - A bulge of no more than a centimeter is a straight:
+ *
+ *       |via − m| ≤ SAME_POINT_METERS  →  STRAIGHT
+ *
+ * `direction` does not need to be a unit vector.
+ *
+ * Every sweep short of a full circle is answered, the long way round
+ * included. Which of those are worth offering is the caller's to decide.
+ *
+ * The straight is load-bearing: three positions in a line make no arc, and
+ * the network refuses one, so a direction aimed right at `to` would plan as a
+ * refusal.
+ */
+export function geometryLeaving(
+  from: Vec2,
+  direction: Vec2,
+  to: Vec2,
+): SectionGeometry | null {
+  const via = arcViaLeaving(from, direction, to);
+  if (via === null) {
+    return null;
+  }
+
+  return isSamePoint(via, lerp(from, to, 0.5))
+    ? STRAIGHT
+    : { kind: "arc", via };
 }
 
 /**

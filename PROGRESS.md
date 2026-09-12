@@ -100,15 +100,17 @@ let the tool work out the curve.
       could leave it by, one per section meeting it. No plan yet
 - [x] add bisector directions, for branching into the gap between two
       roads
-- [x] add perpendicular directions at a node with a single section
+- [x] add perpendicular directions: a pair per section meeting the node,
+      so a road can branch off any junction at a right angle
 - [ ] add the plain straight as a direction of its own, for a fork at any
       angle
 - [x] directions at a start placed on a road rather than a node: the
       road's heading there forward and back, plus the two perpendiculars
 - [x] core: the arc through a point, a direction there, and a second point
-- [ ] place the second point and plan a section per direction, the ones
-      aimed away from it dropped. Full `SectionPlan`s, drawn with their
-      junction marks and refusals, but passive — nothing is built yet
+- [x] place the second point and plan a section per direction, dropping
+      the ones that turn further than three quarters of a circle. Full
+      `SectionPlan`s, drawn with their junction marks and refusals, but
+      passive — nothing is built yet
 - [ ] think about deduplicating and simplifying the set of alternatives
 - [ ] hovering a planned arc marks it as the one a click would build
 - [ ] click a planned arc to build it

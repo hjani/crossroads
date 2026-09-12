@@ -2,12 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   bisectorDirectionsAt,
   continuingDirectionsAt,
+  geometryLeaving,
   midSectionDirectionsAt,
   perpendicularDirectionsAt,
 } from "./directions";
 import { distance } from "./points";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type NodeId, type SectionId, type Vec2 } from "./types";
+import {
+  STRAIGHT,
+  type NodeId,
+  type SectionGeometry,
+  type SectionId,
+  type Vec2,
+} from "./types";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };
@@ -175,12 +182,18 @@ describe("perpendicularDirectionsAt", () => {
     ]);
   });
 
-  it("is empty at a through-node, where the bisectors cover it", () => {
+  it("gives both sides of each road where two meet at an angle", () => {
     const network = new RoadNetwork();
-    const west = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
-    network.addSection(west.to, at(20, 0), STRAIGHT);
+    const east = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
+    network.addSection(east.from, at(10, 10), STRAIGHT);
+    const diagonal = Math.SQRT1_2;
 
-    expect(perpendicularDirectionsAt(network, west.to)).toEqual([]);
+    expectDirectionsInAnyOrder(perpendicularDirectionsAt(network, east.from), [
+      at(0, 1),
+      at(0, -1),
+      at(-diagonal, diagonal),
+      at(diagonal, -diagonal),
+    ]);
   });
 
   it("is empty for a node the network does not have", () => {
@@ -229,5 +242,58 @@ describe("midSectionDirectionsAt", () => {
     expect(() =>
       midSectionDirectionsAt(new RoadNetwork(), 99 as SectionId, at(0, 0)),
     ).toThrow();
+  });
+});
+
+/** The arc's via, or a failure saying so rather than one about its shape. */
+function arcVia(geometry: SectionGeometry | null): Vec2 {
+  if (geometry === null || geometry.kind !== "arc") {
+    throw new Error("expected an arc");
+  }
+  return geometry.via;
+}
+
+describe("geometryLeaving", () => {
+  it("is an arc for a direction aimed to one side of the end", () => {
+    // From east heading north, to north: a quarter of the unit circle.
+    const via = arcVia(geometryLeaving(at(1, 0), at(0, 1), at(0, 1)));
+
+    expect(via.x).toBeCloseTo(Math.SQRT1_2);
+    expect(via.z).toBeCloseTo(Math.SQRT1_2);
+  });
+
+  it("is a straight for a direction aimed at the end", () => {
+    expect(geometryLeaving(at(0, 0), at(1, 0), at(10, 0))).toEqual(STRAIGHT);
+  });
+
+  it("is a straight while the arc bulges less than a centimeter", () => {
+    // About 2.5 mm off the chord at its middle.
+    expect(geometryLeaving(at(0, 0), at(1, 0.001), at(10, 0))).toEqual(
+      STRAIGHT,
+    );
+  });
+
+  it("is an arc once it bulges more than a centimeter", () => {
+    // About 2.5 cm off the chord at its middle.
+    arcVia(geometryLeaving(at(0, 0), at(1, 0.01), at(10, 0)));
+  });
+
+  it("is a half circle for a direction perpendicular to the chord", () => {
+    const via = arcVia(geometryLeaving(at(0, 0), at(0, 1), at(10, 0)));
+
+    expect(via.x).toBeCloseTo(5);
+    expect(via.z).toBeCloseTo(5);
+  });
+
+  it("takes the long way round for a direction pointing away from the end", () => {
+    // From east heading south, to north: three quarters of the unit circle.
+    const via = arcVia(geometryLeaving(at(1, 0), at(0, -1), at(0, 1)));
+
+    expect(via.x).toBeCloseTo(-Math.SQRT1_2);
+    expect(via.z).toBeCloseTo(-Math.SQRT1_2);
+  });
+
+  it("is null for a direction pointing exactly away from the end", () => {
+    expect(geometryLeaving(at(0, 0), at(-1, 0), at(10, 0))).toBeNull();
   });
 });
