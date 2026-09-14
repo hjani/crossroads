@@ -146,7 +146,7 @@ more drawn on every pointer move — plus the plan version check.
 - [x] hover the road an end would weld onto, in every section tool. Each
       tool tells a `SectionHighlight` what to mark, since selecting and
       welding pick by different rules
-- [ ] stamp `network.version` on a plan and check it before applying, so a
+- [x] stamp `network.version` on a plan and check it before applying, so a
       plan made against a network that has since changed is caught rather
       than half-built. Nothing plans further ahead than the click that
       applies it today; the moment something does — undo, a plan held

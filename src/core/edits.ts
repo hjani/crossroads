@@ -80,6 +80,7 @@ export interface PlannedPiece {
  */
 export interface BuildableSectionPlan {
   readonly buildable: true;
+  readonly networkVersion: number;
   readonly start: PlannedPoint;
   readonly pieces: readonly [PlannedPiece, ...PlannedPiece[]];
 }
@@ -96,6 +97,7 @@ export interface BuildableSectionPlan {
  */
 export interface UnbuildableSectionPlan {
   readonly buildable: false;
+  readonly networkVersion: number;
   readonly start: PlannedPoint;
   readonly pieces: readonly PlannedPiece[];
 }
@@ -191,17 +193,23 @@ export function planSection(
     previous = at;
   }
 
+  const networkVersion = network.version;
   const [firstPiece, ...restPieces] = pieces;
   if (firstPiece === undefined) {
     // Everything merged into one point: the section begins and ends in the
     // same place.
-    return { buildable: false, start, pieces };
+    return { buildable: false, networkVersion, start, pieces };
   }
   if (!buildable) {
-    return { buildable: false, start, pieces };
+    return { buildable: false, networkVersion, start, pieces };
   }
 
-  return { buildable: true, start, pieces: [firstPiece, ...restPieces] };
+  return {
+    buildable: true,
+    networkVersion,
+    start,
+    pieces: [firstPiece, ...restPieces],
+  };
 }
 
 /**
@@ -215,11 +223,21 @@ export function planSection(
  *
  * Returns the node at the far end, so a run of roads can carry on from it.
  * Decides nothing — a plan is buildable or it is not, and this one is.
+ *
+ * Throws if the network has changed since the plan was made, before
+ * building anything: the plan answered for a network that is gone. That is
+ * the caller's bug, not a refusal.
  */
 export function applySectionPlan(
   network: RoadNetwork,
   plan: BuildableSectionPlan,
 ): NodeId {
+  if (plan.networkVersion !== network.version) {
+    throw new Error(
+      `Plan made at network version ${plan.networkVersion}, applied at ${network.version}`,
+    );
+  }
+
   const [firstPiece, ...restPieces] = plan.pieces;
 
   // Where each crossed section is cut, gathered as the road is laid. A
@@ -374,7 +392,7 @@ function refusedAsStraight(
   )
     ? []
     : [{ geometry: STRAIGHT, to: plannedPointAt(network, to) }];
-  return { buildable: false, start, pieces };
+  return { buildable: false, networkVersion: network.version, start, pieces };
 }
 
 /**

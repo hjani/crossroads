@@ -242,6 +242,22 @@ describe("planning and building a section", () => {
     expect(layout(network)).toEqual(before);
   });
 
+  it("will not build a plan made before the network last changed", () => {
+    const network = new RoadNetwork();
+    build(network, at(5, -5), at(5, 5));
+
+    // Building a plan is itself a change, so the plan is stale the moment
+    // it lands: the section it cut is gone, and applying it again would
+    // cut it a second time.
+    const plan = planSection(network, at(0, 0), at(10, 0), STRAIGHT);
+    assert(plan.buildable);
+    applySectionPlan(network, plan);
+    const before = layout(network);
+
+    expect(() => applySectionPlan(network, plan)).toThrow();
+    expect(layout(network)).toEqual(before);
+  });
+
   it("refuses a section too short to be a road, crossing or not", () => {
     const network = new RoadNetwork();
 

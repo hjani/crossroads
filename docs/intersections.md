@@ -48,6 +48,10 @@ can be built at all — as a value that stands on its own. The second carries
 that answer out. Nothing is decided twice: the second step asks no question
 the first did not already settle, so what is built is what was described.
 
+An answer holds for the network as it was when asked. Carrying it out once
+the network has changed is an error, not a refusal: it promised a section
+for a network that is no longer there, and nothing of it is built.
+
 Being able to ask without building is the point of the separation. The same
 question serves a section about to be committed and one still being dragged
 around, so a tool can show what a click would do before it is made, and the
