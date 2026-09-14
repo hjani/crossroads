@@ -32,6 +32,13 @@ export class SectionHighlight {
     THREE.PointsMaterial
   >;
 
+  /** What the buffers hold now, kept through `hide`. Null before any `show`. */
+  private drawn: {
+    sections: readonly SectionId[];
+    nodes: readonly NodeId[];
+    version: number;
+  } | null = null;
+
   constructor(
     private readonly network: RoadNetwork,
     color: number,
@@ -65,8 +72,24 @@ export class SectionHighlight {
    * `LineSegments` joins the buffer two points at a time and nothing between
    * one pair and the next, so a run is written with every interior point
    * twice.
+   *
+   * The same ids on an unchanged network are already in the buffers, so a
+   * cursor resting on one section costs nothing per move. The view is not
+   * part of that check: tessellation has a tolerance in meters, not pixels.
    */
   show(sections: readonly SectionId[], nodes: readonly NodeId[]): void {
+    const version = this.network.version;
+    const drawn = this.drawn;
+    if (
+      drawn !== null &&
+      drawn.version === version &&
+      sameIds(drawn.sections, sections) &&
+      sameIds(drawn.nodes, nodes)
+    ) {
+      this.sceneObject.visible = true;
+      return;
+    }
+
     const lineCoordinates: number[] = [];
     for (const id of sections) {
       const points = tessellate(this.network, this.network.getSection(id));
@@ -86,6 +109,8 @@ export class SectionHighlight {
 
     replaceGeometry(this.sectionLines, lineCoordinates);
     replaceGeometry(this.nodeMarks, nodeMarkCoordinates);
+    // Copied, since the caller's arrays are theirs to change.
+    this.drawn = { sections: [...sections], nodes: [...nodes], version };
     this.sceneObject.visible = true;
   }
 
@@ -100,6 +125,11 @@ export class SectionHighlight {
     this.nodeMarks.geometry.dispose();
     this.nodeMarks.material.dispose();
   }
+}
+
+/** Same ids in the same order — a reordering is rare enough to just redraw. */
+function sameIds<Id>(a: readonly Id[], b: readonly Id[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i]);
 }
 
 /**

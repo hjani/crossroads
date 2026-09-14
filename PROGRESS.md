@@ -153,8 +153,10 @@ more drawn on every pointer move — plus the plan version check.
       across a tool switch, anything else editing the network — the ids in
       an old plan are already someone else's. A mismatch is a caller bug,
       so it throws rather than refusing: the plan said it was buildable
-- [ ] stop re-tessellating and rebuilding the aimed mark on every pointer
-      move, when it is usually the same section as the move before
+- [x] stop re-tessellating and rebuilding the aimed mark on every pointer
+      move, when it is usually the same section as the move before.
+      `SectionHighlight` keeps what it last drew and skips the rebuild for
+      the same ids on the same `network.version`
 - [ ] stop rebuilding `SectionPlanView`'s geometry on every pointer move.
       Three buffers are disposed and reallocated each time the cursor
       moves, where `NodeHighlight` writes into a preallocated attribute and
