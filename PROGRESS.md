@@ -157,13 +157,6 @@ more drawn on every pointer move — plus the plan version check.
       move, when it is usually the same section as the move before.
       `SectionHighlight` keeps what it last drew and skips the rebuild for
       the same ids on the same `network.version`
-- [ ] stop rebuilding `SectionPlanView`'s geometry on every pointer move.
-      Three buffers are disposed and reallocated each time the cursor
-      moves, where `NodeHighlight` writes into a preallocated attribute and
-      sets `needsUpdate`. The point count is not what costs — the per-move
-      churn is, and a fixed-capacity attribute with `setDrawRange` would
-      match the neighbors. It bites when a second thing starts redrawing
-      per move, or on a machine where this one is already felt
 
 ### M7 — Two-lane visuals (stretch)
 - [ ] extrude road ribbons from centerlines
@@ -217,3 +210,10 @@ Not blocking anything; do them when they start to bite.
 - [ ] decide how shallow a crossing is still a crossing — near-parallel
       sections currently cross like any other, and the junction they make
       moves a long way for a small change in either road
+- [ ] stop rebuilding `SectionPlanView`'s geometry on every pointer move.
+      Three buffers are disposed and reallocated each time the cursor
+      moves, where `NodeHighlight` writes into a preallocated attribute and
+      sets `needsUpdate`. The point count is not what costs — the per-move
+      churn is, and a fixed-capacity attribute with `setDrawRange` would
+      match the neighbors. It bites when a second thing starts redrawing
+      per move, or on a machine where this one is already felt
