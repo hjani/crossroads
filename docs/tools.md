@@ -45,10 +45,6 @@ Which is why a refusal is a color and not a disappearance. The preview
 still shows the section being aimed; it shows it as one that will not be
 built.
 
-A tool taking several points has a stage where there is not yet an edit to
-ask about. What it draws there is neither of those two answers, and takes a
-color of its own to say so.
-
 A tool has to expect the camera to move at any moment, between any two
 events it hears — panning and zooming are not its own and happen whatever
 it is in the middle of. A camera move, or a modifier pressed while the
@@ -137,8 +133,8 @@ the modifier like any other placed point, but it never welds onto a node
 or a road:
 it settles the shape rather than marking a place on the road.
 
-There is no section to plan until the third point is placed, so what is
-drawn before that takes the in-progress color. After it the plan is drawn
+There is no section to plan until the third point is placed, so before that
+only the ends are marked. After it the plan is drawn
 like any other — planned where it can be built, refused where it cannot,
 three points in a line among the refusals for having no circle through
 them.

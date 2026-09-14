@@ -30,16 +30,13 @@ import type { Modifiers, Tool } from "./Tool";
  * of curves is drawn without re-clicking the joins, as with straights.
  */
 export class ArcSectionTool implements Tool {
-  /** The start: where the first click would land, and after the click the
+  /** The start: a point the first click would make, and after the click the
    * start it placed, until both ends are down and the plan marks it. */
   private readonly startHighlight = new NodeHighlight();
-  /** Where the second click would land. */
+  /** A point the second click would make. */
   private readonly endHighlight = new NodeHighlight();
-  /** The chord out to where the second end would land. Its ends are marked
-   * by the two above, in the colors of what they are. */
-  private readonly chordHighlight = new SectionHighlight(
-    STATE_COLOR.IN_PROGRESS,
-  );
+  /** The section an end click would weld onto. */
+  private readonly hoverHighlight: SectionHighlight;
   /** The full plan to build the arc. */
   private readonly planView = new SectionPlanView();
   private readonly decoration = new THREE.Group();
@@ -52,11 +49,12 @@ export class ArcSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
+    this.hoverHighlight = new SectionHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planView.sceneObject,
-      this.chordHighlight.sceneObject,
       this.startHighlight.sceneObject,
       this.endHighlight.sceneObject,
+      this.hoverHighlight.sceneObject,
     );
   }
 
@@ -130,45 +128,61 @@ export class ArcSectionTool implements Tool {
     modifiers: Modifiers,
   ): void {
     this.planView.hide();
-    this.chordHighlight.hide();
     this.startHighlight.hide();
     this.endHighlight.hide();
+    this.hoverHighlight.hide();
 
     const ground =
       cursor === null ? null : this.viewport.screenToGround(cursor);
     if (ground === null) return;
 
     // Both ends down: the arc bending through where the cursor is, which is
-    // the whole of what the next click would build.
+    // the whole of what the next click would build. That click places the
+    // control point, which welds onto nothing, so nothing is hovered.
+    const useGrid = !modifiers.ctrl;
     if (this.start !== null && this.end !== null) {
-      const plan = this.planThrough(
-        placeControlPoint(ground, { useGrid: !modifiers.ctrl }),
-      );
+      const plan = this.planThrough(placeControlPoint(ground, { useGrid }));
       if (plan !== null) this.planView.showPlan(this.network, plan);
       return;
     }
 
     const placed = placeSectionEnd(this.network, this.viewport, ground, {
-      useGrid: !modifiers.ctrl,
+      useGrid,
     });
 
     // Nothing placed: only where the first click would land.
     if (this.start === null) {
-      markWhereClickLands(this.startHighlight, placed);
+      this.markWhereClickLands(this.startHighlight, placed);
       return;
     }
 
-    // One end down: the start, and the chord out to where the second end
-    // would land. No chord where the click would land back on the start,
-    // which is a click with no length to it and is refused.
+    // One end down: the start, and where the second end would land. Nothing
+    // where the click would land back on the start, which is a click with no
+    // length to it and is refused.
     this.startHighlight.show(
       this.start.position,
       this.start.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
     );
     if (!this.reachesBeyondStart(ground, placed)) return;
 
-    this.chordHighlight.show([[this.start.position, placed.position]], []);
-    markWhereClickLands(this.endHighlight, placed);
+    this.markWhereClickLands(this.endHighlight, placed);
+  }
+
+  /**
+   * Marks where an end click would land: a node already there, or one it
+   * would make, with the section it would be made on hovered. Nothing when
+   * it would land on the cursor's own position.
+   */
+  private markWhereClickLands(mark: NodeHighlight, placed: Placement): void {
+    if (placed.kind === "section") {
+      this.hoverHighlight.show([placed.section], []);
+    }
+    if (placed.kind !== "free") {
+      mark.show(
+        placed.position,
+        placed.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
+      );
+    }
   }
 
   /**
@@ -213,20 +227,8 @@ export class ArcSectionTool implements Tool {
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
   dispose(): void {
     this.planView.dispose();
-    this.chordHighlight.dispose();
     this.startHighlight.dispose();
     this.endHighlight.dispose();
+    this.hoverHighlight.dispose();
   }
-}
-
-/**
- * Marks where an end click would land: a node already there, or a place one
- * would be made. Nothing when it would land on the cursor's own position.
- */
-function markWhereClickLands(mark: NodeHighlight, placed: Placement): void {
-  if (placed.kind === "free") return;
-  mark.show(
-    placed.position,
-    placed.kind === "node" ? STATE_COLOR.AIMED : STATE_COLOR.PLANNED,
-  );
 }

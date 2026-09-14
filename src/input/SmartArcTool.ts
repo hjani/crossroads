@@ -13,6 +13,7 @@ import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
+import { SectionHighlight } from "../render/SectionHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -67,6 +68,7 @@ const HEADING_STEP_RADIANS = Math.PI / 12;
 export class SmartArcTool implements Tool {
   private readonly aimedMark = new NodeHighlight();
   private readonly startMark = new NodeHighlight();
+  private readonly hoverHighlight: SectionHighlight;
   /**
    * One view per plan on screen. Grown as needed and never shrunk: the ones
    * not in use are hidden.
@@ -95,10 +97,12 @@ export class SmartArcTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
+    this.hoverHighlight = new SectionHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planLayer,
       this.aimedMark.sceneObject,
       this.startMark.sceneObject,
+      this.hoverHighlight.sceneObject,
     );
   }
 
@@ -198,16 +202,21 @@ export class SmartArcTool implements Tool {
     if (this.start === null) {
       this.startMark.hide();
       this.showPlans([]);
+      this.aimedMark.hide();
+      this.hoverHighlight.hide();
+      if (ground === null) return;
 
-      // Nothing to mark where the start would be the cursor's own position.
-      const aimed = ground === null ? null : this.startAt(ground, modifiers);
-      if (aimed === null || aimed.kind === "free") {
-        this.aimedMark.hide();
-      } else {
-        // As in `StraightSectionTool`: a node already there, or one to be made.
+      // As in `StraightSectionTool`: a node already there, or one to be made,
+      // with the section it would be made on hovered. Nothing to mark where
+      // the start would be the cursor's own position.
+      const aimed = this.startAt(ground, modifiers);
+      if (aimed.kind === "section") {
+        this.hoverHighlight.show([aimed.section], []);
+      }
+      if (aimed.kind !== "free") {
         this.aimedMark.show(
           aimed.position,
-          aimed.kind === "node" ? STATE_COLOR.AIMED : STATE_COLOR.PLANNED,
+          aimed.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
         );
       }
       return;
@@ -225,6 +234,14 @@ export class SmartArcTool implements Tool {
     ];
     const plans = end === null ? [] : this.plansTo(this.start, end, directions);
     this.showPlans(plans);
+
+    // As in `StraightSectionTool`: while a plan is drawn, the section its far
+    // end welds onto is hovered. With no plan a click builds nothing to hover.
+    if (plans.length > 0 && end?.kind === "section") {
+      this.hoverHighlight.show([end.section], []);
+    } else {
+      this.hoverHighlight.hide();
+    }
 
     // The start is marked on its own only until a plan marks it, as in
     // `StraightSectionTool`: a node already there, or one to be made.
@@ -336,6 +353,7 @@ export class SmartArcTool implements Tool {
   dispose(): void {
     this.aimedMark.dispose();
     this.startMark.dispose();
+    this.hoverHighlight.dispose();
     for (const view of this.planViews) {
       view.dispose();
     }

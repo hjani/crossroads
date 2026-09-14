@@ -4,6 +4,7 @@ import type { RoadNetwork } from "../core/RoadNetwork";
 import { STRAIGHT, type Vec2 } from "../core/types";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
+import { SectionHighlight } from "../render/SectionHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -33,6 +34,7 @@ import type { Modifiers, Tool } from "./Tool";
 export class StraightSectionTool implements Tool {
   private readonly planView = new SectionPlanView();
   private readonly highlight = new NodeHighlight();
+  private readonly hoverHighlight: SectionHighlight;
   private readonly decoration = new THREE.Group();
 
   private pending: Placement | null = null;
@@ -41,7 +43,12 @@ export class StraightSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
-    this.decoration.add(this.planView.sceneObject, this.highlight.sceneObject);
+    this.hoverHighlight = new SectionHighlight(network, STATE_COLOR.AIMED);
+    this.decoration.add(
+      this.planView.sceneObject,
+      this.highlight.sceneObject,
+      this.hoverHighlight.sceneObject,
+    );
   }
 
   get overlay(): THREE.Object3D {
@@ -105,6 +112,7 @@ export class StraightSectionTool implements Tool {
     if (ground === null) {
       this.planView.hide();
       this.highlight.hide();
+      this.hoverHighlight.hide();
       return;
     }
 
@@ -116,25 +124,36 @@ export class StraightSectionTool implements Tool {
     if (plan !== null) {
       // The plan stands in for the placement mark: its last point is where
       // the click would land, and says more about it than "a click lands
-      // here" does.
+      // here" does. Only the section it would weld onto is hovered.
       this.planView.showPlan(this.network, plan);
       this.highlight.hide();
+      if (placed.kind === "section") {
+        this.hoverHighlight.show([placed.section], []);
+      } else {
+        this.hoverHighlight.hide();
+      }
       return;
     }
 
     // No plan with a start down means the cursor is still on that start, so
-    // the start is what gets marked: already clicked, not only hovered.
-    // Nothing to mark when the point is the cursor's own position.
+    // the start is what gets marked: already clicked, not only hovered — and
+    // a click there does nothing, so nothing is hovered either. Before a
+    // start, the section welded onto is hovered. Nothing to mark when the
+    // point is the cursor's own position.
     this.planView.hide();
+    if (this.pending === null && placed.kind === "section") {
+      this.hoverHighlight.show([placed.section], []);
+    } else {
+      this.hoverHighlight.hide();
+    }
+
     const marked = this.pending ?? placed;
     if (marked.kind === "free") {
       this.highlight.hide();
     } else {
-      const nodeColor =
-        this.pending === null ? STATE_COLOR.AIMED : STATE_COLOR.SELECTED;
       this.highlight.show(
         marked.position,
-        marked.kind === "node" ? nodeColor : STATE_COLOR.PLANNED,
+        marked.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
       );
     }
   }
@@ -181,5 +200,6 @@ export class StraightSectionTool implements Tool {
   dispose(): void {
     this.planView.dispose();
     this.highlight.dispose();
+    this.hoverHighlight.dispose();
   }
 }

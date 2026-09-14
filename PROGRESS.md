@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M5 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M6 — Backlog cleanup**
-Next step: layer offsets and colors, together
+Next step: stamp `network.version` on a plan
 
 ## Milestones
 
@@ -128,38 +128,24 @@ let the tool work out the curve.
 Deferred cleanups the ribbons would make worse — more layers, more colors,
 more drawn on every pointer move — plus the plan version check.
 
-- [ ] one named set of ground-plane layer offsets, replacing the heights
-      each drawable picks for itself (`NetworkView`, `SectionPlanView`,
-      `NodeHighlight`, `SectionHighlight`). Eight of them now, and which
-      sits above which is the whole point. Worth doing with the colors
-      below: same complaint, same files
-- [ ] the same for the colors, which each drawable also picks for itself.
-      The rule the scene is heading for: **color says what state something
-      is in; shape and size say what kind of thing it is.** Color is the
-      scarcer channel and state is what has to be readable at a glance,
-      so a node does not also need its own hue — it is a fat point on a
-      layer above the lines. Six states:
+- [x] one named set of ground-plane layer offsets (`src/render/layers.ts`),
+      replacing the heights each drawable picked for itself
+- [x] the same for the colors (`src/render/colors.ts`). **Color says what
+      state something is in; shape, size and layer say what kind of thing
+      it is**, so the network's nodes and sections share one color. Five
+      states:
       - `EXISTING` `0xdddddd` — the network as it is
-      - `AIMED` `0xffdd44` — what a click would land on or act on
-      - `SELECTED` `0x66ccff`
-      - `IN_PROGRESS` `0xcc88ff` — a gesture with no verdict yet
+      - `AIMED` `0xffdd44` — hovered: what a click would interact with
+      - `SELECTED` `0x66ccff` — the selection of an existing item
       - `PLANNED` `0x66ee88` — what the edit would create
       - `REFUSED` `0xff5555` — what it would create, and will not
 
-      `SelectionTool` already names its two this way, pending a shared
-      home for all five. One remapping is a decision rather than
-      bookkeeping. The mark on where a click lands already takes the plan's
-      two node colors, so it follows whatever those become — and
-      `SectionPlanView`'s existing-node marks become `AIMED` rather than
-      `EXISTING`: they
-      are the nodes a chain would weld onto, and `EXISTING` would erase
-      the made-vs-met distinction those marks exist for. What it costs is
-      the nodes' orange — they become `EXISTING` like the sections,
-      leaving size and layer to keep a busy junction legible. That is the
-      thing to look at when it lands; the fallback is a brighter tone for
-      nodes *within* the class rather than another color. Scene colors
-      only — `src/ui/toolPalette.css` is a different layer in a different
-      medium
+      The arc tool's chord and control-point marks were dropped rather than
+      kept in an in-progress color of their own. Scene colors only —
+      `src/ui/toolPalette.css` is a different layer in a different medium
+- [x] hover the road an end would weld onto, in every section tool. Each
+      tool tells a `SectionHighlight` what to mark, since selecting and
+      welding pick by different rules
 - [ ] stamp `network.version` on a plan and check it before applying, so a
       plan made against a network that has since changed is caught rather
       than half-built. Nothing plans further ahead than the click that

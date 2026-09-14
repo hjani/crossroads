@@ -3,11 +3,7 @@ import { nearestNode, nearestSection } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { NodeId, SectionId, Vec2 } from "../core/types";
 import { STATE_COLOR } from "../render/colors";
-import {
-  SectionHighlight,
-  type HighlightedSection,
-} from "../render/SectionHighlight";
-import { tessellate } from "../render/tessellate";
+import { SectionHighlight } from "../render/SectionHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { Tool } from "./Tool";
 
@@ -63,8 +59,8 @@ function sameSelection(
  * disposes a tool it switches away from.
  */
 export class SelectionTool implements Tool {
-  private readonly aimedMark = new SectionHighlight(STATE_COLOR.AIMED);
-  private readonly selectedMark = new SectionHighlight(STATE_COLOR.SELECTED);
+  private readonly aimedMark: SectionHighlight;
+  private readonly selectedMark: SectionHighlight;
   private readonly decoration = new THREE.Group();
 
   private selected: Selection | null = null;
@@ -73,6 +69,8 @@ export class SelectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
+    this.aimedMark = new SectionHighlight(network, STATE_COLOR.AIMED);
+    this.selectedMark = new SectionHighlight(network, STATE_COLOR.SELECTED);
     this.decoration.add(
       this.aimedMark.sceneObject,
       this.selectedMark.sceneObject,
@@ -176,9 +174,9 @@ export class SelectionTool implements Tool {
     }
 
     if (aimed.kind === "node") {
-      this.aimedMark.show([], [this.network.getNode(aimed.id).position]);
+      this.aimedMark.show([], [aimed.id]);
     } else {
-      this.aimedMark.show([this.highlightOf(aimed.id)], []);
+      this.aimedMark.show([aimed.id], []);
     }
   }
 
@@ -197,25 +195,13 @@ export class SelectionTool implements Tool {
     }
 
     if (selected.kind === "node") {
-      this.selectedMark.show(
-        this.network.sectionsAt(selected.id).map((id) => this.highlightOf(id)),
-        [this.network.getNode(selected.id).position],
-      );
+      this.selectedMark.show(this.network.sectionsAt(selected.id), [
+        selected.id,
+      ]);
     } else {
       const section = this.network.getSection(selected.id);
-      this.selectedMark.show(
-        [tessellate(this.network, section)],
-        [
-          this.network.getNode(section.from).position,
-          this.network.getNode(section.to).position,
-        ],
-      );
+      this.selectedMark.show([selected.id], [section.from, section.to]);
     }
-  }
-
-  /** The shape a section is drawn in, which is what the mark on it draws. */
-  private highlightOf(id: SectionId): HighlightedSection {
-    return tessellate(this.network, this.network.getSection(id));
   }
 
   /** Releases the marks' GPU buffers. The tool is unusable after. */

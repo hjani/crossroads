@@ -10,8 +10,6 @@ export const STATE_COLOR = {
   AIMED: 0xffdd44,
   /** A selected item. */
   SELECTED: 0x66ccff,
-  /** A gesture with no verdict yet. */
-  IN_PROGRESS: 0xcc88ff,
   /** What the edit would create. */
   PLANNED: 0x66ee88,
   /** What the edit would try to create, but unable to do so. */
