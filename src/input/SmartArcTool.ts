@@ -11,12 +11,9 @@ import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
 import { distance } from "../core/points";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
+import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
-import {
-  BUILDABLE_COLOR,
-  EXISTING_NODE_COLOR,
-  SectionPlanView,
-} from "../render/SectionPlanView";
+import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
   endpointFrom,
@@ -25,9 +22,6 @@ import {
   type Placement,
 } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
-
-/** The start the arc is drawn from. The same blue as `SelectionTool`'s. */
-const SELECTED_COLOR = 0x66ccff;
 
 /**
  * The furthest round a planned road may turn: three quarters of a circle, as
@@ -213,7 +207,7 @@ export class SmartArcTool implements Tool {
         // As in `StraightSectionTool`: a node already there, or one to be made.
         this.aimedMark.show(
           aimed.position,
-          aimed.kind === "node" ? EXISTING_NODE_COLOR : BUILDABLE_COLOR,
+          aimed.kind === "node" ? STATE_COLOR.AIMED : STATE_COLOR.PLANNED,
         );
       }
       return;
@@ -222,7 +216,6 @@ export class SmartArcTool implements Tool {
     // A click no longer picks a start, and the plans' last point already marks
     // where the far end lands.
     this.aimedMark.hide();
-    this.startMark.show(this.start.position, SELECTED_COLOR);
 
     const end =
       ground === null ? null : this.endAt(this.start, ground, modifiers);
@@ -230,9 +223,19 @@ export class SmartArcTool implements Tool {
       ...(this.flickedDirection === null ? [] : [this.flickedDirection]),
       ...(this.showCandidates ? this.directionsAt(this.start) : []),
     ];
-    this.showPlans(
-      end === null ? [] : this.plansTo(this.start, end, directions),
-    );
+    const plans = end === null ? [] : this.plansTo(this.start, end, directions);
+    this.showPlans(plans);
+
+    // The start is marked on its own only until a plan marks it, as in
+    // `StraightSectionTool`: a node already there, or one to be made.
+    if (plans.length > 0) {
+      this.startMark.hide();
+    } else {
+      this.startMark.show(
+        this.start.position,
+        this.start.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
+      );
+    }
   }
 
   /** The directions a road could leave the start by. None on open ground. */

@@ -1,13 +1,6 @@
 import * as THREE from "three";
 import type { Vec2 } from "../core/types";
-
-/** Above the sections in `NetworkView`, so a marked one reads over the rest. */
-const SECTION_LINE_HEIGHT = 0.03;
-/**
- * Just under the nodes in `NetworkView`, so a mark on a node leaves it
- * visible as a center inside the mark instead of covering it.
- */
-const NODE_MARK_HEIGHT = 0.035;
+import { LAYER } from "./layers";
 
 /** In pixels, and wider than a node, so the mark shows around it. */
 const NODE_MARK_SIZE = 15;
@@ -79,14 +72,14 @@ export class SectionHighlight {
       for (let i = 1; i < section.length; i++) {
         const start = section[i - 1];
         const end = section[i];
-        lineCoordinates.push(start.x, SECTION_LINE_HEIGHT, start.z);
-        lineCoordinates.push(end.x, SECTION_LINE_HEIGHT, end.z);
+        lineCoordinates.push(start.x, LAYER.SECTION_DECORATION, start.z);
+        lineCoordinates.push(end.x, LAYER.SECTION_DECORATION, end.z);
       }
     }
 
     const nodeMarkCoordinates: number[] = [];
     for (const node of nodes) {
-      nodeMarkCoordinates.push(node.x, NODE_MARK_HEIGHT, node.z);
+      nodeMarkCoordinates.push(node.x, LAYER.NODE_DECORATION, node.z);
     }
 
     replaceGeometry(this.sectionLines, lineCoordinates);

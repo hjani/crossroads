@@ -1,15 +1,10 @@
 import * as THREE from "three";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
+import { STATE_COLOR } from "./colors";
+import { LAYER } from "./layers";
 import { tessellate } from "./tessellate";
 
-/** Height above the ground plane, to stay clear of the reference grid. */
-const SECTION_HEIGHT = 0.02;
-/** Slightly higher again, so nodes draw over the sections meeting at them. */
-const NODE_HEIGHT = 0.04;
-
-const SECTION_COLOR = 0xdddddd;
-const NODE_COLOR = 0xffaa33;
 /** In pixels — see `sizeAttenuation` below. */
 const NODE_SIZE = 7;
 
@@ -36,12 +31,12 @@ export class NetworkView {
   constructor(private readonly network: RoadNetwork) {
     this.sections = new THREE.LineSegments(
       makeGeometry([]),
-      new THREE.LineBasicMaterial({ color: SECTION_COLOR }),
+      new THREE.LineBasicMaterial({ color: STATE_COLOR.EXISTING }),
     );
     this.nodes = new THREE.Points(
       makeGeometry([]),
       new THREE.PointsMaterial({
-        color: NODE_COLOR,
+        color: STATE_COLOR.EXISTING,
         size: NODE_SIZE,
         // Keeps the point a fixed pixel size instead of shrinking with distance.
         sizeAttenuation: false,
@@ -72,7 +67,7 @@ export class NetworkView {
   private rebuild(): void {
     const nodePoints: number[] = [];
     for (const node of this.network.allNodes()) {
-      nodePoints.push(node.position.x, NODE_HEIGHT, node.position.z);
+      nodePoints.push(node.position.x, LAYER.NODES, node.position.z);
     }
 
     const sectionPoints: number[] = [];
@@ -99,8 +94,8 @@ function appendPolyline(points: readonly Vec2[], coordinates: number[]): void {
   for (let i = 1; i < points.length; i++) {
     const start = points[i - 1];
     const end = points[i];
-    coordinates.push(start.x, SECTION_HEIGHT, start.z);
-    coordinates.push(end.x, SECTION_HEIGHT, end.z);
+    coordinates.push(start.x, LAYER.SECTIONS, start.z);
+    coordinates.push(end.x, LAYER.SECTIONS, end.z);
   }
 }
 

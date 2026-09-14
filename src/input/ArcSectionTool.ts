@@ -3,13 +3,10 @@ import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
 import { isSamePoint } from "../core/points";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
+import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";
-import {
-  BUILDABLE_COLOR,
-  EXISTING_NODE_COLOR,
-  SectionPlanView,
-} from "../render/SectionPlanView";
+import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
   endpointFrom,
@@ -19,12 +16,6 @@ import {
   type Placement,
 } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
-
-/**
- * Violet for a gesture that has not become a question yet — neither the
- * green of a section about to be built nor the red of one turned down.
- */
-const IN_PROGRESS_COLOR = 0xcc88ff;
 
 /**
  * Draws arc sections by clicking three points: the two ends, and then the
@@ -39,14 +30,16 @@ const IN_PROGRESS_COLOR = 0xcc88ff;
  * of curves is drawn without re-clicking the joins, as with straights.
  */
 export class ArcSectionTool implements Tool {
-  /** Where the first click would land, before there is a gesture to draw. */
-  private readonly firstPointHighlight = new NodeHighlight();
-  /** The start, and the chord out to where the second end would land. */
-  private readonly chordHighlight = new SectionHighlight(IN_PROGRESS_COLOR);
-  /** Where the control point has landed. In the gesture's own color and not
-   * the plan's, since it is a position the cursor is holding rather than
-   * anything the edit would build. */
-  private readonly viaHighlight = new NodeHighlight();
+  /** The start: where the first click would land, and after the click the
+   * start it placed, until both ends are down and the plan marks it. */
+  private readonly startHighlight = new NodeHighlight();
+  /** Where the second click would land. */
+  private readonly endHighlight = new NodeHighlight();
+  /** The chord out to where the second end would land. Its ends are marked
+   * by the two above, in the colors of what they are. */
+  private readonly chordHighlight = new SectionHighlight(
+    STATE_COLOR.IN_PROGRESS,
+  );
   /** The full plan to build the arc. */
   private readonly planView = new SectionPlanView();
   private readonly decoration = new THREE.Group();
@@ -62,8 +55,8 @@ export class ArcSectionTool implements Tool {
     this.decoration.add(
       this.planView.sceneObject,
       this.chordHighlight.sceneObject,
-      this.viaHighlight.sceneObject,
-      this.firstPointHighlight.sceneObject,
+      this.startHighlight.sceneObject,
+      this.endHighlight.sceneObject,
     );
   }
 
@@ -138,53 +131,44 @@ export class ArcSectionTool implements Tool {
   ): void {
     this.planView.hide();
     this.chordHighlight.hide();
-    this.viaHighlight.hide();
-    this.firstPointHighlight.hide();
+    this.startHighlight.hide();
+    this.endHighlight.hide();
 
     const ground =
       cursor === null ? null : this.viewport.screenToGround(cursor);
     if (ground === null) return;
 
     // Both ends down: the arc bending through where the cursor is, which is
-    // the whole of what the next click would build plus the control point.
+    // the whole of what the next click would build.
     if (this.start !== null && this.end !== null) {
-      const via = placeControlPoint(ground, { useGrid: !modifiers.ctrl });
-      const plan = this.planThrough(via);
-      if (plan !== null) {
-        this.planView.showPlan(this.network, plan);
-        this.viaHighlight.show(via, IN_PROGRESS_COLOR);
-      }
+      const plan = this.planThrough(
+        placeControlPoint(ground, { useGrid: !modifiers.ctrl }),
+      );
+      if (plan !== null) this.planView.showPlan(this.network, plan);
+      return;
+    }
+
+    const placed = placeSectionEnd(this.network, this.viewport, ground, {
+      useGrid: !modifiers.ctrl,
+    });
+
+    // Nothing placed: only where the first click would land.
+    if (this.start === null) {
+      markWhereClickLands(this.startHighlight, placed);
       return;
     }
 
     // One end down: the start, and the chord out to where the second end
     // would land. No chord where the click would land back on the start,
     // which is a click with no length to it and is refused.
-    if (this.start !== null) {
-      const placed = placeSectionEnd(this.network, this.viewport, ground, {
-        useGrid: !modifiers.ctrl,
-      });
-      if (!this.reachesBeyondStart(ground, placed)) {
-        this.chordHighlight.show([], [this.start.position]);
-        return;
-      }
+    this.startHighlight.show(
+      this.start.position,
+      this.start.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
+    );
+    if (!this.reachesBeyondStart(ground, placed)) return;
 
-      const ends = [this.start.position, placed.position];
-      this.chordHighlight.show([ends], ends);
-      return;
-    }
-
-    // Nothing placed: only where the first click would land, and not even
-    // that when it would land on the cursor's own position.
-    const placed = placeSectionEnd(this.network, this.viewport, ground, {
-      useGrid: !modifiers.ctrl,
-    });
-    if (placed.kind !== "free") {
-      this.firstPointHighlight.show(
-        placed.position,
-        placed.kind === "node" ? EXISTING_NODE_COLOR : BUILDABLE_COLOR,
-      );
-    }
+    this.chordHighlight.show([[this.start.position, placed.position]], []);
+    markWhereClickLands(this.endHighlight, placed);
   }
 
   /**
@@ -230,7 +214,19 @@ export class ArcSectionTool implements Tool {
   dispose(): void {
     this.planView.dispose();
     this.chordHighlight.dispose();
-    this.viaHighlight.dispose();
-    this.firstPointHighlight.dispose();
+    this.startHighlight.dispose();
+    this.endHighlight.dispose();
   }
+}
+
+/**
+ * Marks where an end click would land: a node already there, or a place one
+ * would be made. Nothing when it would land on the cursor's own position.
+ */
+function markWhereClickLands(mark: NodeHighlight, placed: Placement): void {
+  if (placed.kind === "free") return;
+  mark.show(
+    placed.position,
+    placed.kind === "node" ? STATE_COLOR.AIMED : STATE_COLOR.PLANNED,
+  );
 }

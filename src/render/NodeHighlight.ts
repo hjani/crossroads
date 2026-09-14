@@ -1,11 +1,6 @@
 import * as THREE from "three";
 import type { Vec2 } from "../core/types";
-
-/**
- * Just under the nodes in `NetworkView`, so the node stays visible as an
- * orange center inside the mark rather than being covered by it.
- */
-const HIGHLIGHT_HEIGHT = 0.035;
+import { LAYER } from "./layers";
 
 /** In pixels, and wider than a node, so the mark shows around it. */
 const HIGHLIGHT_SIZE = 15;
@@ -52,7 +47,7 @@ export class NodeHighlight {
 
   /** Marks a position in a color, and makes the mark visible if it was not. */
   show(position: Vec2, color: number): void {
-    this.positions.setXYZ(0, position.x, HIGHLIGHT_HEIGHT, position.z);
+    this.positions.setXYZ(0, position.x, LAYER.NODE_DECORATION, position.z);
     this.positions.needsUpdate = true;
     this.sceneObject.material.color.setHex(color);
     this.sceneObject.visible = true;

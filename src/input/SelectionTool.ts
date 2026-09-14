@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { nearestNode, nearestSection } from "../core/queries";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { NodeId, SectionId, Vec2 } from "../core/types";
+import { STATE_COLOR } from "../render/colors";
 import {
   SectionHighlight,
   type HighlightedSection,
@@ -19,22 +20,6 @@ import type { Tool } from "./Tool";
  * targets.
  */
 const PICK_RADIUS_PIXELS = 12;
-
-/**
- * What the cursor is aimed at: the thing a click would land on or act on.
- *
- * Named for the state rather than for hovering, because that is the color
- * rule the scene is heading for — color says what state something is in,
- * shape and size say what kind of thing it is. It lives here until the
- * palette those five colors belong in exists.
- */
-const AIMED_COLOR = 0xffdd44;
-
-/**
- * What is selected: still there once the cursor has moved off it, which is
- * the whole difference from being aimed at.
- */
-const SELECTED_COLOR = 0x66ccff;
 
 /**
  * What a click selects. The kind is what the tool reasons about: the two
@@ -78,8 +63,8 @@ function sameSelection(
  * disposes a tool it switches away from.
  */
 export class SelectionTool implements Tool {
-  private readonly aimedMark = new SectionHighlight(AIMED_COLOR);
-  private readonly selectedMark = new SectionHighlight(SELECTED_COLOR);
+  private readonly aimedMark = new SectionHighlight(STATE_COLOR.AIMED);
+  private readonly selectedMark = new SectionHighlight(STATE_COLOR.SELECTED);
   private readonly decoration = new THREE.Group();
 
   private selected: Selection | null = null;

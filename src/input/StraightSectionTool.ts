@@ -2,12 +2,9 @@ import * as THREE from "three";
 import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import { STRAIGHT, type Vec2 } from "../core/types";
+import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
-import {
-  BUILDABLE_COLOR,
-  EXISTING_NODE_COLOR,
-  SectionPlanView,
-} from "../render/SectionPlanView";
+import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
   endpointFrom,
@@ -125,14 +122,19 @@ export class StraightSectionTool implements Tool {
       return;
     }
 
+    // No plan with a start down means the cursor is still on that start, so
+    // the start is what gets marked: already clicked, not only hovered.
     // Nothing to mark when the point is the cursor's own position.
     this.planView.hide();
-    if (placed.kind === "free") {
+    const marked = this.pending ?? placed;
+    if (marked.kind === "free") {
       this.highlight.hide();
     } else {
+      const nodeColor =
+        this.pending === null ? STATE_COLOR.AIMED : STATE_COLOR.SELECTED;
       this.highlight.show(
-        placed.position,
-        placed.kind === "node" ? EXISTING_NODE_COLOR : BUILDABLE_COLOR,
+        marked.position,
+        marked.kind === "node" ? nodeColor : STATE_COLOR.PLANNED,
       );
     }
   }

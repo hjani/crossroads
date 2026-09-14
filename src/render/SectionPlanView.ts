@@ -3,29 +3,9 @@ import type { PlannedPoint, SectionPlan } from "../core/edits";
 import { positionOf } from "../core/queries";
 import { isNodeId, type RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
+import { STATE_COLOR } from "./colors";
+import { LAYER } from "./layers";
 import { polylineBetween } from "./tessellate";
-
-/** Above the sections in `NetworkView`, so a chain crossing one reads clearly. */
-const CHAIN_HEIGHT = 0.03;
-/**
- * Just under the nodes in `NetworkView`, so a mark on an existing node
- * leaves it visible as an orange center instead of covering it.
- */
-const MARK_HEIGHT = 0.035;
-
-/** Green for what the edit would create. */
-export const BUILDABLE_COLOR = 0x66ee88;
-/**
- * Red for the same thing when the edit is refused: what it was going to
- * make, and will not. It is the one color that separates a section about
- * to be built from one that is only being aimed.
- */
-const REFUSED_COLOR = 0xff5555;
-/**
- * Blue for a node that is already there, whether or not the edit lands —
- * so this one does not change with the verdict.
- */
-export const EXISTING_NODE_COLOR = 0x66ccff;
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
  * is seen there. An existing node needs a wider one, to show around it. */
@@ -66,12 +46,12 @@ export class SectionPlanView {
   constructor() {
     this.chain = new THREE.Line(
       makeGeometry([]),
-      new THREE.LineBasicMaterial({ color: BUILDABLE_COLOR }),
+      new THREE.LineBasicMaterial({ color: STATE_COLOR.PLANNED }),
     );
     this.chain.frustumCulled = false;
 
-    this.newNodes = makeMarks(BUILDABLE_COLOR, NEW_NODE_SIZE);
-    this.existingNodes = makeMarks(EXISTING_NODE_COLOR, EXISTING_NODE_SIZE);
+    this.newNodes = makeMarks(STATE_COLOR.PLANNED, NEW_NODE_SIZE);
+    this.existingNodes = makeMarks(STATE_COLOR.SELECTED, EXISTING_NODE_SIZE);
 
     this.sceneObject.add(this.chain, this.newNodes, this.existingNodes);
     this.sceneObject.visible = false;
@@ -89,11 +69,11 @@ export class SectionPlanView {
       const marks = isNodeId(point.at)
         ? existingNodeCoordinates
         : newNodeCoordinates;
-      marks.push(position.x, MARK_HEIGHT, position.z);
+      marks.push(position.x, LAYER.NODE_DECORATION, position.z);
     };
 
     let previous = positionOf(network, plan.start.at);
-    chainCoordinates.push(previous.x, CHAIN_HEIGHT, previous.z);
+    chainCoordinates.push(previous.x, LAYER.SECTION_DECORATION, previous.z);
     mark(plan.start, previous);
 
     for (const piece of plan.pieces) {
@@ -105,14 +85,14 @@ export class SectionPlanView {
       // on nothing.
       const along = polylineBetween(previous, position, piece.geometry);
       for (const step of along.slice(1)) {
-        chainCoordinates.push(step.x, CHAIN_HEIGHT, step.z);
+        chainCoordinates.push(step.x, LAYER.SECTION_DECORATION, step.z);
       }
 
       mark(piece.to, position);
       previous = position;
     }
 
-    const verdict = plan.buildable ? BUILDABLE_COLOR : REFUSED_COLOR;
+    const verdict = plan.buildable ? STATE_COLOR.PLANNED : STATE_COLOR.REFUSED;
     this.chain.material.color.setHex(verdict);
     this.newNodes.material.color.setHex(verdict);
 
