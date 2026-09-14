@@ -63,6 +63,11 @@ A design note is not a to-do list: leave planned, deferred and
 not-yet-built work out of it, `PROGRESS.md` tracks that. Read the relevant
 one before working on a subsystem; update it when requirements change.
 
+Written as terse bullets, not prose: one fact per bullet, `→` for a
+consequence, a nested bullet for its reason or exception. A sentence only
+where a list can't carry it. `docs/intersections.md` is the reference
+example.
+
 ## Verification
 
 - `npm run dev` — start the Vite dev server.
