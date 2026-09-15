@@ -173,8 +173,10 @@ still planned as if roads had no width. Geometry:
 - [x] draw straight sections as ribbons, overlapping at nodes; arcs not drawn
       yet. The whole mesh is rebuilt when `network.version` changes.
       `EXISTING` becomes an asphalt gray
-- [ ] draw arcs as ribbons, tessellated along the outer edge; the inner edge
-      reuses its angles
+- [x] draw arcs as ribbons, tessellated along the outer edge; the inner edge
+      reuses its angles. `tessellate.ts` cuts every section into slices
+      across the road, and the view only fills triangles between them. The
+      surface is double-sided, so triangle winding doesn't matter
 - [ ] cut straight sections back at junctions where every road is straight.
       The cuts are core geometry, with tests
 - [ ] cut at junctions with arcs too

@@ -1,9 +1,8 @@
 import * as THREE from "three";
-import { unitDirection } from "../core/points";
 import type { RoadNetwork } from "../core/RoadNetwork";
-import type { Vec2 } from "../core/types";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
+import { ribbonSlicesBetween, type RibbonSlice } from "./tessellate";
 
 /**
  * How wide every road is, in meters — one width for the whole network.
@@ -32,7 +31,11 @@ export class RoadSurfaceView {
     this.surface = new THREE.Mesh(
       makeGeometry([]),
       // Unlit: the surface is one flat color, whatever the scene's lights.
-      new THREE.MeshBasicMaterial({ color: STATE_COLOR.EXISTING }),
+      new THREE.MeshBasicMaterial({
+        color: STATE_COLOR.EXISTING,
+        // Seen only from above, so which way a triangle winds doesn't matter.
+        side: THREE.DoubleSide,
+      }),
     );
     this.sceneObject.add(this.surface);
   }
@@ -57,14 +60,13 @@ export class RoadSurfaceView {
   private rebuild(): void {
     const coordinates: number[] = [];
     for (const section of this.network.allSections()) {
-      if (section.geometry.kind !== "straight") {
-        continue;
-      }
-      appendStraightRibbon(
+      const slices = ribbonSlicesBetween(
         this.network.getNode(section.from).position,
         this.network.getNode(section.to).position,
-        coordinates,
+        section.geometry,
+        ROAD_WIDTH_METERS,
       );
+      appendRibbon(slices, coordinates);
     }
 
     this.surface.geometry.dispose();
@@ -72,54 +74,25 @@ export class RoadSurfaceView {
   }
 }
 
-/**
- * Appends the ribbon of a straight road as two triangles facing up.
- *
- * - `d = unitDirection(from, to)`, `L = |to − from|`
- * - `n = (d.z, −d.x)`: `d` turned a quarter to the left, seen from above
- * - `h = w/2`
- * - corners `from ± h·n`, `to ± h·n` → both ends square to the road, since
- *   `n ⊥ d`
- *
- * Three.js draws only a triangle's front face: the side its normal points
- * to. The camera looks down −Y, so a triangle `a, b, c` shows when
- *
- *     u = b − a,  v = c − a
- *     (u × v).y = u.z·v.x − u.x·v.z > 0
- *
- * - first triangle: `from − h·n`, `to − h·n`, `to + h·n`
- *   - `u = L·d`, `v = L·d + 2h·n`
- *   - `u × v = 2hL·(d × n)`, since `d × d = 0`
- * - second triangle: `from − h·n`, `to + h·n`, `from + h·n`
- *   - `u = L·d + 2h·n`, `v = 2h·n`
- *   - `u × v = 2hL·(d × n)`, since `n × n = 0`
- * - both come out as
- *
- *       (d × n).y = d.z·n.x − d.x·n.z = d.z² + d.x² = 1
- *       (u × v).y = 2hL > 0
- *
- * → both face the camera for every direction, and no double-sided material
- *   is needed.
- */
-function appendStraightRibbon(
-  from: Vec2,
-  to: Vec2,
+/** Appends a ribbon: two triangles between each pair of neighboring slices. */
+function appendRibbon(
+  slices: readonly RibbonSlice[],
   coordinates: number[],
 ): void {
-  const d = unitDirection(from, to);
-  const h = ROAD_WIDTH_METERS / 2;
-  const hn = { x: d.z * h, z: -d.x * h };
+  for (let i = 1; i < slices.length; i++) {
+    const back = slices[i - 1];
+    const front = slices[i];
 
-  const fromRight = { x: from.x - hn.x, z: from.z - hn.z };
-  const fromLeft = { x: from.x + hn.x, z: from.z + hn.z };
-  const toRight = { x: to.x - hn.x, z: to.z - hn.z };
-  const toLeft = { x: to.x + hn.x, z: to.z + hn.z };
-
-  for (const corner of [fromRight, toRight, toLeft]) {
-    coordinates.push(corner.x, LAYER.ROAD_SURFACE, corner.z);
-  }
-  for (const corner of [fromRight, toLeft, fromLeft]) {
-    coordinates.push(corner.x, LAYER.ROAD_SURFACE, corner.z);
+    for (const corner of [
+      back.edgeB,
+      front.edgeB,
+      front.edgeA,
+      back.edgeB,
+      front.edgeA,
+      back.edgeA,
+    ]) {
+      coordinates.push(corner.x, LAYER.ROAD_SURFACE, corner.z);
+    }
   }
 }
 
