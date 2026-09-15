@@ -6,6 +6,8 @@
  * All of them clear the reference grid at zero.
  */
 export const LAYER = {
+  /** The roads, so every line over it stays visible. */
+  ROAD_SURFACE: 0.01,
   /** The network's sections. */
   SECTIONS: 0.02,
   /** Lines a tool draws, so a marked or planned section reads over the rest. */

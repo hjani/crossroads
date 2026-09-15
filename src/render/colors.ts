@@ -4,8 +4,10 @@
  * a section in the same state share a color.
  */
 export const STATE_COLOR = {
-  /** The network as it is. */
-  EXISTING: 0xdddddd,
+  /** The network as it is: an asphalt gray, shared by the road surface and
+   * the wireframe centerlines over it. */
+//  EXISTING: 0x555555,
+  EXISTING: 0x706E6A,
   /** What a click would land on or act on. */
   AIMED: 0xffdd44,
   /** A selected item. */

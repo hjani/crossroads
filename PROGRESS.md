@@ -170,7 +170,7 @@ still planned as if roads had no width. Geometry:
 - [x] rename `tessellate` / `polylineBetween` to `centerline` /
       `centerlineBetween` — a ribbon is a second way to draw a section, not a
       replacement for the line
-- [ ] draw straight sections as ribbons, overlapping at nodes; arcs not drawn
+- [x] draw straight sections as ribbons, overlapping at nodes; arcs not drawn
       yet. The whole mesh is rebuilt when `network.version` changes.
       `EXISTING` becomes an asphalt gray
 - [ ] draw arcs as ribbons, tessellated along the outer edge; the inner edge

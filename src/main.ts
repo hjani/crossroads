@@ -7,6 +7,7 @@ import { SmartArcTool } from "./input/SmartArcTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
 import { NetworkView } from "./render/NetworkView";
+import { RoadSurfaceView } from "./render/RoadSurfaceView";
 import { Viewport } from "./render/Viewport";
 import { ToolPalette } from "./ui/ToolPalette";
 
@@ -29,6 +30,9 @@ const grid = new THREE.GridHelper(100, 20);
 scene.add(grid);
 
 const network = new RoadNetwork();
+
+const roadSurfaceView = new RoadSurfaceView(network);
+scene.add(roadSurfaceView.sceneObject);
 
 const networkView = new NetworkView(network);
 scene.add(networkView.sceneObject);
@@ -71,6 +75,7 @@ timer.connect(document);
 function renderLoop(timestamp: number) {
   timer.update(timestamp);
   controls.update(timer.getDelta());
+  roadSurfaceView.update();
   networkView.update();
   renderer.render(scene, viewport.camera);
   requestAnimationFrame(renderLoop);
