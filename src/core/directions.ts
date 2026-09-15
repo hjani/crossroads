@@ -1,6 +1,10 @@
 import { arcViaLeaving } from "./arcs";
-import { isSamePoint, lerp } from "./points";
-import { sectionDirectionAt, sectionFractionAt } from "./queries";
+import { angleOf, isSamePoint, lerp } from "./points";
+import {
+  sectionDirectionAt,
+  sectionDirectionLeavingNode,
+  sectionFractionAt,
+} from "./queries";
 import type { RoadNetwork } from "./RoadNetwork";
 import {
   STRAIGHT,
@@ -16,15 +20,15 @@ import {
 
 /**
  * One direction per section meeting the node: the way that section is heading
- * as it arrives, carried on past the node. That is the reverse of entering the
- * section from the node. Unit vectors pointing away from the node. Empty for an
- * unknown node.
+ * as it arrives, carried on past the node. That is the reverse of the way the
+ * section leaves the node. Unit vectors pointing away from the node. Empty for
+ * an unknown node.
  */
 export function continuingDirectionsAt(
   network: RoadNetwork,
   node: NodeId,
 ): Vec2[] {
-  return enteringDirectionsAt(network, node).map(({ x, z }) => ({
+  return directionsLeavingNode(network, node).map(({ x, z }) => ({
     x: -x,
     z: -z,
   }));
@@ -45,8 +49,8 @@ export function bisectorDirectionsAt(
   network: RoadNetwork,
   node: NodeId,
 ): Vec2[] {
-  const angles = enteringDirectionsAt(network, node)
-    .map(({ x, z }) => Math.atan2(z, x))
+  const angles = directionsLeavingNode(network, node)
+    .map(angleOf)
     .sort((a, b) => a - b);
   if (angles.length < 2) return [];
 
@@ -71,7 +75,7 @@ export function perpendicularDirectionsAt(
   network: RoadNetwork,
   node: NodeId,
 ): Vec2[] {
-  return enteringDirectionsAt(network, node).flatMap(({ x, z }) => [
+  return directionsLeavingNode(network, node).flatMap(({ x, z }) => [
     { x: -z, z: x },
     { x: z, z: -x },
   ]);
@@ -180,19 +184,13 @@ export function geometryLeaving(
 }
 
 /**
- * One direction per section meeting the node: the way that section is entered
- * from the node, pointing into it. The gaps between roads lie between these.
- * Empty for an unknown node.
+ * One direction per section meeting the node: the way that section leaves it.
+ * The gaps between roads lie between these. Empty for an unknown node.
  */
-function enteringDirectionsAt(network: RoadNetwork, node: NodeId): Vec2[] {
-  return network.sectionsAt(node).map((id) => {
-    const section = network.getSection(id);
-    if (section.from === node) {
-      return sectionDirectionAt(network, section, 0);
-    }
-    // Ending here, the section runs into the node, so entering it from the
-    // node means heading the other way.
-    const arriving = sectionDirectionAt(network, section, 1);
-    return { x: -arriving.x, z: -arriving.z };
-  });
+function directionsLeavingNode(network: RoadNetwork, node: NodeId): Vec2[] {
+  return network
+    .sectionsAt(node)
+    .map((id) =>
+      sectionDirectionLeavingNode(network, network.getSection(id), node),
+    );
 }

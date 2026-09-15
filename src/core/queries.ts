@@ -13,7 +13,14 @@ import {
   type Crossing,
 } from "./segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import type { Node, Section, SectionGeometry, SectionId, Vec2 } from "./types";
+import type {
+  Node,
+  NodeId,
+  Section,
+  SectionGeometry,
+  SectionId,
+  Vec2,
+} from "./types";
 
 /**
  * Geometric questions asked of the network from outside it.
@@ -152,6 +159,28 @@ export function sectionDirectionAt(
   return section.geometry.kind === "arc"
     ? arcDirectionAt(from, end, section.geometry.via, t)
     : unitDirection(from, end);
+}
+
+/**
+ * Which way a section leaves one of its nodes, as a unit vector pointing away
+ * from the node and into the section — along the tangent, for an arc. Throws
+ * for a section that does not meet the node.
+ */
+export function sectionDirectionLeavingNode(
+  network: RoadNetwork,
+  section: Section,
+  node: NodeId,
+): Vec2 {
+  if (section.from === node) {
+    return sectionDirectionAt(network, section, 0);
+  }
+  if (section.to !== node) {
+    throw new Error(`Section ${section.id} does not meet node ${node}`);
+  }
+  // Ending here, the section runs into the node, so leaving the node along it
+  // means heading the other way.
+  const arriving = sectionDirectionAt(network, section, 1);
+  return { x: -arriving.x, z: -arriving.z };
 }
 
 /**

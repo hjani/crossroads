@@ -1,19 +1,12 @@
 import * as THREE from "three";
 import type { RoadNetwork } from "../core/RoadNetwork";
+import { ROAD_WIDTH_METERS, roadwayOf } from "../core/roadways";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { ribbonSlicesBetween, type RibbonSlice } from "./tessellate";
 
 /**
- * How wide every road is, in meters — one width for the whole network.
- *
- * Kept here while this view is its only reader; it moves to core with the
- * setbacks at junctions, which need it too.
- */
-const ROAD_WIDTH_METERS = 8;
-
-/**
- * Draws a road network as asphalt: a ribbon along each section.
+ * Draws a road network as asphalt: a ribbon along each roadway.
  *
  * Rebuilt as a whole when the network's version says the drawing is stale.
  */
@@ -60,10 +53,11 @@ export class RoadSurfaceView {
   private rebuild(): void {
     const coordinates: number[] = [];
     for (const section of this.network.allSections()) {
+      const roadway = roadwayOf(this.network, section, ROAD_WIDTH_METERS);
       const slices = ribbonSlicesBetween(
-        this.network.getNode(section.from).position,
-        this.network.getNode(section.to).position,
-        section.geometry,
+        roadway.from,
+        roadway.to,
+        roadway.geometry,
         ROAD_WIDTH_METERS,
       );
       appendRibbon(slices, coordinates);

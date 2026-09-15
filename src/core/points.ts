@@ -31,6 +31,14 @@ export function unitDirection(from: Vec2, to: Vec2): Vec2 {
   return { x: (to.x - from.x) / length, z: (to.z - from.z) / length };
 }
 
+/**
+ * The angle `direction` points at, in radians from +x turning toward +z, in
+ * −π..π. `direction` does not need to be a unit vector.
+ */
+export function angleOf(direction: Vec2): number {
+  return Math.atan2(direction.z, direction.x);
+}
+
 /** Whether two positions are the same place — see `SAME_POINT_METERS`. */
 export function isSamePoint(a: Vec2, b: Vec2): boolean {
   return distance(a, b) <= SAME_POINT_METERS;

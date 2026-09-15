@@ -8,7 +8,7 @@ import {
   perpendicularDirectionsAt,
 } from "../core/directions";
 import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
-import { distance } from "../core/points";
+import { angleOf, distance } from "../core/points";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { STATE_COLOR } from "../render/colors";
@@ -391,7 +391,6 @@ function turnsWithinLimit(from: Vec2, direction: Vec2, to: Vec2): boolean {
  */
 function roundHeading(toward: Vec2): Vec2 {
   const angle =
-    Math.round(Math.atan2(toward.z, toward.x) / HEADING_STEP_RADIANS) *
-    HEADING_STEP_RADIANS;
+    Math.round(angleOf(toward) / HEADING_STEP_RADIANS) * HEADING_STEP_RADIANS;
   return { x: Math.cos(angle), z: Math.sin(angle) };
 }

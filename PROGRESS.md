@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M6 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M7 — Two-lane visuals (stretch)**
-Next step: draw straight sections as ribbons
+Next step: set back at junctions with arcs too
 
 ## Milestones
 
@@ -180,8 +180,8 @@ still planned as if roads had no width. Geometry:
 - [x] `docs/road-layout.md` design note: the network on the ground, a
       junction per node and a roadway per section, derived from the network
       and cached by `RoadLayout`. `docs/road-surface.md` now only draws it
-- [ ] set straight sections back at junctions where every road is straight.
-      The setbacks are core geometry, with tests
+- [x] set straight sections back at junctions, as if no arc were there. The
+      setbacks are core geometry, with tests
 - [ ] set back at junctions with arcs too
 - [ ] junction polygon over gaps under 180°; wider gaps stay open
 - [ ] round join over gaps wider than 180°

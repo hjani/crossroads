@@ -1,5 +1,5 @@
 import { arcCircle, arcPolyline } from "../core/arcs";
-import { unitDirection } from "../core/points";
+import { isSamePoint, unitDirection } from "../core/points";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Section, SectionGeometry, Vec2 } from "../core/types";
 
@@ -102,6 +102,8 @@ export interface RibbonSlice {
  * - → always outward, so `edgeA` is always the outer edge
  *
  * A `via` in line with the ends has no circle → sliced as a straight.
+ *
+ * Ends at the same place → no slices, and an error logged.
  */
 export function ribbonSlicesBetween(
   from: Vec2,
@@ -109,6 +111,12 @@ export function ribbonSlicesBetween(
   geometry: SectionGeometry,
   widthMeters: number,
 ): readonly RibbonSlice[] {
+  if (isSamePoint(from, to)) {
+    console.error(
+      `No ribbon for a section of no length, at (${from.x}, ${from.z})`,
+    );
+    return [];
+  }
   if (geometry.kind === "arc") {
     const circle = arcCircle(from, to, geometry.via);
     if (circle !== null) {
