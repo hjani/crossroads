@@ -4,10 +4,10 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0 through M5 are done — M3 came ahead of the curves because a second tool
+M0 through M6 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
-**M6 — Backlog cleanup**
-Next step: stamp `network.version` on a plan
+**M7 — Two-lane visuals (stretch)**
+Next step: `docs/road-surface.md` design note
 
 ## Milestones
 
@@ -159,7 +159,37 @@ more drawn on every pointer move — plus the plan version check.
       the same ids on the same `network.version`
 
 ### M7 — Two-lane visuals (stretch)
-- [ ] extrude road ribbons from centerlines
+
+Roads as single-color ribbons, 8 m wide (a global constant), cut back at
+junctions and joined there by junction polygons. Visuals only — edits are
+still planned as if roads had no width. Geometry:
+`docs/ideas/junction-polygon.md`.
+
+- [ ] `docs/road-surface.md` design note: how ribbons, cuts and junction
+      polygons fit the architecture. The geometry is linked, not repeated
+- [ ] rename `tessellate` / `polylineBetween` to `centerline` /
+      `centerlineBetween` — a ribbon is a second way to draw a section, not a
+      replacement for the line
+- [ ] draw straight sections as ribbons, overlapping at nodes; arcs not drawn
+      yet. The whole mesh is rebuilt when `network.version` changes.
+      `EXISTING` becomes an asphalt gray
+- [ ] draw arcs as ribbons, tessellated along the outer edge; the inner edge
+      reuses its angles
+- [ ] cut straight sections back at junctions where every road is straight.
+      The cuts are core geometry, with tests
+- [ ] cut at junctions with arcs too
+- [ ] junction polygon over gaps under 180°; wider gaps stay open
+- [ ] round join over gaps wider than 180°
+- [ ] optional: rebuild only what changed, and decide how the view learns
+      what that is
+
+### M8 — Planning using road width
+
+Edits account for road width, and refuse what M7 can only draw wrong — such
+as a road too short for the cuts at its two ends.
+
+- [ ] minimum arc radius of 10 m, global. Fits the 8 m road; once width can
+      vary, `max(10 m, w/2)`
 
 ## Backlog
 
