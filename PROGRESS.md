@@ -165,7 +165,7 @@ junctions and joined there by junction polygons. Visuals only — edits are
 still planned as if roads had no width. Geometry:
 `docs/ideas/junction-polygon.md`.
 
-- [ ] `docs/road-surface.md` design note: how ribbons, cuts and junction
+- [x] `docs/road-surface.md` design note: how ribbons, cuts and junction
       polygons fit the architecture. The geometry is linked, not repeated
 - [ ] rename `tessellate` / `polylineBetween` to `centerline` /
       `centerlineBetween` — a ribbon is a second way to draw a section, not a

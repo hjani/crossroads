@@ -2,8 +2,7 @@
 
 ## Scope
 
-- Makes the road network visible: sections as lines, nodes as points, kept
-  in step with the model as it is edited.
+- Makes the road network visible, kept in step with the model as it is edited.
 - Not in scope: hit-testing, hover and selection highlights, previews of a
   section being drawn. Those belong to the tool layer, even though they draw
   into the same scene.
