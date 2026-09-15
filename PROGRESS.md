@@ -185,6 +185,7 @@ still planned as if roads had no width. Geometry:
 - [ ] set back at junctions with arcs too
 - [ ] junction polygon over gaps under 180°; wider gaps stay open
 - [ ] round join over gaps wider than 180°
+- [ ] `RoadLayout` (`docs/road-layout.md`); `RoadSurfaceView` reads through it
 - [ ] optional: rebuild only what changed, and decide how the view learns
       what that is
 
