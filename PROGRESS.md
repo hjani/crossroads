@@ -177,6 +177,9 @@ still planned as if roads had no width. Geometry:
       reuses its angles. `tessellate.ts` cuts every section into slices
       across the road, and the view only fills triangles between them. The
       surface is double-sided, so triangle winding doesn't matter
+- [x] `docs/road-layout.md` design note: the network on the ground, a
+      junction per node and a roadway per section, derived from the network
+      and cached by `RoadLayout`. `docs/road-surface.md` now only draws it
 - [ ] set straight sections back at junctions where every road is straight.
       The setbacks are core geometry, with tests
 - [ ] set back at junctions with arcs too

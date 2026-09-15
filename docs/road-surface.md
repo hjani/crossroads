@@ -2,30 +2,19 @@
 
 ## Scope
 
-- Draws roads as asphalt: a ribbon per section, a polygon per junction
-  joining the ribbons meeting there.
+- Draws the road layout (`docs/road-layout.md`) as asphalt: a ribbon per
+  roadway, and each junction filled in.
 - Visuals only. Edits are still planned as if roads had no width
   (`docs/intersections.md`) → a network the planner accepts can still draw
   wrong (see Limits).
-- The geometry (gaps, setbacks, `P`, `T`, the walk around a node) is worked
-  out in `docs/ideas/junction-polygon.md` and not repeated here.
 - Out of scope: marks and previews. They stay lines along the centerline
   (`docs/tools.md`).
 
-## Width
-
-- One width `w` for every road: 8 m, a global constant.
-- In meters, not pixels → the surface follows from the network alone →
-  rebuilt on an edit and on nothing else.
-
 ## Ribbons
 
-- A section's ribbon: the strip `w/2` either side of its centerline.
-- Ends square to the road, whether that end is set back or not.
-- A section set back at its ends is a shorter section of the same kind:
-  - straight → the straight between the setbacks
-  - arc → the same circle, between the setbacks
-  - → drawn by the same code as a section with no setback
+- A roadway's ribbon: the strip `w/2` either side of its centerline.
+- A roadway is a section of the same kind → drawn by the same code whether it
+  is set back or not.
 - Arc: both edges are circles around the arc's center, broken into pieces
   at the same angles → a strip of quads square to the road.
   - The outer edge sets how fine: at a given angle step it strays furthest
@@ -35,46 +24,29 @@
 
 ## Junctions
 
-- Worked out per node, from that node and the sections meeting it alone.
-- Each gap under 180° sets its two roads back, to end square through `P`.
-  A road set back from both sides takes the longer setback, measured along
-  its centerline.
-- Outline, walked around the node:
-  - gap under 180° → through `P`
-  - gap of 180° or over → a round join, along the circle of radius `w/2`
-    around the node
-  - a dead end is one gap of 360° → a round cap
-- As a gap → 180°, its setbacks and its part of the outline → nothing →
-  moving a road a little never makes the junction jump.
 - Drawn as a triangle fan from the node, at the ribbons' height and in their
-  color → ribbons and polygon meet edge to edge, no overlap.
+  color → ribbons and junctions meet edge to edge, no overlap.
+- Round joins are broken into pieces here, not in the layout.
+  - → the fan, and the grass it can pave, is how a junction is drawn, not
+    what it is.
 
 ## Limits
 
 Drawn wrong, never an error. Nothing here refuses an edit.
 
-- Setbacks at a road's two ends longer than the road together → no ribbon;
-  the two junction polygons overlap.
-- Two roads leaving a node the same way (a gap of 0) → the setback grows
-  without limit → clamped to the road's length.
+- A setback clamped to half its section → the junction still reaches `P`,
+  past the halfway point → overlaps what lies beyond it.
 - Arc radius under `w/2` → the inner edge doesn't exist → the ribbon folds
   over itself.
 - A tight arc beside a sharp gap → the fan paves a sliver of grass. Accepted.
 
 ## Relationship to other modules
 
-- Setbacks and junction outlines: `src/core/`, in a module of their own.
-  - One module: walking the outline needs every road's setback first.
-  - Pure 2D geometry with exact answers → tested like the rest of core.
-- The outline is a shape of the network, not a drawing → other readers use
-  it too (picking a junction).
-  - → the round join stays a true arc; only the renderer breaks it into
-    pieces. Same rule as picking a section against its circle, not its
-    chords.
-  - → the triangle fan, and the grass it can pave, is how the outline is
-    drawn, not what the junction is.
-- Ribbons and junction meshes: `src/render/`, a view of its own beside the
-  wireframe (`docs/rendering.md`), not an extension of it.
+- Reads the layout; knows no setback or junction rules of its own.
+  - The layout is in meters, not pixels → the surface is rebuilt on an edit
+    and on nothing else.
+- A view of its own in `src/render/`, beside the wireframe
+  (`docs/rendering.md`), not an extension of it.
   - Learns of edits from the version counter; the whole surface is rebuilt
     when it changes.
   - A layer under the network's lines.
