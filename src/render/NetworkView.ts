@@ -3,7 +3,7 @@ import type { RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import { tessellate } from "./tessellate";
+import { centerline } from "./tessellate";
 
 /** In pixels — see `sizeAttenuation` below. */
 const NODE_SIZE = 7;
@@ -72,7 +72,7 @@ export class NetworkView {
 
     const sectionPoints: number[] = [];
     for (const section of this.network.allSections()) {
-      appendPolyline(tessellate(this.network, section), sectionPoints);
+      appendPolyline(centerline(this.network, section), sectionPoints);
     }
 
     replaceGeometry(this.sections, sectionPoints);

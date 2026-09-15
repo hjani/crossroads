@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M6 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M7 — Two-lane visuals (stretch)**
-Next step: `docs/road-surface.md` design note
+Next step: draw straight sections as ribbons
 
 ## Milestones
 
@@ -167,7 +167,7 @@ still planned as if roads had no width. Geometry:
 
 - [x] `docs/road-surface.md` design note: how ribbons, cuts and junction
       polygons fit the architecture. The geometry is linked, not repeated
-- [ ] rename `tessellate` / `polylineBetween` to `centerline` /
+- [x] rename `tessellate` / `polylineBetween` to `centerline` /
       `centerlineBetween` — a ribbon is a second way to draw a section, not a
       replacement for the line
 - [ ] draw straight sections as ribbons, overlapping at nodes; arcs not drawn

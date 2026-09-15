@@ -5,7 +5,7 @@ import { isNodeId, type RoadNetwork } from "../core/RoadNetwork";
 import type { Vec2 } from "../core/types";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import { polylineBetween } from "./tessellate";
+import { centerlineBetween } from "./tessellate";
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
  * is seen there. An existing node needs a wider one, to show around it. */
@@ -83,7 +83,7 @@ export class SectionPlanView {
       // curve. Its first position is the one already written for the point
       // before it, and writing it twice would leave the line doubling back
       // on nothing.
-      const along = polylineBetween(previous, position, piece.geometry);
+      const along = centerlineBetween(previous, position, piece.geometry);
       for (const step of along.slice(1)) {
         chainCoordinates.push(step.x, LAYER.SECTION_DECORATION, step.z);
       }

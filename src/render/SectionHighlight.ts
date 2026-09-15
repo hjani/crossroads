@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { RoadNetwork } from "../core/RoadNetwork";
 import type { NodeId, SectionId } from "../core/types";
 import { LAYER } from "./layers";
-import { tessellate } from "./tessellate";
+import { centerline } from "./tessellate";
 
 /** In pixels, and wider than a node, so the mark shows around it. */
 const NODE_MARK_SIZE = 15;
@@ -92,7 +92,7 @@ export class SectionHighlight {
 
     const lineCoordinates: number[] = [];
     for (const id of sections) {
-      const points = tessellate(this.network, this.network.getSection(id));
+      const points = centerline(this.network, this.network.getSection(id));
       for (let i = 1; i < points.length; i++) {
         const start = points[i - 1];
         const end = points[i];
