@@ -6,7 +6,7 @@
 export const STATE_COLOR = {
   /** The network as it is: an asphalt gray, shared by the road surface and
    * the wireframe centerlines over it. */
-//  EXISTING: 0x555555,
+  //  EXISTING: 0x555555,
   EXISTING: 0x706e6a,
   /** What a click would land on or act on. */
   AIMED: 0xffdd44,

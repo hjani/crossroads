@@ -8,7 +8,7 @@ import { ribbonSlicesBetween, type RibbonSlice } from "./tessellate";
  * How wide every road is, in meters — one width for the whole network.
  *
  * Kept here while this view is its only reader; it moves to core with the
- * cuts at junctions, which need it too.
+ * setbacks at junctions, which need it too.
  */
 const ROAD_WIDTH_METERS = 8;
 

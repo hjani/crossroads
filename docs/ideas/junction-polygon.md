@@ -27,11 +27,14 @@ Two roads meeting at a 90° bend, both ribbons drawn all the way to the node:
 
 ## The approach
 
-- End each ribbon a short way before the node: the **cut**.
-- Fill the space between the cuts with one shape: the **junction polygon**.
+- End each ribbon a short way before the node. How far before, measured
+  along the road: the **setback**.
+- What is left of the ribbon: the **roadway**.
+- Fill the space between the roadways with one shape: the **junction
+  polygon**.
 - → no overlap, no gap.
-- Open: where each cut goes, and what shape fills the space. Taken one case
-  at a time.
+- Open: how long each setback is, and what shape fills the space. Taken one
+  case at a time.
 
 ## Two roads at a node
 
@@ -58,16 +61,16 @@ Two roads meeting at a 90° bend, both ribbons drawn all the way to the node:
 - Both ribbons, drawn all the way to the node, end on the same line: square
   to the road, through N.
   - → no overlap, no gap.
-- Cut: 0. Junction polygon: none.
-- Arcs too: an arc's ribbon also ends square to its direction at the node.
+- Setback: 0. Junction polygon: none.
+- Arcs too: an arc's roadway also ends square to its direction at the node.
   - → two arcs joined smoothly meet like two straights.
 - Near 180° the other two cases apply. As the gap gets close to 180°, their
-  cut and polygon must shrink to this result.
+  setback and polygon must shrink to this result.
   - → moving a road a little never makes the junction jump.
 
 ### Gap under 180°
 
-The 90° bend from above, after cutting:
+The 90° bend from above, both roads set back:
 
     |       |
     |   B   |
@@ -79,40 +82,40 @@ The 90° bend from above, after cutting:
     . . . . +-----------
 
 - `P`: where the two road edges on this side of the gap cross.
-- Cut each road square across, through `P`.
-  - → the ribbons touch only at `P` → no overlap.
-- On this side the junction polygon needs nothing more: both cuts end at
-  `P`.
+- End each roadway square across, through `P`.
+  - → the roadways touch only at `P` → no overlap.
+- On this side the junction polygon needs nothing more: both roadways end
+  at `P`.
 - The dotted side is the other gap (270°) → see "Gap over 180°".
 
-How long the cut is, for two straights:
+How long the setback is, for two straights:
 
 - `φ`: the gap
 - `P` lies on the line splitting the gap in half, at distance `ρ` from N
 - `P` is `w/2` from each road's centerline → `ρ·sin(φ/2) = w/2`
-- the cut, measured along the road: `c = ρ·cos(φ/2)`
+- the setback, measured along the road: `s = ρ·cos(φ/2)`
 
-      c = (w/2)·cot(φ/2)
+      s = (w/2)·cot(φ/2)
 
-| gap `φ` | cut `c` |
-| ------- | ------- |
-| 180°    | 0       |
-| 90°     | 0.5 w   |
-| 60°     | 0.87 w  |
-| 30°     | 1.87 w  |
-| 10°     | 5.7 w   |
+| gap `φ` | setback `s` |
+| ------- | ----------- |
+| 180°    | 0           |
+| 90°     | 0.5 w       |
+| 60°     | 0.87 w      |
+| 30°     | 1.87 w      |
+| 10°     | 5.7 w       |
 
-- `φ` → 180°: `c` → 0 → matches "Gap of 180°".
-- `φ` → 0°: `c` grows without limit → a sharp bend cuts a long piece off
-  both roads, possibly longer than a road itself.
+- `φ` → 180°: `s` → 0 → matches "Gap of 180°".
+- `φ` → 0°: `s` grows without limit → a sharp bend sets both roads back a
+  long way, possibly further than a road is long.
   - The edit planning should refuse this: every road at a node the edit
-    changes needs `c1 + c2 ≤ its length`, with `c1`, `c2` the cuts at its
-    two ends.
+    changes needs `s1 + s2 ≤ its length`, with `s1`, `s2` the setbacks at
+    its two ends.
 
 ### Gap over 180°
 
 - The dotted side of the 90° bend: a 270° gap.
-- The cuts are already set by the other gap.
+- The other gap already fixes the setbacks.
 - Question: how to close the outline between the two outer corners `+`.
 - `ψ`: this gap.
 
@@ -127,7 +130,7 @@ How long the cut is, for two straights:
 - The line passes through `N`.
 - Other gap under 90° → `N` ends up outside the road → the centerline runs
   over grass.
-- Cause: the other gap sets the cuts, so the corners are far from `N`.
+- Cause: the other gap sets the roads back, so the corners are far from `N`.
 - The same goes for an arc joining the two corners.
 
 **Miter** (a sharp corner, like a picture frame): extend both edges until
@@ -197,13 +200,14 @@ A sharp bend, not to scale:
 
 - Sort the roads by the direction they leave `N` → each road has two
   neighbors, one on each side.
-- Each gap asks both of its roads for a cut, as in the two-road cases:
-  - under 180°: a cut through `P`
-  - 180° or over: no cut
-- A road gets one ask from each side → it is cut at the **longer** one.
-  - At the shorter one, its ribbon would still overlap the other neighbor.
+- Each gap sets both of its roads back, as in the two-road cases:
+  - under 180°: to end through `P`
+  - 180° or over: not at all
+- A road gets a setback from each side → it takes the **longer** one.
+  - With the shorter one, its roadway would still overlap the other
+    neighbor.
 
-When a road's two asks differ:
+When a road's two setbacks differ:
 
              /
         B   /  grass
@@ -214,10 +218,10 @@ When a road's two asks differ:
           :          |
     -----------------+
 
-- A third road `C` (below, not drawn) asks `A` for the longer cut.
-- Dotted line: where `B`'s ask alone would cut `A`.
-- The strip between the dotted line and the real cut belongs to the
-  junction, with grass on one side of it.
+- A third road `C` (below, not drawn) sets `A` back further.
+- Dotted line: where `A`'s roadway would end with `B`'s setback alone.
+- The strip between the dotted line and where `A`'s roadway really ends
+  belongs to the junction, with grass on one side of it.
 - Outline on this side: `+` → back along `A`'s edge to `P` → on to `B`.
 - `P` can be an **inward corner**: a corner pointing into the shape.
 
@@ -256,19 +260,20 @@ scale.
                       |         |
     ------------------+--T------+------------
 
-| gap        | ask    |
-| ---------- | ------ |
-| A–B, 60°   | 0.87 w |
-| B–C, 120°  | 0.29 w |
-| C–A, 180°  | none   |
+| gap        | setback |
+| ---------- | ------- |
+| A–B, 60°   | 0.87 w  |
+| B–C, 120°  | 0.29 w  |
+| C–A, 180°  | none    |
 
-- Cuts, the longer ask: `A` 0.87 w, `B` 0.87 w, `C` 0.29 w.
+- Setbacks, the longer of each road's two: `A` 0.87 w, `B` 0.87 w, `C`
+  0.29 w.
 
 1. `A`: right corner `+`, left corner `P`.
 2. Gap A–B: `B`'s right corner is the same `P` → nothing to add.
 3. `B`: left corner `+`.
-4. Gap B–C: `B` is cut past `P` → back along `B`'s edge to `P`. `C`'s right
-   corner is that `P` → nothing more.
+4. Gap B–C: `B` is set back past `P` → back along `B`'s edge to `P`. `C`'s
+   right corner is that `P` → nothing more.
 5. `C`: left corner `+`.
 6. Gap C–A: 180° → the arc at `T` has zero length → `C`'s `+`, `T` and
    `A`'s `+` lie on one line.
@@ -292,13 +297,13 @@ A gap over 180°: all three roads leave on one side of `N`. `A` goes right,
          `.           |
            `T---------+------------------
 
-| gap        | ask    |
-| ---------- | ------ |
-| A–B, 45°   | 1.21 w |
-| B–C, 45°   | 1.21 w |
-| C–A, 270°  | none   |
+| gap        | setback |
+| ---------- | ------- |
+| A–B, 45°   | 1.21 w  |
+| B–C, 45°   | 1.21 w  |
+| C–A, 270°  | none    |
 
-- Cuts, the longer ask: all three 1.21 w.
+- Setbacks, the longer of each road's two: all three 1.21 w.
 
 1. `A`: right corner `+`, left corner `P`.
 2. Gap A–B: `B`'s right corner is the same `P` → nothing to add.
@@ -313,7 +318,7 @@ A gap over 180°: all three roads leave on one side of `N`. `A` goes right,
 
 ## Arcs
 
-- The rules above stay: gaps, asks, the longer cut, `P`, `T`, the walk.
+- The rules above stay: gaps, the longer setback, `P`, `T`, the walk.
 - What needs checking is the geometry under them.
 
 ### Finding `P`
@@ -325,7 +330,7 @@ A gap over 180°: all three roads leave on one side of `N`. `A` goes right,
     - needs `R > w/2`, or the inner edge doesn't exist
 - `P`: where the two edges on the gap's side cross, as before.
   - → a line with a line, a line with a circle, or two circles
-  - → no simple formula for the cut anymore
+  - → no simple formula for the setback anymore
 - Two lines cross at most once. A circle can cross a line or another circle
   twice.
 - An edge only runs as long as its road → the second crossing usually falls
@@ -350,7 +355,7 @@ A gap over 180°: all three roads leave on one side of `N`. `A` goes right,
 
 - → `P` is the crossing nearest `N`, along the road.
 
-### Measuring the cut
+### Measuring the setback
 
 Not to scale; the arcs are drawn straight.
 
@@ -364,20 +369,21 @@ Not to scale; the arcs are drawn straight.
              \   /
                O
 
-- A cut square to the road passes through the arc's center `O`.
-- The cut through `P` runs along the line from `O` through `P`.
+- A roadway's end, square to the road, lies on a line through the arc's
+  center `O`.
+- The end through `P` runs along the line from `O` through `P`.
   - `Q`: where that line crosses the centerline.
   - `θ`: the angle at `O` between `N` and `Q`.
-- The cut length is measured along the centerline, from `N` to `Q`:
+- The setback is measured along the centerline, from `N` to `Q`:
 
-      c = R·θ
+      s = R·θ
 
-- Why the centerline: a road's two asks come from its two edges.
+- Why the centerline: a road's two setbacks come from its two edges.
   - Measured along the edges, the same `θ` gives `(R − w/2)·θ` on the inner
-    edge and `(R + w/2)·θ` on the outer edge → the same cut gets two
+    edge and `(R + w/2)·θ` on the outer edge → the same setback gets two
     different lengths.
-  - Measured along the centerline, both give `R·θ` → the longer ask is the
-    one with the larger `θ`.
+  - Measured along the centerline, both give `R·θ` → the longer setback is
+    the one with the larger `θ`.
 
 ### The touching point `T`
 

@@ -160,12 +160,12 @@ more drawn on every pointer move — plus the plan version check.
 
 ### M7 — Two-lane visuals (stretch)
 
-Roads as single-color ribbons, 8 m wide (a global constant), cut back at
+Roads as single-color ribbons, 8 m wide (a global constant), set back at
 junctions and joined there by junction polygons. Visuals only — edits are
 still planned as if roads had no width. Geometry:
 `docs/ideas/junction-polygon.md`.
 
-- [x] `docs/road-surface.md` design note: how ribbons, cuts and junction
+- [x] `docs/road-surface.md` design note: how ribbons, setbacks and junction
       polygons fit the architecture. The geometry is linked, not repeated
 - [x] rename `tessellate` / `polylineBetween` to `centerline` /
       `centerlineBetween` — a ribbon is a second way to draw a section, not a
@@ -177,9 +177,9 @@ still planned as if roads had no width. Geometry:
       reuses its angles. `tessellate.ts` cuts every section into slices
       across the road, and the view only fills triangles between them. The
       surface is double-sided, so triangle winding doesn't matter
-- [ ] cut straight sections back at junctions where every road is straight.
-      The cuts are core geometry, with tests
-- [ ] cut at junctions with arcs too
+- [ ] set straight sections back at junctions where every road is straight.
+      The setbacks are core geometry, with tests
+- [ ] set back at junctions with arcs too
 - [ ] junction polygon over gaps under 180°; wider gaps stay open
 - [ ] round join over gaps wider than 180°
 - [ ] optional: rebuild only what changed, and decide how the view learns
@@ -188,7 +188,7 @@ still planned as if roads had no width. Geometry:
 ### M8 — Planning using road width
 
 Edits account for road width, and refuse what M7 can only draw wrong — such
-as a road too short for the cuts at its two ends.
+as a road too short for the setbacks at its two ends.
 
 - [ ] minimum arc radius of 10 m, global. Fits the 8 m road; once width can
       vary, `max(10 m, w/2)`
