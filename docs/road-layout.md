@@ -26,6 +26,9 @@
     - → a section's two setbacks never overlap, and each junction still
       needs only its own node.
     - Bites as a gap → 0, where the setback grows without limit.
+  - A gap whose edges don't cross ahead of the node sets nothing back.
+  - Where the network can't be drawn right (cut to half, or nothing set
+    back), an error is logged, with the reason.
   - Asked for a section not meeting the node → error.
 - The area it covers, walked around the node gap by gap:
   - gap under 180° → reaches `P`

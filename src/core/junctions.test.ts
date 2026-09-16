@@ -55,7 +55,13 @@ describe("Junction", () => {
 
     const junction = new Junction(network, east.from, WIDTH_METERS);
 
-    // The 60° gap: (w/2)·cot 30°. The 120° gap: (w/2)·cot 60°.
+    // Two straights, gap φ, node N: P is w/2 from both centerlines, so on the
+    // line splitting the gap in half. With F the foot of P on a centerline,
+    // the right triangle N F P has angle φ/2 at N and |PF| = w/2:
+    //
+    //     s = |NF| = (w/2) / tan(φ/2)
+    //
+    // The 60° gap: 4·√3. The 120° gap: 4/√3.
     expect(junction.setbackOf(east.id)).toBeCloseTo(4 * Math.sqrt(3));
     expect(junction.setbackOf(branch.id)).toBeCloseTo(4 * Math.sqrt(3));
     expect(junction.setbackOf(west.id)).toBeCloseTo(4 / Math.sqrt(3));
@@ -70,6 +76,17 @@ describe("Junction", () => {
 
     expect(junction.setbackOf(short.id)).toBeCloseTo(3);
     expect(junction.setbackOf(long.id)).toBeCloseTo(4);
+  });
+
+  it("doesn't set back two roads leaving the same way", () => {
+    const network = new RoadNetwork();
+    const short = network.addSection(at(0, 0), at(10, 0), STRAIGHT);
+    const long = network.addSection(short.from, at(20, 0), STRAIGHT);
+
+    const junction = new Junction(network, short.from, WIDTH_METERS);
+
+    expect(junction.setbackOf(short.id)).toBe(0);
+    expect(junction.setbackOf(long.id)).toBe(0);
   });
 
   it("sets the straights back as if an arc at the node weren't there", () => {

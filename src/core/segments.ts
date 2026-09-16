@@ -62,12 +62,14 @@ export function segmentFractionAt(point: Vec2, from: Vec2, to: Vec2): number {
 }
 
 /**
- * Where the segments `a1`–`a2` and `b1`–`b2` meet, or null if they don't.
+ * Where the line through `a1`, `a2` meets the line through `b1`, `b2`, or null
+ * if they don't. The lines run on past the points, so `alongA` and `alongB`
+ * can be anywhere, negative included.
  *
  * Let `A = a2 − a1`, `B = b2 − b1`, `d = b1 − a1`, and `u × v` the 2D cross
  * product `u.x·v.z − u.z·v.x` (so `v × v = 0`).
  *
- * - A point on each segment: `a1 + s·A` and `b1 + t·B`, with s, t in 0..1.
+ * - A point on each line: `a1 + s·A` and `b1 + t·B`.
  * - They are the same point when `s·A − t·B = d`.
  * - Cross both sides with `B` (removes t), then with `A` (removes s):
  *
@@ -76,17 +78,11 @@ export function segmentFractionAt(point: Vec2, from: Vec2, to: Vec2): number {
  *
  * `s` is `alongA` and `t` is `alongB`.
  *
- * Returns null when:
- * - `A × B = 0`: parallel segments, collinear ones included (they overlap
- *   rather than meet at a point), or a segment with no length. The zero
- *   check only guards the division.
- * - `s` or `t` is outside 0..1: the lines meet past the end of a segment.
- *
- * Touching at an endpoint (`s` or `t` exactly 0 or 1) is a crossing. The
- * caller decides whether that is a new junction or an existing join, since
- * only it knows whether the two segments share a node.
+ * Returns null when `A × B = 0`: parallel lines, the same line included (it
+ * overlaps rather than meets at a point), or two equal points that fix no
+ * line. The zero check only guards the division.
  */
-export function segmentCrossing(
+export function lineCrossing(
   a1: Vec2,
   a2: Vec2,
   b1: Vec2,
@@ -108,9 +104,29 @@ export function segmentCrossing(
   const alongA = (dx * bz - dz * bx) / denominator;
   const alongB = (dx * az - dz * ax) / denominator;
 
-  if (alongA < 0 || alongA > 1 || alongB < 0 || alongB > 1) {
+  return { point: lerp(a1, a2, alongA), alongA, alongB };
+}
+
+/**
+ * Where the segments `a1`–`a2` and `b1`–`b2` meet, or null if they don't.
+ *
+ * Touching at an endpoint (exactly 0 or 1) is a crossing.
+ */
+export function segmentCrossing(
+  a1: Vec2,
+  a2: Vec2,
+  b1: Vec2,
+  b2: Vec2,
+): Crossing | null {
+  const crossing = lineCrossing(a1, a2, b1, b2);
+  if (
+    crossing === null ||
+    crossing.alongA < 0 ||
+    crossing.alongA > 1 ||
+    crossing.alongB < 0 ||
+    crossing.alongB > 1
+  ) {
     return null;
   }
-
-  return { point: lerp(a1, a2, alongA), alongA, alongB };
+  return crossing;
 }
