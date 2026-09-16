@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { Vec2 } from "../core/types";
 import { LAYER } from "./layers";
+import type { Vec2 } from "../core/geometry/points";
 
 /** In pixels, and wider than a node, so the mark shows around it. */
 const HIGHLIGHT_SIZE = 15;

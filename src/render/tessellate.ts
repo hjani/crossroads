@@ -1,7 +1,7 @@
-import { arcCircle, arcPolyline } from "../core/arcs";
-import { isSamePoint, unitDirection } from "../core/points";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import type { Section, SectionGeometry, Vec2 } from "../core/types";
+import { arcCircle, arcPolyline } from "../core/geometry/arcs";
+import { isSamePoint, unitDirection, type Vec2 } from "../core/geometry/points";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
+import type { Section, SectionGeometry } from "../core/network/types";
 
 /**
  * The points a section is drawn along: its centerline, and the slices across

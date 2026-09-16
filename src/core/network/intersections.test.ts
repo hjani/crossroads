@@ -5,13 +5,13 @@ import {
   pointsOf,
   type SectionPlan,
 } from "./edits";
-import { arcCircle, pointOnArc, type ArcCircle } from "./arcs";
-import { distance } from "./points";
-import { segmentCrossing } from "./segments";
+import { arcCircle, pointOnArc, type ArcCircle } from "../geometry/arcs";
+import { distance, type Vec2 } from "../geometry/points";
+import { segmentCrossing } from "../geometry/segments";
 import { nearestNode, positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type NodeId, type Vec2 } from "./types";
+import { STRAIGHT, type NodeId } from "./types";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };

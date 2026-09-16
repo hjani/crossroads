@@ -1,8 +1,11 @@
 import * as THREE from "three";
-import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
-import { isSamePoint } from "../core/points";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import type { Vec2 } from "../core/types";
+import {
+  applySectionPlan,
+  planSection,
+  type SectionPlan,
+} from "../core/network/edits";
+import { isSamePoint, type Vec2 } from "../core/geometry/points";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";

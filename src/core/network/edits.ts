@@ -1,6 +1,16 @@
-import { arcFractionAt, arcLength, isArcValid, pointOnArc } from "./arcs";
-import { distance, isSamePoint, SAME_POINT_METERS } from "./points";
-import { segmentFractionAt } from "./segments";
+import {
+  arcFractionAt,
+  arcLength,
+  isArcValid,
+  pointOnArc,
+} from "../geometry/arcs";
+import {
+  distance,
+  isSamePoint,
+  SAME_POINT_METERS,
+  type Vec2,
+} from "../geometry/points";
+import { segmentFractionAt } from "../geometry/segments";
 import {
   crossingsAlong,
   nearestNode,
@@ -15,7 +25,6 @@ import {
   type Section,
   type SectionGeometry,
   type SectionId,
-  type Vec2,
 } from "./types";
 
 /**

@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { nearestNode, nearestSection } from "../core/queries";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import type { NodeId, SectionId, Vec2 } from "../core/types";
+import { nearestNode, nearestSection } from "../core/network/queries";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
+import type { NodeId, SectionId } from "../core/network/types";
 import { STATE_COLOR } from "../render/colors";
 import { SectionHighlight } from "../render/SectionHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { Tool } from "./Tool";
+import type { Vec2 } from "../core/geometry/points";
 
 /**
  * How close the cursor must look to a node or a section to pick it. In

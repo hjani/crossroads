@@ -1,5 +1,5 @@
-import { arcViaLeaving } from "./arcs";
-import { angleOf, isSamePoint, lerp } from "./points";
+import { arcViaLeaving } from "../geometry/arcs";
+import { angleOf, isSamePoint, lerp, type Vec2 } from "../geometry/points";
 import {
   sectionDirectionAt,
   sectionDirectionLeavingNode,
@@ -11,7 +11,6 @@ import {
   type NodeId,
   type SectionGeometry,
   type SectionId,
-  type Vec2,
 } from "./types";
 
 /**

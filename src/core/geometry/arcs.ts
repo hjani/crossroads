@@ -1,11 +1,10 @@
-import { distance, lerp, unitDirection } from "./points";
+import { distance, lerp, unitDirection, type Vec2 } from "./points";
 import {
   fromTheOtherSide,
   segmentCrossing,
   segmentFractionAt,
   type Crossing,
 } from "./segments";
-import type { Vec2 } from "./types";
 
 /**
  * Curved sections as plane geometry: the circle three positions lie on, and

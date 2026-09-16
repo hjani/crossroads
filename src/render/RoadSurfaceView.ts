@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import { ROAD_WIDTH_METERS, roadwayOf } from "../core/roadways";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
+import { ROAD_WIDTH_METERS, roadwayOf } from "../core/layout/roadways";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { ribbonSlicesBetween, type RibbonSlice } from "./tessellate";

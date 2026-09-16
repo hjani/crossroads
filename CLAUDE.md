@@ -24,8 +24,14 @@ TypeScript 7 + Three.js + Vite, running in the browser.
   matching the library's own convention — not a general project rule, just
   matches how all Three.js docs/examples name it.
 - Directory layout:
-  - `src/core/` — road network data model (nodes, edges/sections). Pure
-    logic, no Three.js/rendering dependency.
+  - `src/core/` — pure logic, no Three.js/rendering dependency. Three
+    layers, each importing only the ones before it:
+    - `geometry/` — plane geometry on the ground: `Vec2`, segments, arcs.
+      Knows nothing of the network.
+    - `network/` — the road network data model (nodes, sections), and
+      the queries and edits on it.
+    - `layout/` — the network as it lies on the ground: junctions and
+      roadways (`docs/road-layout.md`).
   - `src/render/` — Three.js scene setup; converts core data into
     renderable geometry.
   - `src/input/` — camera pan/zoom, click/drag handling, tool-mode manager.
@@ -52,7 +58,7 @@ TypeScript 7 + Three.js + Vite, running in the browser.
   - the final formula on its own indented line, matching the code
   - what follows from it: what is never computed, what input needn't be
     normalized, how the edge cases come out
-  `arcViaLeaving` in `src/core/arcs.ts` is the reference example.
+  `arcViaLeaving` in `src/core/geometry/arcs.ts` is the reference example.
 
 ## Design notes
 

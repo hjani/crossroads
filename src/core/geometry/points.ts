@@ -1,5 +1,3 @@
-import type { Vec2 } from "./types";
-
 /**
  * Positions on the XZ ground and the distances between them.
  *
@@ -9,6 +7,12 @@ import type { Vec2 } from "./types";
  * positions, so the same math serves a section that exists and one that is
  * only being drawn.
  */
+
+/** A point on the XZ ground plane, in meters. */
+export interface Vec2 {
+  readonly x: number;
+  readonly z: number;
+}
 
 /**
  * How close two positions have to be to count as the same place, in meters.

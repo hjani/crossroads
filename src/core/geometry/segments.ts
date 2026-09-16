@@ -1,5 +1,4 @@
-import { clamp01, lerp } from "./points";
-import type { Vec2 } from "./types";
+import { clamp01, lerp, type Vec2 } from "./points";
 
 /**
  * Straight sections as plane geometry: where along one a position falls, and

@@ -1,19 +1,22 @@
-import { distance, SAME_POINT_METERS } from "../core/points";
+import {
+  distance,
+  SAME_POINT_METERS,
+  type Vec2,
+} from "../core/geometry/points";
 import {
   crossingsAlong,
   nearestNode,
   nearestPointOnSection,
   nearestSection,
   nodeWithin,
-} from "../core/queries";
-import type { Endpoint, RoadNetwork } from "../core/RoadNetwork";
+} from "../core/network/queries";
+import type { Endpoint, RoadNetwork } from "../core/network/RoadNetwork";
 import {
   STRAIGHT,
   type NodeId,
   type Section,
   type SectionId,
-  type Vec2,
-} from "../core/types";
+} from "../core/network/types";
 import type { Viewport } from "../render/Viewport";
 import { GRID_PITCH_METERS, snapToGrid } from "./gridSnap";
 

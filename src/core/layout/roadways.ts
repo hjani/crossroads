@@ -1,8 +1,8 @@
-import { arcLength, pointOnArc } from "./arcs";
+import { arcLength, pointOnArc } from "../geometry/arcs";
 import { Junction } from "./junctions";
-import { unitDirection } from "./points";
-import type { RoadNetwork } from "./RoadNetwork";
-import type { Section, SectionGeometry, Vec2 } from "./types";
+import { unitDirection, type Vec2 } from "../geometry/points";
+import type { RoadNetwork } from "../network/RoadNetwork";
+import type { Section, SectionGeometry } from "../network/types";
 
 /** How wide every road is, in meters — one width for the whole network. */
 export const ROAD_WIDTH_METERS = 8;

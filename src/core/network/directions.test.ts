@@ -7,14 +7,13 @@ import {
   nearestDirection,
   perpendicularDirectionsAt,
 } from "./directions";
-import { distance } from "./points";
+import { distance, type Vec2 } from "../geometry/points";
 import { RoadNetwork } from "./RoadNetwork";
 import {
   STRAIGHT,
   type NodeId,
   type SectionGeometry,
   type SectionId,
-  type Vec2,
 } from "./types";
 
 function at(x: number, z: number): Vec2 {

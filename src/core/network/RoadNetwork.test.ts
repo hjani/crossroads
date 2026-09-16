@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type NodeId, type SectionId, type Vec2 } from "./types";
+import { STRAIGHT, type NodeId, type SectionId } from "./types";
+import type { Vec2 } from "../geometry/points";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };

@@ -6,11 +6,14 @@ import {
   midSectionDirectionsAt,
   nearestDirection,
   perpendicularDirectionsAt,
-} from "../core/directions";
-import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
-import { angleOf, distance } from "../core/points";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import type { Vec2 } from "../core/types";
+} from "../core/network/directions";
+import {
+  applySectionPlan,
+  planSection,
+  type SectionPlan,
+} from "../core/network/edits";
+import { angleOf, distance, type Vec2 } from "../core/geometry/points";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";

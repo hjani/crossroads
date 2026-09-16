@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import type { Vec2 } from "../core/types";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { centerline } from "./tessellate";
+import type { Vec2 } from "../core/geometry/points";
 
 /** In pixels — see `sizeAttenuation` below. */
 const NODE_SIZE = 7;

@@ -4,14 +4,20 @@ import {
   arcFractionAt,
   pointOnArc,
   segmentArcCrossings,
-} from "./arcs";
-import { distance, isSamePoint, lerp, unitDirection } from "./points";
+} from "../geometry/arcs";
+import {
+  distance,
+  isSamePoint,
+  lerp,
+  unitDirection,
+  type Vec2,
+} from "../geometry/points";
 import {
   fromTheOtherSide,
   segmentCrossing,
   segmentFractionAt,
   type Crossing,
-} from "./segments";
+} from "../geometry/segments";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
 import type {
   Node,
@@ -19,7 +25,6 @@ import type {
   Section,
   SectionGeometry,
   SectionId,
-  Vec2,
 } from "./types";
 
 /**

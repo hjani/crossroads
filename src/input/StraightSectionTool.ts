@@ -1,7 +1,11 @@
 import * as THREE from "three";
-import { applySectionPlan, planSection, type SectionPlan } from "../core/edits";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import { STRAIGHT, type Vec2 } from "../core/types";
+import {
+  applySectionPlan,
+  planSection,
+  type SectionPlan,
+} from "../core/network/edits";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
+import { STRAIGHT } from "../core/network/types";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";
@@ -14,6 +18,7 @@ import {
   type Placement,
 } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
+import type { Vec2 } from "../core/geometry/points";
 
 /**
  * Draws straight sections by clicking their endpoints.

@@ -11,8 +11,7 @@ import {
   segmentArcCrossings,
   type ArcCircle,
 } from "./arcs";
-import { distance } from "./points";
-import type { Vec2 } from "./types";
+import { distance, type Vec2 } from "./points";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };

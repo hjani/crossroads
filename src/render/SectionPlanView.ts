@@ -1,11 +1,11 @@
 import * as THREE from "three";
-import type { PlannedPoint, SectionPlan } from "../core/edits";
-import { positionOf } from "../core/queries";
-import { isNodeId, type RoadNetwork } from "../core/RoadNetwork";
-import type { Vec2 } from "../core/types";
+import type { PlannedPoint, SectionPlan } from "../core/network/edits";
+import { positionOf } from "../core/network/queries";
+import { isNodeId, type RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { centerlineBetween } from "./tessellate";
+import type { Vec2 } from "../core/geometry/points";
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
  * is seen there. An existing node needs a wider one, to show around it. */

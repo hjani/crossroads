@@ -75,11 +75,12 @@ the grid pitch is fixed).
 
 ## Relationship to other modules
 
-- In `src/core/`, above and outside `RoadNetwork`:
+- In `src/core/network/`, above and outside `RoadNetwork`:
   - a split edits several primitives (+1 node, +2 sections, −1 section)
   - the model stores, it doesn't decide
   - uses only the network's public API
-- The geometry knows nothing about the network, just points and distances.
+- The geometry (`src/core/geometry/`) knows nothing about the network, just
+  points and distances.
   Only the pair of shapes varies; where the result goes doesn't.
 - Editing tools call this instead of adding a section directly. The tool
   picks the endpoints and reports refusals; this decides what the network

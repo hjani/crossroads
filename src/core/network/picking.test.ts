@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { nearestPointOnSection, nearestSection } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type Vec2 } from "./types";
+import { STRAIGHT } from "./types";
+import type { Vec2 } from "../geometry/points";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };

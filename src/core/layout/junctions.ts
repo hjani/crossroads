@@ -4,12 +4,18 @@ import {
   circleCircleCrossings,
   lineCircleCrossings,
   type ArcCircle,
-} from "./arcs";
-import { angleOf, distance, lerp, SAME_POINT_METERS } from "./points";
-import { sectionDirectionLeavingNode } from "./queries";
-import type { RoadNetwork } from "./RoadNetwork";
-import { lineCrossing } from "./segments";
-import type { NodeId, Section, SectionId, Vec2 } from "./types";
+} from "../geometry/arcs";
+import {
+  angleOf,
+  distance,
+  lerp,
+  SAME_POINT_METERS,
+  type Vec2,
+} from "../geometry/points";
+import { sectionDirectionLeavingNode } from "../network/queries";
+import type { RoadNetwork } from "../network/RoadNetwork";
+import { lineCrossing } from "../geometry/segments";
+import type { NodeId, Section, SectionId } from "../network/types";
 
 /**
  * The junction at a node: where the roads meeting there stop being roadways.

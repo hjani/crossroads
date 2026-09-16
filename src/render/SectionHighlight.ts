@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { RoadNetwork } from "../core/RoadNetwork";
-import type { NodeId, SectionId } from "../core/types";
+import type { RoadNetwork } from "../core/network/RoadNetwork";
+import type { NodeId, SectionId } from "../core/network/types";
 import { LAYER } from "./layers";
 import { centerline } from "./tessellate";
 

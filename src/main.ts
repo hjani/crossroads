@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { RoadNetwork } from "./core/RoadNetwork";
+import { RoadNetwork } from "./core/network/RoadNetwork";
 import { ArcSectionTool } from "./input/ArcSectionTool";
 import { PanZoomControls } from "./input/PanZoomControls";
 import { SelectionTool } from "./input/SelectionTool";
