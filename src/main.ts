@@ -26,7 +26,7 @@ handleResize();
 
 const controls = new PanZoomControls(viewport, renderer.domElement, window);
 
-const grid = new THREE.GridHelper(100, 20);
+const grid = new THREE.GridHelper(1000, 20);
 scene.add(grid);
 
 const network = new RoadNetwork();

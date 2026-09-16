@@ -16,7 +16,7 @@ import type { Vec2 } from "../core/types";
  * Fixed rather than scaled with the zoom: the same click has to land on
  * the same point whatever view it was made from.
  */
-export const GRID_PITCH_METERS = 1;
+export const GRID_PITCH_METERS = 5;
 
 /** The grid point nearest a position. Lines run through the origin. */
 export function snapToGrid(point: Vec2): Vec2 {

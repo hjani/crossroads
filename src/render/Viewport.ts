@@ -16,7 +16,7 @@ export interface ScreenPoint {
  * straight down, so this is its vertical extent. The X span follows from
  * the canvas aspect ratio.
  */
-const VIEW_SPAN_Z = 100;
+const VIEW_SPAN_Z = 400;
 
 /** How far above the ground plane the camera sits. */
 const CAMERA_HEIGHT = 50;
