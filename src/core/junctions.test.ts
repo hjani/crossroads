@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { arcViaLeaving } from "./arcs";
 import { Junction } from "./junctions";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT, type SectionId, type Vec2 } from "./types";
@@ -8,6 +7,14 @@ const WIDTH_METERS = 8;
 
 function at(x: number, z: number): Vec2 {
   return { x, z };
+}
+
+/** The point `radius` from `center` at `angle`, turning from +x toward +z. */
+function onCircle(center: Vec2, radius: number, angle: number): Vec2 {
+  return {
+    x: center.x + radius * Math.cos(angle),
+    z: center.z + radius * Math.sin(angle),
+  };
 }
 
 describe("Junction", () => {
@@ -89,25 +96,129 @@ describe("Junction", () => {
     expect(junction.setbackOf(long.id)).toBe(0);
   });
 
-  it("sets the straights back as if an arc at the node weren't there", () => {
+  it("sets a straight and an arc bending away from it back", () => {
+    // East straight; the arc leaves north and bends west, around O = (−R, 0).
+    const R = 20;
+    const center = at(-R, 0);
     const network = new RoadNetwork();
-    const east = network.addSection(at(0, 0), at(20, 0), STRAIGHT);
-    const north = network.addSection(east.from, at(0, 20), STRAIGHT);
-    // Leaves into the middle of the bend, at 45°. Counted, it would split the
-    // 90° gap in two and set both straights back further.
-    const via = arcViaLeaving(at(0, 0), at(1, 1), at(30, 10));
-    if (via === null) throw new Error("expected an arc");
-    const arc = network.addSection(east.from, at(30, 10), {
-      kind: "arc",
-      via,
-    });
+    const east = network.addSection(at(0, 0), at(40, 0), STRAIGHT);
+    const arc = network.addSection(
+      east.from,
+      onCircle(center, R, Math.PI / 2),
+      { kind: "arc", via: onCircle(center, R, Math.PI / 4) },
+    );
 
     const junction = new Junction(network, east.from, WIDTH_METERS);
 
-    expect(junction.setbackOf(east.id)).toBeCloseTo(4);
-    expect(junction.setbackOf(north.id)).toBeCloseTo(4);
+    // Straight edge z = w/2; the arc's outer edge, radius R + w/2, around O.
+    // They cross at P = (h − R, w/2), with h² = (R + w/2)² − (w/2)² = R² + Rw.
+    // Straight: s = P.x. Arc: s = R·θ, θ the angle at O between N and P.
+    const h = Math.sqrt(R * R + R * WIDTH_METERS);
+    expect(junction.setbackOf(east.id)).toBeCloseTo(h - R);
+    expect(junction.setbackOf(arc.id)).toBeCloseTo(
+      R * Math.atan2(WIDTH_METERS / 2, h),
+    );
+  });
+
+  it("sets two arcs bending away from each other back alike", () => {
+    // Mirror images across the line x = z: one leaves east and bends south,
+    // around (0, −R); the other leaves north and bends west, around (−R, 0).
+    const R = 20;
+    const southCenter = at(0, -R);
+    const westCenter = at(-R, 0);
+    const network = new RoadNetwork();
+    const east = network.addSection(at(0, 0), onCircle(southCenter, R, 0), {
+      kind: "arc",
+      via: onCircle(southCenter, R, Math.PI / 4),
+    });
+    const north = network.addSection(
+      east.from,
+      onCircle(westCenter, R, Math.PI / 2),
+      { kind: "arc", via: onCircle(westCenter, R, Math.PI / 4) },
+    );
+
+    const junction = new Junction(network, east.from, WIDTH_METERS);
+
+    // Both outer edges, radius r = R + w/2, cross on x = z at P = (x, x):
+    //   (x + R)² + x² = r²  →  x = (√(2r² − R²) − R) / 2
+    // Seen from (0, −R), N is straight up and P at (x, R + x):
+    //   s = R·atan2(x, R + x)
+    const r = R + WIDTH_METERS / 2;
+    const x = (Math.sqrt(2 * r * r - R * R) - R) / 2;
+    const expected = R * Math.atan2(x, R + x);
+    expect(junction.setbackOf(east.id)).toBeCloseTo(expected);
+    expect(junction.setbackOf(north.id)).toBeCloseTo(expected);
+  });
+
+  it("sets a straight and an arc just short of in line back by almost nothing", () => {
+    // The straight leaves west, tilted a milliradian south; the arc leaves
+    // east and bends south, into the gap, around (0, −R).
+    const R = 20;
+    const center = at(0, -R);
+    const network = new RoadNetwork();
+    const west = network.addSection(at(0, 0), at(-20, -0.02), STRAIGHT);
+    const arc = network.addSection(west.from, onCircle(center, R, 0), {
+      kind: "arc",
+      via: onCircle(center, R, Math.PI / 4),
+    });
+
+    const junction = new Junction(network, west.from, WIDTH_METERS);
+
+    for (const id of [west.id, arc.id]) {
+      expect(junction.setbackOf(id)).toBeGreaterThan(0);
+      expect(junction.setbackOf(id)).toBeLessThan(0.05);
+    }
+  });
+
+  it("doesn't set back an arc too tight for its inner edge", () => {
+    // The arc leaves north and bends east, into the gap, with R < w/2.
+    const R = 3;
+    const center = at(R, 0);
+    const network = new RoadNetwork();
+    const east = network.addSection(at(0, 0), at(20, 0), STRAIGHT);
+    const arc = network.addSection(
+      east.from,
+      onCircle(center, R, Math.PI / 2),
+      { kind: "arc", via: onCircle(center, R, (3 * Math.PI) / 4) },
+    );
+
+    const junction = new Junction(network, east.from, WIDTH_METERS);
+
+    expect(junction.setbackOf(east.id)).toBe(0);
     expect(junction.setbackOf(arc.id)).toBe(0);
   });
+
+  for (const [bend, side] of [
+    ["counterclockwise", 1],
+    ["clockwise", -1],
+  ] as const) {
+    it(`sets a straight and a tangent arc bending ${bend} back`, () => {
+      // Both leave east. The arc is a half circle around (0, side·R). Added
+      // after the straight, so only its curvature can put it on the right
+      // side of it.
+      const R = 20;
+      const center = at(0, side * R);
+      const network = new RoadNetwork();
+      const east = network.addSection(at(0, 0), at(40, 0), STRAIGHT);
+      const arc = network.addSection(east.from, at(0, 2 * side * R), {
+        kind: "arc",
+        via: onCircle(center, R, 0),
+      });
+
+      const junction = new Junction(network, east.from, WIDTH_METERS);
+
+      // The straight's edge z = side·w/2 and the arc's outer edge, radius
+      // R + w/2, cross at P = (x, side·w/2):
+      //   x² = (R + w/2)² − (R − w/2)² = 2Rw
+      // Straight: s = x. Arc: seen from its center, N is at (0, −side·R) and
+      // P at (x, −side·(R − w/2)) → s = R·atan2(x, R − w/2).
+      const x = Math.sqrt(2 * R * WIDTH_METERS);
+      expect(junction.setbackOf(east.id)).toBeCloseTo(x);
+      expect(junction.setbackOf(arc.id)).toBeCloseTo(
+        R * Math.atan2(x, R - WIDTH_METERS / 2),
+      );
+    });
+  }
 
   it("throws for a section not meeting the node", () => {
     const network = new RoadNetwork();

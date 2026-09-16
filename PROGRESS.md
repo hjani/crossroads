@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M6 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M7 — Two-lane visuals (stretch)**
-Next step: set back at junctions with arcs too
+Next step: junction polygon over gaps under 180°
 
 ## Milestones
 
@@ -182,7 +182,10 @@ still planned as if roads had no width. Geometry:
       and cached by `RoadLayout`. `docs/road-surface.md` now only draws it
 - [x] set straight sections back at junctions, as if no arc were there. The
       setbacks are core geometry, with tests
-- [ ] set back at junctions with arcs too
+- [x] set back at junctions with arcs too. Every gap goes through one path:
+      cross the two gap-side edges, taken whole (lines, or circles around an
+      arc's center). Legs leaving the same way are ordered by curvature.
+      Where a network can't be drawn right, the reason is logged
 - [ ] junction polygon over gaps under 180°; wider gaps stay open
 - [ ] round join over gaps wider than 180°
 - [ ] `RoadLayout` (`docs/road-layout.md`); `RoadSurfaceView` reads through it

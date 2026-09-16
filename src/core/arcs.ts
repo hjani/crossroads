@@ -295,12 +295,12 @@ export function arcPolyline(
 }
 
 /**
- * Where the segment `a1`–`a2` meets the arc `from`–`via`–`to`, in order of
- * distance from `a1`. Up to two.
+ * Where the line through `a1`, `a2` meets `circle`, as fractions `t` along the
+ * line: 0 at `a1`, 1 at `a2`, and on past both. Up to two, smaller `t` first.
  *
  * Let `d = a2 − a1`, `f = a1 − center`, and `r` the radius.
  *
- * - A point on the segment: `a1 + t·d`, with t in 0..1.
+ * - A point on the line: `a1 + t·d`.
  * - It is on the circle when `|f + t·d|² = r²`, which expands to
  *   `a·t² + b·t + c = 0` with
  *
@@ -308,19 +308,52 @@ export function arcPolyline(
  *       b = 2(f·d)
  *       c = f·f − r²
  *
- * - The roots, the `−` one first (smaller t, so met first from `a1`):
+ * - The roots, the `−` one first:
  *
  *       t = (−b ± √(b² − 4ac)) / 2a
  *
- * - A root counts only if t is in 0..1 and the arc's sweep reaches the point.
- *
- * Returns no crossings when:
- * - `a = 0`: the segment has no length.
+ * Returns none when:
+ * - `a = 0`: two equal points fix no line.
  * - `b² − 4ac < 0`: the line misses the circle.
  *
- * `b² − 4ac = 0` is a tangent, which counts as a crossing. With rounding, a
- * line that only touches the circle often gives two very close crossings
- * instead. The zero check only guards the square root.
+ * `b² − 4ac = 0` is a tangent, which counts, as two equal roots. With
+ * rounding, a line that only touches the circle often gives two very close
+ * roots instead. The zero check only guards the square root.
+ */
+export function lineCircleCrossings(
+  a1: Vec2,
+  a2: Vec2,
+  circle: ArcCircle,
+): number[] {
+  const { center, radius } = circle;
+  const directionX = a2.x - a1.x;
+  const directionZ = a2.z - a1.z;
+  const offsetX = a1.x - center.x;
+  const offsetZ = a1.z - center.z;
+
+  const a = directionX * directionX + directionZ * directionZ;
+  if (a === 0) {
+    // No line. We're about to divide by it below, so bail out early.
+    return [];
+  }
+
+  const b = 2 * (offsetX * directionX + offsetZ * directionZ);
+  const c = offsetX * offsetX + offsetZ * offsetZ - radius * radius;
+
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) {
+    return [];
+  }
+
+  const root = Math.sqrt(discriminant);
+  return [(-b - root) / (2 * a), (-b + root) / (2 * a)];
+}
+
+/**
+ * Where the segment `a1`–`a2` meets the arc `from`–`via`–`to`, in order of
+ * distance from `a1`. Up to two: the `lineCircleCrossings` of the arc's
+ * circle, kept only where `t` is in 0..1 and the arc's sweep reaches the
+ * point.
  *
  * A `via` in line with the ends is a straight, and this returns what
  * `segmentCrossing` returns.
@@ -338,30 +371,8 @@ export function segmentArcCrossings(
     return crossing === null ? [] : [crossing];
   }
 
-  const { center, radius } = run.circle;
-  const directionX = a2.x - a1.x;
-  const directionZ = a2.z - a1.z;
-  const offsetX = a1.x - center.x;
-  const offsetZ = a1.z - center.z;
-
-  const a = directionX * directionX + directionZ * directionZ;
-  if (a === 0) {
-    // Section has no length. We're about to divide by it below, so bail out early.
-    return [];
-  }
-
-  const b = 2 * (offsetX * directionX + offsetZ * directionZ);
-  const c = offsetX * offsetX + offsetZ * offsetZ - radius * radius;
-
-  const discriminant = b * b - 4 * a * c;
-  if (discriminant < 0) {
-    return [];
-  }
-
-  const root = Math.sqrt(discriminant);
   const crossings: Crossing[] = [];
-  // The − root first.
-  for (const alongA of [(-b - root) / (2 * a), (-b + root) / (2 * a)]) {
+  for (const alongA of lineCircleCrossings(a1, a2, run.circle)) {
     if (alongA < 0 || alongA > 1) {
       continue;
     }
@@ -377,35 +388,8 @@ export function segmentArcCrossings(
 
 /**
  * Where the arc `fromA`–`viaA`–`toA` meets the arc `fromB`–`viaB`–`toB`, in
- * order along the first arc. Up to two.
- *
- * Let `cA, rA` and `cB, rB` be the two circles, `w = cB − cA`, `D = |w|`.
- * In coordinates with `cA` at the origin and the x axis along `w`:
- *
- * - A meeting point is on both circles:
- *
- *       x² + y² = rA²
- *       (x − D)² + y² = rB²
- *
- * - Subtract the second from the first (removes y²) and solve:
- *
- *       x = (D² + rA² − rB²) / 2D        (alongCenters)
- *       y = ±√(rA² − x²)                 (offCenters)
- *
- * - Back in world coordinates, with `n = (−w.z, w.x) / D`:
- *
- *       point = cA + x·w/D ± y·n         (foot ± step)
- *
- * - A point counts only if both arcs' sweeps reach it.
- *
- * Returns no crossings when:
- * - `D = 0`: same center. Different radii never meet, and the same circle
- *   has no single meeting points. The zero check only guards the division.
- * - `rA² − x² < 0`: the circles are too far apart, or one is inside the
- *   other.
- *
- * `rA² − x² = 0` is two circles touching: both points are the same, and both
- * are returned, as for a tangent in `segmentArcCrossings`.
+ * order along the first arc. Up to two: the `circleCircleCrossings` of their
+ * circles, kept only where both arcs' sweeps reach the point.
  *
  * A `via` in line with its ends is a straight, and the answer comes from
  * `segmentArcCrossings`.
@@ -432,8 +416,49 @@ export function arcArcCrossings(
       .sort((left, right) => left.alongA - right.alongA);
   }
 
-  const { center: centerA, radius: radiusA } = runA.circle;
-  const { center: centerB, radius: radiusB } = runB.circle;
+  const crossings: Crossing[] = [];
+  for (const point of circleCircleCrossings(runA.circle, runB.circle)) {
+    const alongA = sweptFractionAt(runA, point);
+    const alongB = sweptFractionAt(runB, point);
+    if (alongA !== null && alongB !== null) {
+      crossings.push({ point, alongA, alongB });
+    }
+  }
+  return crossings.sort((left, right) => left.alongA - right.alongA);
+}
+
+/**
+ * Where circle `a` meets circle `b`. Up to two, in no particular order.
+ *
+ * Let `cA, rA` and `cB, rB` be the two circles, `w = cB − cA`, `D = |w|`.
+ * In coordinates with `cA` at the origin and the x axis along `w`:
+ *
+ * - A meeting point is on both circles:
+ *
+ *       x² + y² = rA²
+ *       (x − D)² + y² = rB²
+ *
+ * - Subtract the second from the first (removes y²) and solve:
+ *
+ *       x = (D² + rA² − rB²) / 2D        (alongCenters)
+ *       y = ±√(rA² − x²)                 (offCenters)
+ *
+ * - Back in world coordinates, with `n = (−w.z, w.x) / D`:
+ *
+ *       point = cA + x·w/D ± y·n         (foot ± step)
+ *
+ * Returns none when:
+ * - `D = 0`: same center. Different radii never meet, and the same circle
+ *   has no single meeting points. The zero check only guards the division.
+ * - `rA² − x² < 0`: the circles are too far apart, or one is inside the
+ *   other.
+ *
+ * `rA² − x² = 0` is two circles touching: both points are the same, and both
+ * are returned, as for a tangent in `lineCircleCrossings`.
+ */
+export function circleCircleCrossings(a: ArcCircle, b: ArcCircle): Vec2[] {
+  const { center: centerA, radius: radiusA } = a;
+  const { center: centerB, radius: radiusB } = b;
   const betweenX = centerB.x - centerA.x;
   const betweenZ = centerB.z - centerA.z;
   const between = Math.hypot(betweenX, betweenZ);
@@ -457,18 +482,10 @@ export function arcArcCrossings(
   const stepX = (-betweenZ / between) * offCenters;
   const stepZ = (betweenX / between) * offCenters;
 
-  const crossings: Crossing[] = [];
-  for (const point of [
+  return [
     { x: footX + stepX, z: footZ + stepZ },
     { x: footX - stepX, z: footZ - stepZ },
-  ]) {
-    const alongA = sweptFractionAt(runA, point);
-    const alongB = sweptFractionAt(runB, point);
-    if (alongA !== null && alongB !== null) {
-      crossings.push({ point, alongA, alongB });
-    }
-  }
-  return crossings.sort((left, right) => left.alongA - right.alongA);
+  ];
 }
 
 /**
