@@ -1,4 +1,4 @@
-import type { Vec2 } from "../core/geometry/points";
+import type { Vec2 } from "../core/geometry/point";
 
 /**
  * Rounding a position onto the editing grid.

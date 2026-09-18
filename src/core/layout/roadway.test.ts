@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { Junction } from "./junctions";
+import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
-import { roadwayOf } from "./roadways";
+import { roadwayOf } from "./roadway";
 import { STRAIGHT } from "../network/types";
-import type { Vec2 } from "../geometry/points";
+import type { Vec2 } from "../geometry/point";
 
 const WIDTH_METERS = 8;
 

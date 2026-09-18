@@ -233,13 +233,13 @@ Written down so the decision is not made again from scratch.
 
 Not blocking anything; do them when they start to bite.
 
-- [ ] weigh a `crossings.ts` owning where two shapes meet, instead of each
-      pairing sitting in the module whose shape it names — segment–segment
-      in `segments.ts`, the two involving an arc in `arcs.ts`, and the
-      dispatch between them in `queries.ts`. The cost is that `arcs.ts`
-      would have to publish `arcRun` and the angular helpers it keeps
-      private, so the question is whether that representation is worth
-      being part of the module's face
+- [ ] weigh `crossing.ts` owning where two shapes meet, not just the
+      `Crossing` it already holds, instead of each pairing sitting in the
+      module whose shape it names — segment–segment in `segment.ts`, the two
+      involving an arc in `arc.ts`, and the dispatch between them in
+      `queries.ts`. The cost is that `arc.ts` would have to publish `arcRun`
+      and the angular helpers it keeps private, so the question is whether
+      that representation is worth being part of the module's face
 - [ ] revisit the two intersection tolerances once sections have width —
       how close two junctions may sit follows from how wide the roads are
       (`SAME_POINT_METERS`, `MIN_SECTION_LENGTH_METERS`). A section that

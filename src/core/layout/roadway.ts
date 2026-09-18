@@ -1,6 +1,6 @@
-import { arcLength, pointOnArc } from "../geometry/arcs";
-import { Junction } from "./junctions";
-import { unitDirection, type Vec2 } from "../geometry/points";
+import { arcLength, pointOnArc } from "../geometry/arc";
+import { Junction } from "./junction";
+import { unitDirection, type Vec2 } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { Section, SectionGeometry } from "../network/types";
 

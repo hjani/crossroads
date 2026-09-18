@@ -1,8 +1,4 @@
-import {
-  distance,
-  SAME_POINT_METERS,
-  type Vec2,
-} from "../core/geometry/points";
+import { distance, SAME_POINT_METERS, type Vec2 } from "../core/geometry/point";
 import {
   crossingsAlong,
   nearestNode,

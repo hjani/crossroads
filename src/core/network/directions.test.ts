@@ -7,7 +7,7 @@ import {
   nearestDirection,
   perpendicularDirectionsAt,
 } from "./directions";
-import { distance, type Vec2 } from "../geometry/points";
+import { distance, type Vec2 } from "../geometry/point";
 import { RoadNetwork } from "./RoadNetwork";
 import {
   STRAIGHT,

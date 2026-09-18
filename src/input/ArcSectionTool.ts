@@ -4,7 +4,7 @@ import {
   planSection,
   type SectionPlan,
 } from "../core/network/edits";
-import { isSamePoint, type Vec2 } from "../core/geometry/points";
+import { isSamePoint, type Vec2 } from "../core/geometry/point";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";

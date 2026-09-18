@@ -1,4 +1,4 @@
-import type { Vec2 } from "../geometry/points";
+import type { Vec2 } from "../geometry/point";
 
 /** Identifies a node for its lifetime. Not interchangeable with SectionId. */
 export type NodeId = number & { readonly __brand: "NodeId" };

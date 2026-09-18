@@ -6,7 +6,7 @@ import { STATE_COLOR } from "../render/colors";
 import { SectionHighlight } from "../render/SectionHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { Tool } from "./Tool";
-import type { Vec2 } from "../core/geometry/points";
+import type { Vec2 } from "../core/geometry/point";
 
 /**
  * How close the cursor must look to a node or a section to pick it. In

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Vec2 } from "../core/geometry/points";
+import type { Vec2 } from "../core/geometry/point";
 
 /**
  * A point on the canvas, in the client pixel coordinates that pointer

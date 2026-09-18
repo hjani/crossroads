@@ -1,5 +1,5 @@
-import { arcCircle, arcPolyline } from "../core/geometry/arcs";
-import { isSamePoint, unitDirection, type Vec2 } from "../core/geometry/points";
+import { arcCircle, arcPolyline } from "../core/geometry/arc";
+import { isSamePoint, unitDirection, type Vec2 } from "../core/geometry/point";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { Section, SectionGeometry } from "../core/network/types";
 

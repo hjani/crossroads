@@ -5,7 +5,7 @@ import { isNodeId, type RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { centerlineBetween } from "./tessellate";
-import type { Vec2 } from "../core/geometry/points";
+import type { Vec2 } from "../core/geometry/point";
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
  * is seen there. An existing node needs a wider one, to show around it. */

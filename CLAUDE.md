@@ -58,7 +58,7 @@ TypeScript 7 + Three.js + Vite, running in the browser.
   - the final formula on its own indented line, matching the code
   - what follows from it: what is never computed, what input needn't be
     normalized, how the edge cases come out
-  `arcViaLeaving` in `src/core/geometry/arcs.ts` is the reference example.
+  `arcViaLeaving` in `src/core/geometry/arc.ts` is the reference example.
 
 ## Design notes
 

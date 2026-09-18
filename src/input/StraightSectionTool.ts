@@ -18,7 +18,7 @@ import {
   type Placement,
 } from "./sectionPointPlacement";
 import type { Modifiers, Tool } from "./Tool";
-import type { Vec2 } from "../core/geometry/points";
+import type { Vec2 } from "../core/geometry/point";
 
 /**
  * Draws straight sections by clicking their endpoints.

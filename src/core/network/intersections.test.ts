@@ -5,9 +5,9 @@ import {
   pointsOf,
   type SectionPlan,
 } from "./edits";
-import { arcCircle, pointOnArc, type ArcCircle } from "../geometry/arcs";
-import { distance, type Vec2 } from "../geometry/points";
-import { segmentCrossing } from "../geometry/segments";
+import { arcCircle, pointOnArc, type ArcCircle } from "../geometry/arc";
+import { distance, type Vec2 } from "../geometry/point";
+import { segmentCrossing } from "../geometry/segment";
 import { nearestNode, positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";

@@ -10,8 +10,8 @@ import {
   pointOnArc,
   segmentArcCrossings,
   type ArcCircle,
-} from "./arcs";
-import { distance, type Vec2 } from "./points";
+} from "./arc";
+import { distance, type Vec2 } from "./point";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };

@@ -3,14 +3,14 @@ import {
   arcLength,
   isArcValid,
   pointOnArc,
-} from "../geometry/arcs";
+} from "../geometry/arc";
 import {
   distance,
   isSamePoint,
   SAME_POINT_METERS,
   type Vec2,
-} from "../geometry/points";
-import { segmentFractionAt } from "../geometry/segments";
+} from "../geometry/point";
+import { segmentFractionAt } from "../geometry/segment";
 import {
   crossingsAlong,
   nearestNode,

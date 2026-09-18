@@ -4,16 +4,16 @@ import {
   circleCircleCrossings,
   lineCircleCrossings,
   type ArcCircle,
-} from "../geometry/arcs";
-import { angleOf, distance, lerp, type Vec2 } from "../geometry/points";
-import { lineCrossing } from "../geometry/segments";
+} from "../geometry/arc";
+import { angleOf, distance, lerp, type Vec2 } from "../geometry/point";
+import { lineCrossing } from "../geometry/segment";
 import { sectionDirectionLeavingNode } from "../network/queries";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, Section } from "../network/types";
 
 /**
  * A junction's legs and their edges: the geometry of the roads meeting one
- * node, as the junction rules (`junctions.ts`) see them.
+ * node, as the junction rules (`junction.ts`) see them.
  *
  * Used only for junction geometry.
  */

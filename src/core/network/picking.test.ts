@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { nearestPointOnSection, nearestSection } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT } from "./types";
-import type { Vec2 } from "../geometry/points";
+import type { Vec2 } from "../geometry/point";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };

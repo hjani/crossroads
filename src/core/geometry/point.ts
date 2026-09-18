@@ -1,8 +1,8 @@
 /**
  * Positions on the XZ ground and the distances between them.
  *
- * The base of the plane geometry the model is built on — `segments.ts` and
- * `arcs.ts` are the two shapes a road runs in, and both measure with what is
+ * The base of the plane geometry the model is built on — `segment.ts` and
+ * `arc.ts` are the two shapes a road runs in, and both measure with what is
  * here. None of it knows anything about the network: the inputs are
  * positions, so the same math serves a section that exists and one that is
  * only being drawn.

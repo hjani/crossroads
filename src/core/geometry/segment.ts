@@ -1,33 +1,11 @@
-import { clamp01, lerp, type Vec2 } from "./points";
+import type { Crossing } from "./crossing";
+import { clamp01, lerp, type Vec2 } from "./point";
 
 /**
  * Straight sections as plane geometry: where along one a position falls, and
- * where two of them meet. Positions in, answers in meters — see `points.ts`
+ * where two of them meet. Positions in, answers in meters — see `point.ts`
  * for why none of this knows about the network.
  */
-
-/** Where two stretches of road meet, and how far along each of them that is. */
-export interface Crossing {
-  readonly point: Vec2;
-  /** 0 at the first stretch's start, 1 at its end. */
-  readonly alongA: number;
-  readonly alongB: number;
-}
-
-/**
- * The same crossing, told from the other stretch's point of view.
- *
- * Which of the two is `alongA` is the caller's question, not the geometry's:
- * a meeting between a straight and a bend is one piece of math whichever of
- * them is the one being planned.
- */
-export function fromTheOtherSide(crossing: Crossing): Crossing {
-  return {
-    point: crossing.point,
-    alongA: crossing.alongB,
-    alongB: crossing.alongA,
-  };
-}
 
 /**
  * Where along the segment `from`–`to` a position falls: 0 at `from`, 1 at

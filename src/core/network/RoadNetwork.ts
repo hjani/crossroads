@@ -1,4 +1,4 @@
-import { isArcValid } from "../geometry/arcs";
+import { isArcValid } from "../geometry/arc";
 import type {
   Node,
   NodeId,
@@ -6,7 +6,7 @@ import type {
   SectionGeometry,
   SectionId,
 } from "./types";
-import type { Vec2 } from "../geometry/points";
+import type { Vec2 } from "../geometry/point";
 
 /** Either an existing node, or a position at which to create one. */
 export type Endpoint = NodeId | Vec2;

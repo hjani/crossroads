@@ -1,4 +1,4 @@
-import { distance, SAME_POINT_METERS } from "../geometry/points";
+import { distance, SAME_POINT_METERS } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, SectionId } from "../network/types";
 import {
@@ -7,7 +7,7 @@ import {
   legsAt,
   setbackThrough,
   type Leg,
-} from "./legs";
+} from "./junctionLeg";
 
 /**
  * The junction at a node: where the roads meeting there stop being roadways.

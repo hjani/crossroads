@@ -1,15 +1,11 @@
-import { distance, lerp, unitDirection, type Vec2 } from "./points";
-import {
-  fromTheOtherSide,
-  segmentCrossing,
-  segmentFractionAt,
-  type Crossing,
-} from "./segments";
+import { distance, lerp, unitDirection, type Vec2 } from "./point";
+import { fromTheOtherSide, type Crossing } from "./crossing";
+import { segmentCrossing, segmentFractionAt } from "./segment";
 
 /**
  * Curved sections as plane geometry: the circle three positions lie on, and
  * the arc that runs between two of them through the third. Positions in,
- * answers in meters — see `points.ts` for why none of this knows about the
+ * answers in meters — see `point.ts` for why none of this knows about the
  * network.
  */
 
