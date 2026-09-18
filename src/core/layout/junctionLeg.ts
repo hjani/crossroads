@@ -5,7 +5,15 @@ import {
   lineCircleCrossings,
   type ArcCircle,
 } from "../geometry/arc";
-import { angleOf, distance, lerp, type Vec2 } from "../geometry/point";
+import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
+import {
+  angleOf,
+  distance,
+  isSamePoint,
+  lerp,
+  unitDirection,
+  type Vec2,
+} from "../geometry/point";
 import { lineCrossing } from "../geometry/segment";
 import { sectionDirectionLeavingNode } from "../network/queries";
 import type { RoadNetwork } from "../network/RoadNetwork";
@@ -112,10 +120,119 @@ export function edgeOf(
     };
   }
 
-  const radius = arc.circle.radius - side * arc.turn * halfWidth;
+  const radius = edgeRadiusOf(arc, side, halfWidth);
   return radius > 0
     ? { kind: "circle", circle: { center: arc.circle.center, radius } }
     : null;
+}
+
+/** The radius of an arc leg's `side` edge: `R − σ·τ·w/2`. */
+function edgeRadiusOf(
+  arc: NonNullable<Leg["arc"]>,
+  side: number,
+  halfWidth: number,
+): number {
+  return arc.circle.radius - side * arc.turn * halfWidth;
+}
+
+/**
+ * Where the cut across a leg at `setback` meets its `side` edge (+1
+ * counterclockwise, −1 clockwise) — one end of the roadway's end, and one
+ * corner of the junction. `at` is the node's position.
+ *
+ * Let `N = at`, `s = setback`, `w/2 = halfWidth`, `σ = side`, `d` the leg's
+ * direction, and for an arc `O` its center, `R` its radius and `τ` the way it
+ * turns:
+ *
+ * - straight: the cut is perpendicular to `d`, so the point is `s` along it
+ *   and `w/2` to the side:
+ *
+ *       N + s·d + σ·(w/2)·(−d.z, d.x)
+ *
+ * - arc: `s` is measured along the centerline, which has radius `R`, so the
+ *   cut lies on the radius at
+ *
+ *       θ = τ·s/R
+ *
+ *   from `N` — the same `θ` `setbackThrough` reads back. With `u = N − O`
+ *   turned by `θ`, and the edge at radius `R − σ·τ·w/2` (`edgeRadiusOf`):
+ *
+ *       O + ((R − σ·τ·w/2)/R)·turn(u, θ)
+ *
+ * The edge radius is not guarded against going negative: an arc tighter than
+ * `w/2` has its ribbon folded over itself whatever we do here, and the
+ * reflected point is where that fold is drawn.
+ */
+export function edgePointAt(
+  at: Vec2,
+  leg: Leg,
+  side: number,
+  halfWidth: number,
+  setback: number,
+): Vec2 {
+  const { direction, arc } = leg;
+  if (arc === null) {
+    return {
+      x: at.x + setback * direction.x - side * halfWidth * direction.z,
+      z: at.z + setback * direction.z + side * halfWidth * direction.x,
+    };
+  }
+
+  const { center, radius } = arc.circle;
+  const turned = (arc.turn * setback) / radius;
+  const sin = Math.sin(turned);
+  const cos = Math.cos(turned);
+  const ux = at.x - center.x;
+  const uz = at.z - center.z;
+  const scale = edgeRadiusOf(arc, side, halfWidth) / radius;
+
+  return {
+    x: center.x + scale * (ux * cos - uz * sin),
+    z: center.z + scale * (ux * sin + uz * cos),
+  };
+}
+
+/**
+ * How a leg's `side` edge runs between two of its points: straight, or round
+ * the edge's own circle.
+ *
+ * The `via` is the edge point halfway between them, which for a circle of
+ * center `O` and radius `r` lies on the ray from `O` through the chord's
+ * midpoint `m`:
+ *
+ *     via = O + r·unitDirection(O, m)
+ *
+ * That is the shorter way round, which is what these pieces are: two points
+ * at most a leg's setback apart.
+ *
+ * Straight wherever there is no such circle — a straight leg, an arc too
+ * tight for the edge to exist, or `m` at `O`, where the points are opposite
+ * each other and neither way round is shorter.
+ */
+export function alongEdge(
+  leg: Leg,
+  side: number,
+  halfWidth: number,
+  from: Vec2,
+  to: Vec2,
+): LineGeometry {
+  const { arc } = leg;
+  if (arc === null) {
+    return STRAIGHT;
+  }
+
+  const { center } = arc.circle;
+  const radius = edgeRadiusOf(arc, side, halfWidth);
+  const middle = lerp(from, to, 0.5);
+  if (radius <= 0 || isSamePoint(center, middle)) {
+    return STRAIGHT;
+  }
+
+  const out = unitDirection(center, middle);
+  return {
+    kind: "arc",
+    via: { x: center.x + radius * out.x, z: center.z + radius * out.z },
+  };
 }
 
 /** Where two whole edges cross, in no particular order. */

@@ -5,8 +5,8 @@ import type { LineGeometry } from "../core/geometry/lineGeometry";
 import type { Section } from "../core/network/types";
 
 /**
- * The points a section is drawn along: its centerline, and the slices across
- * its ribbon.
+ * The points a road is drawn along: a line broken into chords, and the slices
+ * across a section's ribbon.
  *
  * Shared by everything that draws sections rather than owned by one of them,
  * so a mark on a section lands on the same shape the section itself is drawn
@@ -37,7 +37,7 @@ export function centerline(
   network: RoadNetwork,
   section: Section,
 ): readonly Vec2[] {
-  return centerlineBetween(
+  return polylineBetween(
     network.getNode(section.from).position,
     network.getNode(section.to).position,
     section.centerlineGeometry,
@@ -45,8 +45,13 @@ export function centerline(
 }
 
 /**
- * The same shape, for a stretch of road the network does not have yet: a
- * piece of a plan, whose ends are positions rather than nodes.
+ * The positions any line is drawn along, between two ends: the ends
+ * themselves for a straight, and enough points to pass for the curve for an
+ * arc.
+ *
+ * Named for what it makes rather than for what it draws, because it draws
+ * several things: a section's centerline through `centerline`, a stretch of
+ * a plan the network does not have yet, and a junction's outline.
  *
  * `centerline` is this with the nodes looked up first, and nothing else —
  * the two exist because one caller has a section and another has the
@@ -55,13 +60,13 @@ export function centerline(
  * them any other way would move the preview under the click that commits
  * it.
  */
-export function centerlineBetween(
+export function polylineBetween(
   from: Vec2,
   to: Vec2,
-  centerlineGeometry: LineGeometry,
+  lineGeometry: LineGeometry,
 ): readonly Vec2[] {
-  return centerlineGeometry.kind === "arc"
-    ? arcPolyline(from, to, centerlineGeometry.via, ARC_SAG_METERS)
+  return lineGeometry.kind === "arc"
+    ? arcPolyline(from, to, lineGeometry.via, ARC_SAG_METERS)
     : [from, to];
 }
 

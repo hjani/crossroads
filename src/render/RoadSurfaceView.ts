@@ -1,12 +1,19 @@
 import * as THREE from "three";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
+import type { Vec2 } from "../core/geometry/point";
+import { Junction, type OutlinePiece } from "../core/layout/junction";
 import { ROAD_WIDTH_METERS, roadwayOf } from "../core/layout/roadway";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import { ribbonSlicesBetween, type RibbonSlice } from "./tessellate";
+import {
+  polylineBetween,
+  ribbonSlicesBetween,
+  type RibbonSlice,
+} from "./tessellate";
 
 /**
- * Draws a road network as asphalt: a ribbon along each roadway.
+ * Draws a road network as asphalt: a ribbon along each roadway, and a fan
+ * filling the junction at each node.
  *
  * Rebuilt as a whole when the network's version says the drawing is stale.
  */
@@ -62,10 +69,52 @@ export class RoadSurfaceView {
       );
       appendRibbon(slices, coordinates);
     }
+    for (const node of this.network.allNodes()) {
+      const junction = new Junction(this.network, node.id, ROAD_WIDTH_METERS);
+      appendJunction(node.position, junction.outline(), coordinates);
+    }
 
     this.surface.geometry.dispose();
     this.surface.geometry = makeGeometry(coordinates);
   }
+}
+
+/**
+ * Appends a junction: a triangle fan from the node out to each pair of
+ * neighboring outline corners, the last pair wrapping back to the first.
+ *
+ * The fan is how a junction is drawn, not what it is: on a tight arc beside a
+ * sharp gap a triangle can flip over and pave a sliver of grass
+ * (`docs/road-surface.md`, Limits). The surface is double-sided, so a flipped
+ * triangle still draws.
+ */
+function appendJunction(
+  at: Vec2,
+  outline: readonly OutlinePiece[],
+  coordinates: number[],
+): void {
+  const corners = outlineCorners(outline);
+  for (let i = 0; i < corners.length; i++) {
+    for (const corner of [at, corners[i], corners[(i + 1) % corners.length]]) {
+      coordinates.push(corner.x, LAYER.ROAD_SURFACE, corner.z);
+    }
+  }
+}
+
+/**
+ * The corners the outline is drawn through, with its arcs broken into chords
+ * here rather than in the layout.
+ *
+ * A piece runs from the piece before it — the last one for the first piece,
+ * the ring being closed — and each drawn piece gives back both of its ends,
+ * so every piece contributes all but its first point.
+ */
+function outlineCorners(outline: readonly OutlinePiece[]): Vec2[] {
+  return outline.flatMap((piece, index) => {
+    const before =
+      index === 0 ? outline[outline.length - 1] : outline[index - 1];
+    return polylineBetween(before.to, piece.to, piece.outlineGeometry).slice(1);
+  });
 }
 
 /** Appends a ribbon: two triangles between each pair of neighboring slices. */

@@ -4,7 +4,7 @@ import { positionOf } from "../core/network/queries";
 import { isNodeId, type RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import { centerlineBetween } from "./tessellate";
+import { polylineBetween } from "./tessellate";
 import type { Vec2 } from "../core/geometry/point";
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
@@ -83,7 +83,7 @@ export class SectionPlanView {
       // curve. Its first position is the one already written for the point
       // before it, and writing it twice would leave the line doubling back
       // on nothing.
-      const along = centerlineBetween(
+      const along = polylineBetween(
         previous,
         position,
         piece.centerlineGeometry,

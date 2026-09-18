@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M6 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M7 — Two-lane visuals (stretch)**
-Next step: junction polygon over gaps under 180°
+Next step: round join over gaps wider than 180°
 
 ## Milestones
 
@@ -186,7 +186,11 @@ still planned as if roads had no width. Geometry:
       cross the two gap-side edges, taken whole (lines, or circles around an
       arc's center). Legs leaving the same way are ordered by curvature.
       Where a network can't be drawn right, the reason is logged
-- [ ] junction polygon over gaps under 180°; wider gaps stay open
+- [x] junction polygon over gaps under 180°. A `Junction` keeps its gaps,
+      each with the corner point its edges cross at, and walks them into a
+      closed ring of outline pieces; `RoadSurfaceView` fans that from the
+      node. A wider gap is closed by a straight between the two corners,
+      until the round join replaces it
 - [ ] round join over gaps wider than 180°
 - [ ] `RoadLayout` (`docs/road-layout.md`); `RoadSurfaceView` reads through it
 - [ ] optional: rebuild only what changed, and decide how the view learns
