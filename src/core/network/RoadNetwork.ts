@@ -1,11 +1,6 @@
 import { isArcValid } from "../geometry/arc";
-import type {
-  Node,
-  NodeId,
-  Section,
-  SectionGeometry,
-  SectionId,
-} from "./types";
+import type { LineGeometry } from "../geometry/lineGeometry";
+import type { Node, NodeId, Section, SectionId } from "./types";
 import type { Vec2 } from "../geometry/point";
 
 /** Either an existing node, or a position at which to create one. */
@@ -53,15 +48,19 @@ export class RoadNetwork {
    * so has no circle through it. Everything is checked before anything is
    * created, so a rejected call changes nothing.
    */
-  addSection(from: Endpoint, to: Endpoint, geometry: SectionGeometry): Section {
+  addSection(
+    from: Endpoint,
+    to: Endpoint,
+    centerlineGeometry: LineGeometry,
+  ): Section {
     const fromPosition = this.requirePosition(from);
     const toPosition = this.requirePosition(to);
     if (from === to && isNodeId(from)) {
       throw new Error(`Section would start and end at node ${from}`);
     }
     if (
-      geometry.kind === "arc" &&
-      !isArcValid(fromPosition, toPosition, geometry.via)
+      centerlineGeometry.kind === "arc" &&
+      !isArcValid(fromPosition, toPosition, centerlineGeometry.via)
     ) {
       throw new Error("Arc runs through a position in line with its ends");
     }
@@ -70,7 +69,7 @@ export class RoadNetwork {
     const toId = this.resolve(to);
 
     const id = this.nextSectionId++ as SectionId;
-    const section: Section = { id, from: fromId, to: toId, geometry };
+    const section: Section = { id, from: fromId, to: toId, centerlineGeometry };
     this.sections.set(id, section);
     this.attach(fromId, id);
     this.attach(toId, id);

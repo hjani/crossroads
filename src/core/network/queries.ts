@@ -15,13 +15,8 @@ import {
 import { fromTheOtherSide, type Crossing } from "../geometry/crossing";
 import { segmentCrossing, segmentFractionAt } from "../geometry/segment";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import type {
-  Node,
-  NodeId,
-  Section,
-  SectionGeometry,
-  SectionId,
-} from "./types";
+import type { LineGeometry } from "../geometry/lineGeometry";
+import type { Node, NodeId, Section, SectionId } from "./types";
 
 /**
  * Geometric questions asked of the network from outside it.
@@ -121,8 +116,8 @@ export function nearestPointOnSection(
   const end = network.getNode(section.to).position;
   const t = sectionFractionAt(network, section, to);
 
-  return section.geometry.kind === "arc"
-    ? pointOnArc(from, end, section.geometry.via, t)
+  return section.centerlineGeometry.kind === "arc"
+    ? pointOnArc(from, end, section.centerlineGeometry.via, t)
     : lerp(from, end, t);
 }
 
@@ -139,8 +134,8 @@ export function sectionFractionAt(
   const from = network.getNode(section.from).position;
   const end = network.getNode(section.to).position;
 
-  return section.geometry.kind === "arc"
-    ? arcFractionAt(from, end, section.geometry.via, place)
+  return section.centerlineGeometry.kind === "arc"
+    ? arcFractionAt(from, end, section.centerlineGeometry.via, place)
     : segmentFractionAt(place, from, end);
 }
 
@@ -157,8 +152,8 @@ export function sectionDirectionAt(
   const from = network.getNode(section.from).position;
   const end = network.getNode(section.to).position;
 
-  return section.geometry.kind === "arc"
-    ? arcDirectionAt(from, end, section.geometry.via, t)
+  return section.centerlineGeometry.kind === "arc"
+    ? arcDirectionAt(from, end, section.centerlineGeometry.via, t)
     : unitDirection(from, end);
 }
 
@@ -244,7 +239,7 @@ export function crossingsAlong(
   network: RoadNetwork,
   from: Endpoint,
   to: Endpoint,
-  geometry: SectionGeometry,
+  centerlineGeometry: LineGeometry,
 ): SectionCrossing[] {
   const start = positionOf(network, from);
   const end = positionOf(network, to);
@@ -254,10 +249,10 @@ export function crossingsAlong(
     const met = shapesCrossing(
       start,
       end,
-      geometry,
+      centerlineGeometry,
       network.getNode(section.from).position,
       network.getNode(section.to).position,
-      section.geometry,
+      section.centerlineGeometry,
     );
 
     for (const crossing of met) {
@@ -289,29 +284,39 @@ export function crossingsAlong(
 function shapesCrossing(
   from: Vec2,
   to: Vec2,
-  geometry: SectionGeometry,
+  centerlineGeometry: LineGeometry,
   otherFrom: Vec2,
   otherTo: Vec2,
-  otherGeometry: SectionGeometry,
+  otherCenterlineGeometry: LineGeometry,
 ): Crossing[] {
-  if (geometry.kind === "arc") {
-    if (otherGeometry.kind === "arc") {
+  if (centerlineGeometry.kind === "arc") {
+    if (otherCenterlineGeometry.kind === "arc") {
       return arcArcCrossings(
         from,
         to,
-        geometry.via,
+        centerlineGeometry.via,
         otherFrom,
         otherTo,
-        otherGeometry.via,
+        otherCenterlineGeometry.via,
       );
     }
-    return segmentArcCrossings(otherFrom, otherTo, from, to, geometry.via).map(
-      fromTheOtherSide,
-    );
+    return segmentArcCrossings(
+      otherFrom,
+      otherTo,
+      from,
+      to,
+      centerlineGeometry.via,
+    ).map(fromTheOtherSide);
   }
 
-  if (otherGeometry.kind === "arc") {
-    return segmentArcCrossings(from, to, otherFrom, otherTo, otherGeometry.via);
+  if (otherCenterlineGeometry.kind === "arc") {
+    return segmentArcCrossings(
+      from,
+      to,
+      otherFrom,
+      otherTo,
+      otherCenterlineGeometry.via,
+    );
   }
 
   const crossing = segmentCrossing(from, to, otherFrom, otherTo);

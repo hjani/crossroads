@@ -26,8 +26,9 @@ TypeScript 7 + Three.js + Vite, running in the browser.
 - Directory layout:
   - `src/core/` — pure logic, no Three.js/rendering dependency. Three
     layers, each importing only the ones before it:
-    - `geometry/` — plane geometry on the ground: `Vec2`, segments, arcs.
-      Knows nothing of the network.
+    - `geometry/` — plane geometry on the ground: `Vec2`, segments, arcs,
+      the shapes a line runs in (`LineGeometry`) and where two of them
+      cross. Knows nothing of the network.
     - `network/` — the road network data model (nodes, sections), and
       the queries and edits on it.
     - `layout/` — the network as it lies on the ground: junctions and

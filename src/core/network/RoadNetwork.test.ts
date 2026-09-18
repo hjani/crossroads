@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type NodeId, type SectionId } from "./types";
+import { STRAIGHT } from "../geometry/lineGeometry";
+import { type NodeId, type SectionId } from "./types";
 import type { Vec2 } from "../geometry/point";
 
 function at(x: number, z: number): Vec2 {
@@ -166,7 +167,7 @@ describe("building an arc", () => {
       via,
     });
 
-    expect(section.geometry).toEqual({ kind: "arc", via });
+    expect(section.centerlineGeometry).toEqual({ kind: "arc", via });
   });
 
   it("joins two nodes like any other section", () => {

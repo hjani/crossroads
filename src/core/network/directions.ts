@@ -6,12 +6,8 @@ import {
   sectionFractionAt,
 } from "./queries";
 import type { RoadNetwork } from "./RoadNetwork";
-import {
-  STRAIGHT,
-  type NodeId,
-  type SectionGeometry,
-  type SectionId,
-} from "./types";
+import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
+import { type NodeId, type SectionId } from "./types";
 
 /**
  * The natural directions a new road is suggested to leave a location by.
@@ -171,7 +167,7 @@ export function geometryLeaving(
   from: Vec2,
   direction: Vec2,
   to: Vec2,
-): SectionGeometry | null {
+): LineGeometry | null {
   const via = arcViaLeaving(from, direction, to);
   if (via === null) {
     return null;

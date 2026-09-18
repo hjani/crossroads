@@ -11,7 +11,8 @@ import { segmentCrossing } from "../geometry/segment";
 import { nearestNode, positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type NodeId } from "./types";
+import { STRAIGHT } from "../geometry/lineGeometry";
+import { type NodeId } from "./types";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };
@@ -339,7 +340,7 @@ describe("planning and building an arc", () => {
     applySectionPlan(network, plan);
 
     const [section] = [...network.allSections()];
-    expect(section?.geometry).toEqual({ kind: "arc", via: at(5, 2) });
+    expect(section?.centerlineGeometry).toEqual({ kind: "arc", via: at(5, 2) });
     expect(layout(network)).toEqual(["(0,0)-(10,0)"]);
   });
 
@@ -371,7 +372,9 @@ describe("planning and building an arc", () => {
     });
 
     expect(plan.buildable).toBe(false);
-    expect(plan.pieces.map((piece) => piece.geometry)).toEqual([STRAIGHT]);
+    expect(plan.pieces.map((piece) => piece.centerlineGeometry)).toEqual([
+      STRAIGHT,
+    ]);
     expect(cutPoints(network, plan)).toEqual([]);
   });
 
@@ -398,7 +401,7 @@ describe("planning and building an arc", () => {
     build(network, at(5, -5), at(5, 5));
 
     const kinds = [...network.allSections()]
-      .map((section) => section.geometry.kind)
+      .map((section) => section.centerlineGeometry.kind)
       .sort();
     expect(kinds).toEqual(["arc", "arc", "straight", "straight"]);
   });
@@ -414,7 +417,7 @@ describe("planning and building an arc", () => {
     // rather than bending somewhere of their own.
     const circle = circleThrough(at(0, 0), at(10, 0), at(5, 2));
     const vias = [...network.allSections()]
-      .map((section) => section.geometry)
+      .map((section) => section.centerlineGeometry)
       .filter((geometry) => geometry.kind === "arc")
       .map((geometry) => geometry.via);
 
@@ -471,7 +474,9 @@ describe("planning and building an arc", () => {
     build(network, at(-5, 3), at(15, 3));
     expect(nodeCount(network)).toBe(6);
     expect(
-      [...network.allSections()].filter((s) => s.geometry.kind === "arc"),
+      [...network.allSections()].filter(
+        (s) => s.centerlineGeometry.kind === "arc",
+      ),
     ).toHaveLength(3);
   });
 
@@ -597,7 +602,7 @@ describe("starting or ending on a road", () => {
     build(network, at(onArc.x, 6), onArc);
 
     const kinds = [...network.allSections()]
-      .map((section) => section.geometry.kind)
+      .map((section) => section.centerlineGeometry.kind)
       .sort();
     expect(kinds).toEqual(["arc", "arc", "straight"]);
     expect(nodeCount(network)).toBe(4);

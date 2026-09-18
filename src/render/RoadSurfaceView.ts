@@ -57,7 +57,7 @@ export class RoadSurfaceView {
       const slices = ribbonSlicesBetween(
         roadway.from,
         roadway.to,
-        roadway.geometry,
+        roadway.centerlineGeometry,
         ROAD_WIDTH_METERS,
       );
       appendRibbon(slices, coordinates);

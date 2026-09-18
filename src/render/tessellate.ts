@@ -1,7 +1,8 @@
 import { arcCircle, arcPolyline } from "../core/geometry/arc";
 import { isSamePoint, unitDirection, type Vec2 } from "../core/geometry/point";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
-import type { Section, SectionGeometry } from "../core/network/types";
+import type { LineGeometry } from "../core/geometry/lineGeometry";
+import type { Section } from "../core/network/types";
 
 /**
  * The points a section is drawn along: its centerline, and the slices across
@@ -39,7 +40,7 @@ export function centerline(
   return centerlineBetween(
     network.getNode(section.from).position,
     network.getNode(section.to).position,
-    section.geometry,
+    section.centerlineGeometry,
   );
 }
 
@@ -57,10 +58,10 @@ export function centerline(
 export function centerlineBetween(
   from: Vec2,
   to: Vec2,
-  geometry: SectionGeometry,
+  centerlineGeometry: LineGeometry,
 ): readonly Vec2[] {
-  return geometry.kind === "arc"
-    ? arcPolyline(from, to, geometry.via, ARC_SAG_METERS)
+  return centerlineGeometry.kind === "arc"
+    ? arcPolyline(from, to, centerlineGeometry.via, ARC_SAG_METERS)
     : [from, to];
 }
 
@@ -108,7 +109,7 @@ export interface RibbonSlice {
 export function ribbonSlicesBetween(
   from: Vec2,
   to: Vec2,
-  geometry: SectionGeometry,
+  centerlineGeometry: LineGeometry,
   widthMeters: number,
 ): readonly RibbonSlice[] {
   if (isSamePoint(from, to)) {
@@ -117,12 +118,12 @@ export function ribbonSlicesBetween(
     );
     return [];
   }
-  if (geometry.kind === "arc") {
-    const circle = arcCircle(from, to, geometry.via);
+  if (centerlineGeometry.kind === "arc") {
+    const circle = arcCircle(from, to, centerlineGeometry.via);
     if (circle !== null) {
       const sagMeters =
         (ARC_SAG_METERS * circle.radius) / (circle.radius + widthMeters / 2);
-      return arcPolyline(from, to, geometry.via, sagMeters).map((p) =>
+      return arcPolyline(from, to, centerlineGeometry.via, sagMeters).map((p) =>
         sliceAt(p, unitDirection(circle.center, p), widthMeters),
       );
     }

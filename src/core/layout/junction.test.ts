@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
-import { STRAIGHT, type SectionId } from "../network/types";
+import { STRAIGHT } from "../geometry/lineGeometry";
+import { type SectionId } from "../network/types";
 import type { Vec2 } from "../geometry/point";
 
 const WIDTH_METERS = 8;

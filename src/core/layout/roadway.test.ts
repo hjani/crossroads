@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
 import { roadwayOf } from "./roadway";
-import { STRAIGHT } from "../network/types";
+import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 
 const WIDTH_METERS = 8;
@@ -36,7 +36,7 @@ describe("roadwayOf", () => {
 
     expectPoint(roadway.from, at(4, 0));
     expectPoint(roadway.to, at(20 - 4 * Math.sqrt(3), 0));
-    expect(roadway.geometry).toBe(road.geometry);
+    expect(roadway.centerlineGeometry).toBe(road.centerlineGeometry);
   });
 
   it("shrinks to nothing halfway along when both setbacks are clamped", () => {
@@ -73,9 +73,12 @@ describe("roadwayOf", () => {
     expect(s).toBeGreaterThan(0);
     expectPoint(roadway.from, onCircle(center, R, startAngle));
     expectPoint(roadway.to, at(20, 0));
-    expect(roadway.geometry.kind).toBe("arc");
-    if (roadway.geometry.kind === "arc") {
-      expectPoint(roadway.geometry.via, onCircle(center, R, startAngle / 2));
+    expect(roadway.centerlineGeometry.kind).toBe("arc");
+    if (roadway.centerlineGeometry.kind === "arc") {
+      expectPoint(
+        roadway.centerlineGeometry.via,
+        onCircle(center, R, startAngle / 2),
+      );
     }
   });
 });

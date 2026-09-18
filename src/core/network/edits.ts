@@ -19,13 +19,8 @@ import {
   positionOf,
 } from "./queries";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import {
-  STRAIGHT,
-  type NodeId,
-  type Section,
-  type SectionGeometry,
-  type SectionId,
-} from "./types";
+import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
+import { type NodeId, type Section, type SectionId } from "./types";
 
 /**
  * Edits that span more than one section.
@@ -76,7 +71,7 @@ export interface PlannedPoint {
  * change the geometry slightly.
  */
 export interface PlannedPiece {
-  readonly geometry: SectionGeometry;
+  readonly centerlineGeometry: LineGeometry;
   readonly to: PlannedPoint;
 }
 
@@ -140,7 +135,7 @@ export function planSection(
   network: RoadNetwork,
   from: Endpoint,
   to: Endpoint,
-  geometry: SectionGeometry,
+  centerlineGeometry: LineGeometry,
 ): SectionPlan {
   // Non-empty from the first line and never shrinks, so the chain always
   // has a last point to measure the next one against.
@@ -152,7 +147,10 @@ export function planSection(
   const begin = positionOf(network, from);
   const end = positionOf(network, to);
 
-  if (geometry.kind === "arc" && !isArcValid(begin, end, geometry.via)) {
+  if (
+    centerlineGeometry.kind === "arc" &&
+    !isArcValid(begin, end, centerlineGeometry.via)
+  ) {
     return refusedAsStraight(network, from, to);
   }
 
@@ -161,7 +159,12 @@ export function planSection(
     buildable = false;
   }
 
-  for (const crossing of crossingsAlong(network, from, to, geometry)) {
+  for (const crossing of crossingsAlong(
+    network,
+    from,
+    to,
+    centerlineGeometry,
+  )) {
     if (!landsCleanly(network, crossing.point)) {
       buildable = false;
     }
@@ -192,13 +195,13 @@ export function planSection(
   for (const arrival of reached) {
     const at = positionOf(network, arrival.at);
 
-    const shape = subGeometry(geometry, begin, end, previous, at);
+    const shape = subGeometry(centerlineGeometry, begin, end, previous, at);
 
     if (!isBuildableLength(pieceLength(previous, at, shape))) {
       buildable = false;
     }
 
-    pieces.push({ geometry: shape, to: arrival });
+    pieces.push({ centerlineGeometry: shape, to: arrival });
     previous = at;
   }
 
@@ -263,14 +266,18 @@ export function applySectionPlan(
   const first = network.addSection(
     plan.start.at,
     firstPiece.to.at,
-    firstPiece.geometry,
+    firstPiece.centerlineGeometry,
   );
   gather(plan.start, first.from);
   gather(firstPiece.to, first.to);
 
   let prevPoint = first.to;
   for (const piece of restPieces) {
-    const built = network.addSection(prevPoint, piece.to.at, piece.geometry);
+    const built = network.addSection(
+      prevPoint,
+      piece.to.at,
+      piece.centerlineGeometry,
+    );
     gather(piece.to, built.to);
     prevPoint = built.to;
   }
@@ -306,7 +313,7 @@ function cutSection(
       return {
         node,
         place,
-        along: fractionAlong(section.geometry, from, to, place),
+        along: fractionAlong(section.centerlineGeometry, from, to, place),
       };
     })
     .sort((left, right) => left.along - right.along);
@@ -324,7 +331,7 @@ function cutSection(
     network.addSection(
       previousNode,
       node,
-      subGeometry(section.geometry, from, to, previousPlace, place),
+      subGeometry(section.centerlineGeometry, from, to, previousPlace, place),
     );
     previousNode = node;
     previousPlace = place;
@@ -332,7 +339,7 @@ function cutSection(
   network.addSection(
     previousNode,
     section.to,
-    subGeometry(section.geometry, from, to, previousPlace, to),
+    subGeometry(section.centerlineGeometry, from, to, previousPlace, to),
   );
   network.removeSection(id);
 }
@@ -343,19 +350,19 @@ function cutSection(
  * in is the order the road reaches them.
  */
 function fractionAlong(
-  geometry: SectionGeometry,
+  centerlineGeometry: LineGeometry,
   begin: Vec2,
   end: Vec2,
   place: Vec2,
 ): number {
-  return geometry.kind === "arc"
-    ? arcFractionAt(begin, end, geometry.via, place)
+  return centerlineGeometry.kind === "arc"
+    ? arcFractionAt(begin, end, centerlineGeometry.via, place)
     : segmentFractionAt(place, begin, end);
 }
 
 /**
- * The shape a part of a section runs in: `geometry` spans `begin` to `end`,
- * and the answer covers the stretch of it between `from` and `to`.
+ * The shape a part of a section runs in: `centerlineGeometry` spans `begin` to
+ * `end`, and the answer covers the stretch of it between `from` and `to`.
  *
  * A straight is the same straight however it is divided. An arc leaves an
  * arc, fixed by the position halfway along that stretch — halfway being the
@@ -368,17 +375,17 @@ function fractionAlong(
  * circle it came from as `docs/intersections.md` describes.
  */
 function subGeometry(
-  geometry: SectionGeometry,
+  centerlineGeometry: LineGeometry,
   begin: Vec2,
   end: Vec2,
   from: Vec2,
   to: Vec2,
-): SectionGeometry {
-  if (geometry.kind !== "arc") {
+): LineGeometry {
+  if (centerlineGeometry.kind !== "arc") {
     return STRAIGHT;
   }
 
-  const { via } = geometry;
+  const { via } = centerlineGeometry;
   const middle =
     (arcFractionAt(begin, end, via, from) +
       arcFractionAt(begin, end, via, to)) /
@@ -400,7 +407,7 @@ function refusedAsStraight(
     positionOf(network, to),
   )
     ? []
-    : [{ geometry: STRAIGHT, to: plannedPointAt(network, to) }];
+    : [{ centerlineGeometry: STRAIGHT, to: plannedPointAt(network, to) }];
   return { buildable: false, networkVersion: network.version, start, pieces };
 }
 
@@ -545,9 +552,13 @@ function landsCleanly(network: RoadNetwork, point: Vec2): boolean {
  * arc has a third position of its own, and the one the whole arc was given
  * need not lie between its ends at all.
  */
-function pieceLength(from: Vec2, to: Vec2, geometry: SectionGeometry): number {
-  return geometry.kind === "arc"
-    ? arcLength(from, to, geometry.via)
+function pieceLength(
+  from: Vec2,
+  to: Vec2,
+  centerlineGeometry: LineGeometry,
+): number {
+  return centerlineGeometry.kind === "arc"
+    ? arcLength(from, to, centerlineGeometry.via)
     : distance(from, to);
 }
 

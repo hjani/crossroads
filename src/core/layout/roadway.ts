@@ -2,7 +2,8 @@ import { arcLength, pointOnArc } from "../geometry/arc";
 import { Junction } from "./junction";
 import { unitDirection, type Vec2 } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
-import type { Section, SectionGeometry } from "../network/types";
+import type { LineGeometry } from "../geometry/lineGeometry";
+import type { Section } from "../network/types";
 
 /** How wide every road is, in meters — one width for the whole network. */
 export const ROAD_WIDTH_METERS = 8;
@@ -14,7 +15,7 @@ export const ROAD_WIDTH_METERS = 8;
 export interface Roadway {
   readonly from: Vec2;
   readonly to: Vec2;
-  readonly geometry: SectionGeometry;
+  readonly centerlineGeometry: LineGeometry;
 }
 
 /**
@@ -53,15 +54,18 @@ export function roadwayOf(
     section.id,
   );
 
-  if (section.geometry.kind === "arc") {
-    const { via } = section.geometry;
+  if (section.centerlineGeometry.kind === "arc") {
+    const { via } = section.centerlineGeometry;
     const length = arcLength(from, to, via);
     const t1 = s1 / length;
     const t2 = 1 - s2 / length;
     return {
       from: pointOnArc(from, to, via, t1),
       to: pointOnArc(from, to, via, t2),
-      geometry: { kind: "arc", via: pointOnArc(from, to, via, (t1 + t2) / 2) },
+      centerlineGeometry: {
+        kind: "arc",
+        via: pointOnArc(from, to, via, (t1 + t2) / 2),
+      },
     };
   }
 
@@ -69,6 +73,6 @@ export function roadwayOf(
   return {
     from: { x: from.x + s1 * d.x, z: from.z + s1 * d.z },
     to: { x: to.x - s2 * d.x, z: to.z - s2 * d.z },
-    geometry: section.geometry,
+    centerlineGeometry: section.centerlineGeometry,
   };
 }

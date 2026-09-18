@@ -10,7 +10,7 @@
 
 - **Node**: an exact position on the XZ ground plane. Knows which sections
   meet at it.
-- **Section**: an edge between two nodes, plus its geometry.
+- **Section**: an edge between two nodes, plus its centerline geometry.
 - **Geometry**: how a section runs between its nodes: straight, or a
   circular arc.
 - Nodes and sections have stable ids, valid for the element's lifetime.

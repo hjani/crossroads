@@ -7,8 +7,8 @@ import {
   nodeWithin,
 } from "../core/network/queries";
 import type { Endpoint, RoadNetwork } from "../core/network/RoadNetwork";
+import { STRAIGHT } from "../core/geometry/lineGeometry";
 import {
-  STRAIGHT,
   type NodeId,
   type Section,
   type SectionId,

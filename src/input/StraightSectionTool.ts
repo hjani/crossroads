@@ -5,7 +5,7 @@ import {
   type SectionPlan,
 } from "../core/network/edits";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
-import { STRAIGHT } from "../core/network/types";
+import { STRAIGHT } from "../core/geometry/lineGeometry";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
 import { SectionHighlight } from "../render/SectionHighlight";

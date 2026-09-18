@@ -253,11 +253,11 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
     length: distance(from, to),
     arc: null,
   };
-  if (section.geometry.kind === "straight") {
+  if (section.centerlineGeometry.kind === "straight") {
     return straight;
   }
 
-  const { via } = section.geometry;
+  const { via } = section.centerlineGeometry;
   const circle = arcCircle(from, to, via);
   if (circle === null) {
     // In line with its ends: the arc functions read it as a straight too.

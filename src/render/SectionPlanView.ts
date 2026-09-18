@@ -83,7 +83,11 @@ export class SectionPlanView {
       // curve. Its first position is the one already written for the point
       // before it, and writing it twice would leave the line doubling back
       // on nothing.
-      const along = centerlineBetween(previous, position, piece.geometry);
+      const along = centerlineBetween(
+        previous,
+        position,
+        piece.centerlineGeometry,
+      );
       for (const step of along.slice(1)) {
         chainCoordinates.push(step.x, LAYER.SECTION_DECORATION, step.z);
       }

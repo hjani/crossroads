@@ -9,12 +9,8 @@ import {
 } from "./directions";
 import { distance, type Vec2 } from "../geometry/point";
 import { RoadNetwork } from "./RoadNetwork";
-import {
-  STRAIGHT,
-  type NodeId,
-  type SectionGeometry,
-  type SectionId,
-} from "./types";
+import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
+import { type NodeId, type SectionId } from "./types";
 
 function at(x: number, z: number): Vec2 {
   return { x, z };
@@ -277,11 +273,11 @@ describe("nearestDirection", () => {
 });
 
 /** The arc's via, or a failure saying so rather than one about its shape. */
-function arcVia(geometry: SectionGeometry | null): Vec2 {
-  if (geometry === null || geometry.kind !== "arc") {
+function arcVia(centerlineGeometry: LineGeometry | null): Vec2 {
+  if (centerlineGeometry === null || centerlineGeometry.kind !== "arc") {
     throw new Error("expected an arc");
   }
-  return geometry.via;
+  return centerlineGeometry.via;
 }
 
 describe("geometryLeaving", () => {
