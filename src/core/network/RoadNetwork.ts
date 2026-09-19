@@ -1,5 +1,5 @@
 import { isArcValid } from "../geometry/arc";
-import type { LineGeometry } from "../geometry/lineGeometry";
+import { lineLength, type LineGeometry } from "../geometry/lineGeometry";
 import type { Node, NodeId, Section, SectionId } from "./types";
 import type { Vec2 } from "../geometry/point";
 
@@ -69,7 +69,13 @@ export class RoadNetwork {
     const toId = this.resolve(to);
 
     const id = this.nextSectionId++ as SectionId;
-    const section: Section = { id, from: fromId, to: toId, centerlineGeometry };
+    const section: Section = {
+      id,
+      from: fromId,
+      to: toId,
+      centerlineGeometry,
+      length: lineLength(fromPosition, toPosition, centerlineGeometry),
+    };
     this.sections.set(id, section);
     this.attach(fromId, id);
     this.attach(toId, id);

@@ -19,4 +19,6 @@ export interface Section {
   readonly from: NodeId;
   readonly to: NodeId;
   readonly centerlineGeometry: LineGeometry;
+  /** Along the centerline, node to node, in meters. */
+  readonly length: number;
 }
