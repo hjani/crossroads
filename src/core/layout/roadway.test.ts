@@ -51,6 +51,7 @@ describe("roadwayOf", () => {
     expectPoint(roadway.from, vec(4, 0));
     expectPoint(roadway.to, vec(20 - 4 * Math.sqrt(3), 0));
     expect(roadway.centerlineGeometry).toBe(road.centerlineGeometry);
+    expect(roadway.length).toBeCloseTo(20 - 4 - 4 * Math.sqrt(3));
   });
 
   it("shrinks to nothing halfway along when both setbacks are clamped", () => {
@@ -64,6 +65,7 @@ describe("roadwayOf", () => {
 
     expectPoint(roadway.from, vec(3, 0));
     expectPoint(roadway.to, vec(3, 0));
+    expect(roadway.length).toBeCloseTo(0);
   });
 
   it("cuts an arc back along its own circle", () => {
@@ -87,6 +89,9 @@ describe("roadwayOf", () => {
     expect(s).toBeGreaterThan(0);
     expectPoint(roadway.from, onCircle(center, R, startAngle));
     expectPoint(roadway.to, vec(20, 0));
+    // Measured along the curve: only the start is set back, so what is left
+    // of the half circle is π·R − s.
+    expect(roadway.length).toBeCloseTo(Math.PI * R - s);
     expect(roadway.centerlineGeometry.kind).toBe("arc");
     if (roadway.centerlineGeometry.kind === "arc") {
       expectPoint(

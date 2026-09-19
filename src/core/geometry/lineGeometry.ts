@@ -26,7 +26,8 @@ export const STRAIGHT: StraightGeometry = { kind: "straight" };
  * the radius, which way the line bends, and whether it takes the short or
  * the long way round — the far side of the circle is just a `via` on the far
  * side of the chord. The circle is derived from the three and never stored,
- * so a moving end leaves nothing out of step.
+ * so there is one description of the arc and nothing beside it to keep in
+ * step.
  *
  * The ends already fix all but one degree of freedom, so a position is more
  * than an arc needs: several `via`s describe the same arc. Comparing shapes

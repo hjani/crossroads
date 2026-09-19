@@ -1,4 +1,4 @@
-import { arcLength, pointOnArc } from "../geometry/arc";
+import { pointOnArc } from "../geometry/arc";
 import { unitDirection, type Vec2 } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { LineGeometry } from "../geometry/lineGeometry";
@@ -12,6 +12,8 @@ export interface Roadway {
   readonly from: Vec2;
   readonly to: Vec2;
   readonly centerlineGeometry: LineGeometry;
+  /** Along the centerline, end to end, in meters. */
+  readonly length: number;
 }
 
 /**
@@ -23,9 +25,9 @@ export interface Roadway {
  *
  *     from + s₁·d  →  to − s₂·d
  *
- * Arc, with `L` its length and `p(t)` = `pointOnArc` — a fraction of the
- * length is the same fraction of the angle, so the setbacks are fractions
- * `t₁ = s₁/L` and `t₂ = 1 − s₂/L`:
+ * Arc, with `L = section.length` and `p(t)` = `pointOnArc` — a fraction of
+ * the length is the same fraction of the angle, so the setbacks are
+ * fractions `t₁ = s₁/L` and `t₂ = 1 − s₂/L`:
  *
  *     p(t₁)  →  p(t₂),  via p((t₁ + t₂)/2)
  *
@@ -35,6 +37,10 @@ export interface Roadway {
  * Both:
  * - each setback is at most half the section → the ends never pass each other
  * - both clamped → a roadway of zero length, halfway along
+ * - a setback is measured along the centerline, whatever shape it takes, so
+ *   the length is what is left of the section either way:
+ *
+ *       length = L − s₁ − s₂
  */
 export function roadwayOf(
   network: RoadNetwork,
@@ -44,12 +50,12 @@ export function roadwayOf(
   const from = network.getNode(section.from).position;
   const to = network.getNode(section.to).position;
   const { from: s1, to: s2 } = setbacks;
+  const length = section.length - s1 - s2;
 
   if (section.centerlineGeometry.kind === "arc") {
     const { via } = section.centerlineGeometry;
-    const length = arcLength(from, to, via);
-    const t1 = s1 / length;
-    const t2 = 1 - s2 / length;
+    const t1 = s1 / section.length;
+    const t2 = 1 - s2 / section.length;
     return {
       from: pointOnArc(from, to, via, t1),
       to: pointOnArc(from, to, via, t2),
@@ -57,6 +63,7 @@ export function roadwayOf(
         kind: "arc",
         via: pointOnArc(from, to, via, (t1 + t2) / 2),
       },
+      length,
     };
   }
 
@@ -65,5 +72,6 @@ export function roadwayOf(
     from: { x: from.x + s1 * d.x, z: from.z + s1 * d.z },
     to: { x: to.x - s2 * d.x, z: to.z - s2 * d.z },
     centerlineGeometry: section.centerlineGeometry,
+    length,
   };
 }

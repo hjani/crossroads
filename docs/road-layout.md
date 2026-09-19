@@ -49,6 +49,8 @@
 - Ends square to the road, whether that end is set back or not.
 - Junctions and roadways cover the road with no overlap and no gap. A
   roadway's end is the border between the two.
+- Knows its length: the section's, less the setback at each end. A setback is
+  measured along the centerline, so this holds whatever shape it takes.
 - Never shorter than zero: both setbacks clamped → a roadway of zero length,
   halfway along the section. Not an error.
 

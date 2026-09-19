@@ -25,6 +25,28 @@ function nodeCount(network: RoadNetwork): number {
   return [...network.allNodes()].length;
 }
 
+describe("section length", () => {
+  it("measures a straight between its nodes", () => {
+    const network = new RoadNetwork();
+
+    const section = network.addSection(vec(0, 0), vec(3, 4), STRAIGHT);
+
+    expect(section.length).toBeCloseTo(5);
+  });
+
+  it("measures an arc along its curve, past the distance between its ends", () => {
+    const network = new RoadNetwork();
+
+    // The half circle of radius 10 over the top of (0,0)-(20,0): π·10.
+    const section = network.addSection(vec(0, 0), vec(20, 0), {
+      kind: "arc",
+      via: vec(10, 10),
+    });
+
+    expect(section.length).toBeCloseTo(10 * Math.PI);
+  });
+});
+
 describe("removing a section", () => {
   it("takes both nodes when nothing else holds them", () => {
     const network = new RoadNetwork();

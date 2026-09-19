@@ -10,7 +10,8 @@
 
 - **Node**: an exact position on the XZ ground plane. Knows which sections
   meet at it.
-- **Section**: an edge between two nodes, plus its centerline geometry.
+- **Section**: an edge between two nodes, plus its centerline geometry and
+  its length along that centerline.
 - **Geometry**: how a section runs between its nodes: straight, or a
   circular arc.
 - Nodes and sections have stable ids, valid for the element's lifetime.
@@ -24,8 +25,8 @@ An arc is fixed by a third position it passes through, between its ends.
   - the radius
   - which way the road bends
   - the short or the long way round
-- The circle is derived from the three, never stored → a moving node leaves
-  nothing out of step.
+- The circle is derived from the three, never stored → one description of
+  the arc, with nothing beside it to keep in step.
 - The ends already fix all but one degree of freedom → many third points
   describe the same arc.
   - → two sections have the same shape when their circles and ends agree,
@@ -34,6 +35,10 @@ An arc is fixed by a third position it passes through, between its ends.
 ## Rules
 
 - A section joins two distinct, existing nodes.
+- Nothing reshapes what is built: no node moves, no section is rebent. A road
+  is changed by removing it and building it again.
+  - → a section can be measured once, when it is created, and its length
+    stored on it.
 - An arc's third position is not in line with its ends: no circle through
   them → no arc to build.
 - Two nodes may be joined by more than one section.
