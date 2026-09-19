@@ -1,12 +1,8 @@
 import { arcLength, pointOnArc } from "../geometry/arc";
-import { Junction } from "./junction";
 import { unitDirection, type Vec2 } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { LineGeometry } from "../geometry/lineGeometry";
 import type { Section } from "../network/types";
-
-/** How wide every road is, in meters — one width for the whole network. */
-export const ROAD_WIDTH_METERS = 8;
 
 /**
  * A section between the setbacks at its two ends: a shorter section of the
@@ -19,9 +15,9 @@ export interface Roadway {
 }
 
 /**
- * The roadway along a section, for roads `widthMeters` wide.
- *
- * Let `s₁`, `s₂` be the setbacks at `from` and `to`.
+ * The roadway along a section, given how far back the junctions at its two
+ * ends set it — `s₁` at `from` and `s₂` at `to`, in meters along the
+ * centerline (`Junction.setbackOf`).
  *
  * Straight, with `d = unitDirection(from, to)`:
  *
@@ -43,16 +39,11 @@ export interface Roadway {
 export function roadwayOf(
   network: RoadNetwork,
   section: Section,
-  widthMeters: number,
+  setbacks: { readonly from: number; readonly to: number },
 ): Roadway {
   const from = network.getNode(section.from).position;
   const to = network.getNode(section.to).position;
-  const s1 = new Junction(network, section.from, widthMeters).setbackOf(
-    section.id,
-  );
-  const s2 = new Junction(network, section.to, widthMeters).setbackOf(
-    section.id,
-  );
+  const { from: s1, to: s2 } = setbacks;
 
   if (section.centerlineGeometry.kind === "arc") {
     const { via } = section.centerlineGeometry;

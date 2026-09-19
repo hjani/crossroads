@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RoadLayout } from "./core/layout/RoadLayout";
 import { RoadNetwork } from "./core/network/RoadNetwork";
 import { ArcSectionTool } from "./input/ArcSectionTool";
 import { PanZoomControls } from "./input/PanZoomControls";
@@ -31,7 +32,9 @@ scene.add(grid);
 
 const network = new RoadNetwork();
 
-const roadSurfaceView = new RoadSurfaceView(network);
+const layout = new RoadLayout(network);
+
+const roadSurfaceView = new RoadSurfaceView(network, layout);
 scene.add(roadSurfaceView.sceneObject);
 
 const networkView = new NetworkView(network);

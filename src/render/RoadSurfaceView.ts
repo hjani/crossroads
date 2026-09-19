@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { Vec2 } from "../core/geometry/point";
-import { Junction, type OutlinePiece } from "../core/layout/junction";
-import { ROAD_WIDTH_METERS, roadwayOf } from "../core/layout/roadway";
+import { type OutlinePiece } from "../core/layout/junction";
+import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import {
@@ -27,7 +27,10 @@ export class RoadSurfaceView {
   >;
   private drawnVersion = -1;
 
-  constructor(private readonly network: RoadNetwork) {
+  constructor(
+    private readonly network: RoadNetwork,
+    private readonly layout: RoadLayout,
+  ) {
     this.surface = new THREE.Mesh(
       makeGeometry([]),
       // Unlit: the surface is one flat color, whatever the scene's lights.
@@ -60,7 +63,7 @@ export class RoadSurfaceView {
   private rebuild(): void {
     const coordinates: number[] = [];
     for (const section of this.network.allSections()) {
-      const roadway = roadwayOf(this.network, section, ROAD_WIDTH_METERS);
+      const roadway = this.layout.roadwayAlong(section.id);
       const slices = ribbonSlicesBetween(
         roadway.from,
         roadway.to,
@@ -70,7 +73,7 @@ export class RoadSurfaceView {
       appendRibbon(slices, coordinates);
     }
     for (const node of this.network.allNodes()) {
-      const junction = new Junction(this.network, node.id, ROAD_WIDTH_METERS);
+      const junction = this.layout.junctionAt(node.id);
       appendJunction(node.position, junction.outline(), coordinates);
     }
 

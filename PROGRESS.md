@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M6 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M7 — Two-lane visuals (stretch)**
-Next step: `RoadLayout`, with `RoadSurfaceView` reading through it
+Next step: optional — rebuild only what changed
 
 ## Milestones
 
@@ -192,7 +192,9 @@ still planned as if roads had no width. Geometry:
       node. A wider gap is closed by a straight between the two corners,
       until the round join replaces it
 - [x] round join over gaps wider than 180°
-- [ ] `RoadLayout` (`docs/road-layout.md`); `RoadSurfaceView` reads through it
+- [x] `RoadLayout` (`docs/road-layout.md`); `RoadSurfaceView` reads through it.
+      A junction is worked out once per edit rather than once per reader, and
+      the roadways are cut by the very junctions drawn beside them
 - [ ] optional: rebuild only what changed, and decide how the view learns
       what that is
 

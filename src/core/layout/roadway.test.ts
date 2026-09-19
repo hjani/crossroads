@@ -3,6 +3,7 @@ import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
 import { roadwayOf } from "./roadway";
 import { STRAIGHT } from "../geometry/lineGeometry";
+import type { Section } from "../network/types";
 import type { Vec2 } from "../geometry/point";
 
 const WIDTH_METERS = 8;
@@ -24,6 +25,19 @@ function expectPoint(point: Vec2, expected: Vec2): void {
   expect(point.z).toBeCloseTo(expected.z);
 }
 
+/** The setbacks the junctions at a section's two ends give it. */
+function setbacksOf(
+  network: RoadNetwork,
+  section: Section,
+): { from: number; to: number } {
+  return {
+    from: new Junction(network, section.from, WIDTH_METERS).setbackOf(
+      section.id,
+    ),
+    to: new Junction(network, section.to, WIDTH_METERS).setbackOf(section.id),
+  };
+}
+
 describe("roadwayOf", () => {
   it("sets a straight back at both ends, each by its own junction", () => {
     const network = new RoadNetwork();
@@ -32,7 +46,7 @@ describe("roadwayOf", () => {
     network.addSection(road.from, at(0, 20), STRAIGHT);
     network.addSection(road.to, at(10, 10 * Math.sqrt(3)), STRAIGHT);
 
-    const roadway = roadwayOf(network, road, WIDTH_METERS);
+    const roadway = roadwayOf(network, road, setbacksOf(network, road));
 
     expectPoint(roadway.from, at(4, 0));
     expectPoint(roadway.to, at(20 - 4 * Math.sqrt(3), 0));
@@ -46,7 +60,7 @@ describe("roadwayOf", () => {
     network.addSection(road.from, at(0, 20), STRAIGHT);
     network.addSection(road.to, at(6, 20), STRAIGHT);
 
-    const roadway = roadwayOf(network, road, WIDTH_METERS);
+    const roadway = roadwayOf(network, road, setbacksOf(network, road));
 
     expectPoint(roadway.from, at(3, 0));
     expectPoint(roadway.to, at(3, 0));
@@ -66,7 +80,7 @@ describe("roadwayOf", () => {
     network.addSection(arc.from, at(-20, 20), STRAIGHT);
     const s = new Junction(network, arc.from, WIDTH_METERS).setbackOf(arc.id);
 
-    const roadway = roadwayOf(network, arc, WIDTH_METERS);
+    const roadway = roadwayOf(network, arc, setbacksOf(network, arc));
 
     // Set back s along the circle → turned s/R from the start.
     const startAngle = Math.PI - s / R;

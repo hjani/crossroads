@@ -74,9 +74,9 @@
 - Everything is dropped when the network's version changes.
   - Coarse, like the version counter itself.
   - Checked on every question → nothing to notify, nothing to subscribe to.
-- A junction or roadway belongs to the version it was made at. Asking it
-  anything once the network has changed → error.
-  - → a junction from one version never meets a roadway from the next.
+- A junction or roadway is a snapshot of the version it was read at, and says
+  so about nothing: one kept past an edit answers as it did before, unwarned.
+  - → read a part again after an edit rather than storing it.
 - Junctions and roadways share the one cache: a roadway reads junctions, and
   both must come from the same version.
 
