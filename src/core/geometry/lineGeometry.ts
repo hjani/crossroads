@@ -1,4 +1,5 @@
-import type { Vec2 } from "./point";
+import { arcLength } from "./arc";
+import { distance, type Vec2 } from "./point";
 
 /**
  * The shapes a line on the ground can take.
@@ -36,4 +37,18 @@ export const STRAIGHT: StraightGeometry = { kind: "straight" };
 export interface ArcGeometry {
   readonly kind: "arc";
   readonly via: Vec2;
+}
+
+/**
+ * How long a line runs between two positions, in meters — along a given line
+ * geometry.
+ */
+export function lineLength(
+  from: Vec2,
+  to: Vec2,
+  geometry: LineGeometry,
+): number {
+  return geometry.kind === "arc"
+    ? arcLength(from, to, geometry.via)
+    : distance(from, to);
 }

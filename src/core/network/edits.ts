@@ -1,15 +1,5 @@
-import {
-  arcFractionAt,
-  arcLength,
-  isArcValid,
-  pointOnArc,
-} from "../geometry/arc";
-import {
-  distance,
-  isSamePoint,
-  SAME_POINT_METERS,
-  type Vec2,
-} from "../geometry/point";
+import { arcFractionAt, isArcValid, pointOnArc } from "../geometry/arc";
+import { isSamePoint, SAME_POINT_METERS, type Vec2 } from "../geometry/point";
 import { segmentFractionAt } from "../geometry/segment";
 import {
   crossingsAlong,
@@ -19,7 +9,11 @@ import {
   positionOf,
 } from "./queries";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
+import {
+  lineLength,
+  STRAIGHT,
+  type LineGeometry,
+} from "../geometry/lineGeometry";
 import { type NodeId, type Section, type SectionId } from "./types";
 
 /**
@@ -197,7 +191,7 @@ export function planSection(
 
     const shape = subGeometry(centerlineGeometry, begin, end, previous, at);
 
-    if (!isBuildableLength(pieceLength(previous, at, shape))) {
+    if (!isBuildableLength(lineLength(previous, at, shape))) {
       buildable = false;
     }
 
@@ -541,25 +535,6 @@ function endAt(
 function landsCleanly(network: RoadNetwork, point: Vec2): boolean {
   const near = nearestNode(network, point, MIN_SECTION_LENGTH_METERS);
   return near === null || isSamePoint(near.position, point);
-}
-
-/**
- * How far a piece of the section runs between two of its points, in meters
- * — along the curve of an arc rather than across it, so a bend is measured
- * as the road a driver takes.
- *
- * Measured in the piece's own shape, not the whole section's: a piece of an
- * arc has a third position of its own, and the one the whole arc was given
- * need not lie between its ends at all.
- */
-function pieceLength(
-  from: Vec2,
-  to: Vec2,
-  centerlineGeometry: LineGeometry,
-): number {
-  return centerlineGeometry.kind === "arc"
-    ? arcLength(from, to, centerlineGeometry.via)
-    : distance(from, to);
 }
 
 /** Whether a piece is long enough to be a road. */
