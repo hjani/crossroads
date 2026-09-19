@@ -238,6 +238,15 @@ describe("Junction.outline", () => {
     return junction.outline().map((piece) => piece.to);
   }
 
+  /** The `via` of every piece the outline runs round rather than straight. */
+  function viasOf(junction: Junction): readonly Vec2[] {
+    return junction
+      .outline()
+      .map((piece) => piece.outlineGeometry)
+      .filter((geometry) => geometry.kind === "arc")
+      .map((geometry) => geometry.via);
+  }
+
   function expectPoints(
     actual: readonly Vec2[],
     expected: readonly Vec2[],
@@ -249,32 +258,36 @@ describe("Junction.outline", () => {
     });
   }
 
-  it("leaves a dead end with no area", () => {
+  it("caps a dead end with a half circle", () => {
     // One gap of a full turn: nothing set back, and the ring is the road's
-    // end cut, walked out and straight back.
+    // end cut and the cap round it, through the point right behind the node.
     const network = new RoadNetwork();
     const road = network.addSection(at(0, 0), at(20, 0), STRAIGHT);
 
     const junction = new Junction(network, road.from, WIDTH_METERS);
 
     expectPoints(cornersOf(junction), [at(0, 4), at(0, -4)]);
+    expectPoints(viasOf(junction), [at(-4, 0)]);
   });
 
-  it("paves a right-angle bend with a triangle", () => {
+  it("paves a right-angle bend with a triangle rounded off at the node", () => {
     // Both roads set back by w/2, so all three corners of the narrow gap fall
-    // on the one corner point (4, 4) and the ring has three corners.
+    // on the one corner point (4, 4). The 270° gap is joined round the node,
+    // from (−4, 0) to (0, −4) through the bisector at 225°.
     const network = new RoadNetwork();
     const east = network.addSection(at(0, 0), at(20, 0), STRAIGHT);
     network.addSection(east.from, at(0, 20), STRAIGHT);
 
     const junction = new Junction(network, east.from, WIDTH_METERS);
 
-    expectPoints(cornersOf(junction), [at(4, 4), at(-4, 4), at(4, -4)]);
-    expect(junction.outline().map((piece) => piece.outlineGeometry)).toEqual([
-      STRAIGHT,
-      STRAIGHT,
-      STRAIGHT,
+    expectPoints(cornersOf(junction), [
+      at(4, 4),
+      at(-4, 4),
+      at(-4, 0),
+      at(0, -4),
+      at(4, -4),
     ]);
+    expectPoints(viasOf(junction), [onCircle(at(0, 0), 4, (5 * Math.PI) / 4)]);
   });
 
   it("runs back along an edge where the other gap set the road back further", () => {
@@ -283,6 +296,10 @@ describe("Junction.outline", () => {
     // by its narrow gap, past the 0.29 w its wide one asks for, so the
     // outline runs back down its edge to that gap's corner point — which
     // points into the shape.
+    //
+    // The C–A gap is a half turn: its round join has no arc in it, and the
+    // touching point it runs through, (0, −4), lies on the straight the
+    // outline would take anyway.
     const network = new RoadNetwork();
     const east = network.addSection(at(0, 0), at(20, 0), STRAIGHT);
     network.addSection(east.from, at(10, 10 * Math.sqrt(3)), STRAIGHT);
@@ -297,8 +314,10 @@ describe("Junction.outline", () => {
       at(0, 8),
       at(-far, 4),
       at(-far, -4),
+      at(0, -4),
       at(near, -4),
     ]);
+    expect(viasOf(junction)).toEqual([]);
   });
 
   it("follows an arc leg's edge round rather than cutting across it", () => {
@@ -323,14 +342,42 @@ describe("Junction.outline", () => {
     const outer = R + WIDTH_METERS / 2;
     const half = WIDTH_METERS / 2;
     const corner = at(Math.sqrt(outer * outer - half * half) - R, half);
-    expect(junction.outline()).toHaveLength(5);
+    expect(junction.outline()).toHaveLength(6);
     expectPoints([junction.outline()[0].to], [corner]);
 
-    const arcs = junction
-      .outline()
-      .map((piece) => piece.outlineGeometry)
-      .filter((geometry) => geometry.kind === "arc");
-    expect(arcs).toHaveLength(1);
-    expect(distance(center, arcs[0].via)).toBeCloseTo(outer);
+    // The one arc piece is that run down the outer edge: the west–east gap is
+    // a half turn, so its round join has no arc in it.
+    const vias = viasOf(junction);
+    expect(vias).toHaveLength(1);
+    expect(distance(center, vias[0])).toBeCloseTo(outer);
+  });
+
+  it("leaves an arc leg's edge for the circle about the node", () => {
+    // East, and an arc leaving north and curving west, so the gap the other
+    // way round is 270°. On that side the arc shows its inner edge, a circle
+    // of radius R − w/2 — and it still touches the circle about the node
+    // right beside it, at (−4, 0), just as a straight leg's edge would.
+    const R = 20;
+    const center = at(-R, 0);
+    const network = new RoadNetwork();
+    const east = network.addSection(at(0, 0), at(40, 0), STRAIGHT);
+    network.addSection(east.from, onCircle(center, R, Math.PI / 2), {
+      kind: "arc",
+      via: onCircle(center, R, Math.PI / 4),
+    });
+
+    const junction = new Junction(network, east.from, WIDTH_METERS);
+
+    // Piece 1 is east's cut across the road, piece 2 the arc's. Then the
+    // join: back down the inner edge to (−4, 0), round the node to (0, −4),
+    // and out along east's edge.
+    const outline = junction.outline();
+    expect(outline).toHaveLength(5);
+    expectPoints([outline[2].to, outline[3].to], [at(-4, 0), at(0, -4)]);
+
+    const vias = viasOf(junction);
+    expect(vias).toHaveLength(2);
+    expect(distance(center, vias[0])).toBeCloseTo(R - 4);
+    expectPoints([vias[1]], [onCircle(at(0, 0), 4, (5 * Math.PI) / 4)]);
   });
 });

@@ -28,14 +28,26 @@ export interface OutlinePiece {
  * junction rules read it.
  */
 interface Gap {
-  /**
-   * Where the gap-side edges cross: both roadways end through it, and the
-   * outline turns there. Null where the gap leaves its roads alone.
-   */
-  readonly cornerPoint: Vec2 | null;
+  /** How the outline crosses it. */
+  readonly join: GapJoin;
   /** How far back it sets each of its two legs, in meters. */
   readonly setbacks: { readonly first: number; readonly second: number };
 }
+
+/** How a junction's outline crosses a gap. */
+type GapJoin =
+  /**
+   * Under a half turn: both roadways end through `point`, where the gap-side
+   * edges cross, and the outline turns there.
+   */
+  | { readonly kind: "corner"; readonly point: Vec2 }
+  /**
+   * A half turn or more: round the circle of radius `w/2` about the node,
+   * through `via`.
+   */
+  | { readonly kind: "round"; readonly via: Vec2 }
+  /** Straight from one roadway's end to the next. */
+  | { readonly kind: "straight" };
 
 /**
  * The junction at a node: where the roads meeting there stop being roadways,
@@ -85,18 +97,18 @@ export class Junction {
    *
    * Each leg contributes its two edge points — right then left, looking from
    * the node along it — with the cut across the road between them. Then the
-   * gap after it:
+   * gap after it, as its join says:
    *
-   * - reaching a corner point: back along this leg's edge to it, then out
+   * - `corner`: back along this leg's edge to the corner point, then out
    *   along the next leg's edge to that leg's right edge point
-   * - no corner point: straight across to the next leg's right edge point
-   *
-   * A straight across a gap of a half turn or more is a stand-in. It cuts
-   * through the node, where a round join belongs
-   * (`docs/ideas/junction-polygon.md`, "Gap over 180°").
+   * - `round`: back along this leg's edge to where it touches the circle
+   *   about the node (`touchPointOf`), round that circle to where the next
+   *   leg's edge touches it, then out along that edge
+   * - `straight`: straight across to the next leg's right edge point
    *
    * Pieces of no length are left out, so a leg whose edge point already is
-   * the corner point adds nothing. A ring can come out empty.
+   * the corner point adds nothing, and a round join over a gap of exactly a
+   * half turn adds no arc. A ring can come out empty.
    */
   outline(): readonly OutlinePiece[] {
     const pieces: OutlinePiece[] = [];
@@ -114,25 +126,44 @@ export class Junction {
 
       const nextLeg = this.legs[(index + 1) % this.legs.length];
       const nextEdgePoint = this.edgePointOf(nextLeg, -1);
-      const { cornerPoint } = this.gaps[index];
-      if (cornerPoint === null) {
-        add(nextEdgePoint, STRAIGHT);
-        return;
+      const { join } = this.gaps[index];
+      switch (join.kind) {
+        case "straight":
+          add(nextEdgePoint, STRAIGHT);
+          break;
+
+        case "corner":
+          add(
+            join.point,
+            alongEdge(leg, 1, this.halfWidth, previous, join.point),
+          );
+          add(
+            nextEdgePoint,
+            alongEdge(nextLeg, -1, this.halfWidth, join.point, nextEdgePoint),
+          );
+          break;
+
+        case "round": {
+          const leaving = this.touchPointOf(leg, 1);
+          const entering = this.touchPointOf(nextLeg, -1);
+          add(leaving, alongEdge(leg, 1, this.halfWidth, previous, leaving));
+          add(entering, { kind: "arc", via: join.via });
+          add(
+            nextEdgePoint,
+            alongEdge(nextLeg, -1, this.halfWidth, entering, nextEdgePoint),
+          );
+          break;
+        }
       }
-      add(
-        cornerPoint,
-        alongEdge(leg, 1, this.halfWidth, previous, cornerPoint),
-      );
-      add(
-        nextEdgePoint,
-        alongEdge(nextLeg, -1, this.halfWidth, cornerPoint, nextEdgePoint),
-      );
     });
 
     return pieces;
   }
 
-  /** Where a leg's roadway ends on its `side`, at the setback it ends up with. */
+  /**
+   * Where a leg's roadway ends on its `side` (+1 counterclockwise, −1
+   * clockwise), at the setback it ends up with.
+   */
   private edgePointOf(leg: Leg, side: number): Vec2 {
     return edgePointAt(
       this.at,
@@ -141,6 +172,33 @@ export class Junction {
       this.halfWidth,
       this.setbackOf(leg.section.id),
     );
+  }
+
+  /**
+   * Where a leg's `side` edge (+1 counterclockwise, −1 clockwise) touches the
+   * circle of radius `w/2` about the node — where a round join leaves the
+   * edge for the circle (`docs/ideas/junction-polygon.md`, "The touching
+   * point `T`").
+   *
+   * It is the leg's edge point with no setback. Let `N` be the node, `σ` the
+   * side, `d` the leg's direction, and for an arc `O` its center, `R` its
+   * radius and `τ` the way it turns:
+   *
+   * - straight: `edgePointAt` at 0 is
+   *
+   *       N + σ·(w/2)·(−d.z, d.x)
+   *
+   * - arc: `edgePointAt` at 0 is `N − στ·(w/2)·û`, with
+   *   `û = unitDirection(O, N)`. The center lies square to `d` on the side
+   *   the arc turns to, `O = N + τ·R·(−d.z, d.x)`, so `û = −τ·(−d.z, d.x)`
+   *   and, with `τ² = 1`, the point comes out the same:
+   *
+   *       N + σ·(w/2)·(−d.z, d.x)
+   *
+   * - → `w/2` from `N`, square to the road, whether the leg bends or not.
+   */
+  private touchPointOf(leg: Leg, side: number): Vec2 {
+    return edgePointAt(this.at, leg, side, this.halfWidth, 0);
   }
 }
 
@@ -152,8 +210,15 @@ export class Junction {
  */
 const HALF_TURN_TOLERANCE_RADIANS = 1e-9;
 
-/** A gap that leaves its roads alone: a half turn or more, or no corner. */
-const OPEN_GAP: Gap = { cornerPoint: null, setbacks: { first: 0, second: 0 } };
+/**
+ * A gap the junction can't join as it should: nothing set back, and the
+ * outline cut straight across. Only for a network that can't be drawn right —
+ * see `gapBetween`.
+ */
+const UNJOINED_GAP: Gap = {
+  join: { kind: "straight" },
+  setbacks: { first: 0, second: 0 },
+};
 
 /** The gap after each leg, in the same order as the legs. */
 function gapsAround(
@@ -171,9 +236,41 @@ function gapsAround(
           second.angle + 2 * Math.PI - first.angle;
 
     return gap >= Math.PI - HALF_TURN_TOLERANCE_RADIANS
-      ? OPEN_GAP
+      ? {
+          join: roundJoin(at, first.angle + gap / 2, widthMeters / 2),
+          setbacks: { first: 0, second: 0 },
+        }
       : gapBetween(node, at, first, second, widthMeters);
   });
+}
+
+/**
+ * The outline across a gap of a half turn or more: along the circle of radius
+ * `w/2` about the node, between the points where the two gap-side edges touch
+ * it (`touchPointOf`). See `docs/ideas/junction-polygon.md`, "Round".
+ *
+ * Let `N` be the node, `α₁` and `α₂` the two legs' angles, and `ψ = α₂ − α₁`
+ * the gap. The touching points are square to their legs, on the gap's side,
+ * so they lie at `α₁ + π/2` and `α₂ − π/2` about `N`:
+ *
+ * - the arc between them spans `ψ − π` → at most a half turn, which a `via`
+ *   between the ends can still express
+ * - halfway along it is the gap's own bisector, `m = (α₁ + α₂)/2 = α₁ + ψ/2`:
+ *
+ *       via = N + (w/2)·(cos m, sin m)
+ *
+ * `ψ = π`: the two touching points are the same point, and the arc drops out
+ * as having no length. `ψ = 2π` (a dead end): `m` points straight back from
+ * the one leg, and the join is the half circle that caps the road.
+ */
+function roundJoin(at: Vec2, bisector: number, halfWidth: number): GapJoin {
+  return {
+    kind: "round",
+    via: {
+      x: at.x + halfWidth * Math.cos(bisector),
+      z: at.z + halfWidth * Math.sin(bisector),
+    },
+  };
 }
 
 /** Each section's setback: the longer of the two its gaps ask for. */
@@ -216,7 +313,7 @@ function longestSetbacks(
  * - `P`: of the candidates ahead of `N` on both legs, the nearest to `N`
  *
  * Where the network can't be drawn right, an error is logged and the gap
- * comes out `OPEN_GAP`:
+ * comes out `UNJOINED_GAP`:
  * - an arc too tight for its inner edge
  * - no candidates (parallel lines, circles that miss)
  * - no candidate ahead of `N` on both legs
@@ -250,7 +347,7 @@ function gapBetween(
     }
   }
   if (firstEdge === null || secondEdge === null) {
-    return OPEN_GAP;
+    return UNJOINED_GAP;
   }
 
   const candidates = edgeCrossings(firstEdge, secondEdge);
@@ -261,7 +358,7 @@ function gapBetween(
             `edges never cross; not set back`
         : `Node ${node}: the edges of ${pair} never cross; not set back`,
     );
-    return OPEN_GAP;
+    return UNJOINED_GAP;
   }
 
   const ahead = candidates
@@ -279,14 +376,14 @@ function gapBetween(
     console.error(
       `Node ${node}: the edges of ${pair} cross only behind it; not set back`,
     );
-    return OPEN_GAP;
+    return UNJOINED_GAP;
   }
 
   const nearest = ahead.reduce((best, candidate) =>
     distance(at, candidate.point) < distance(at, best.point) ? candidate : best,
   );
   return {
-    cornerPoint: nearest.point,
+    join: { kind: "corner", point: nearest.point },
     setbacks: {
       first: clampedToHalf(node, first, Math.max(0, nearest.first)),
       second: clampedToHalf(node, second, Math.max(0, nearest.second)),
