@@ -40,17 +40,11 @@ function sameSelection(
 }
 
 /**
- * Selects a node or a section by clicking it, and marks the one a click
- * would catch before the click is made.
+ * Selects a node or a section. Hovered (aimed) items are marked. Clicking
+ * them assigns the selection, which is also marked. Clicking clear of
+ * everything drops the selection.
  *
- * Both marks come from the same `selectionAt` question, the aimed one asking
- * it a move earlier, so what is marked and what a click catches cannot
- * disagree. Without the aimed mark there is no way to see that the cursor
- * is close enough — which is what the straight tool's node mark is for,
- * one gesture over.
- *
- * Clicking clear of everything deselects, which is how a selection is
- * dropped without leaving the tool.
+ * Both marks come from the same `selectionAt` question.
  *
  * The selected mark is drawn where the selection changes, since it depends
  * on nothing else. The aimed mark depends on the cursor and the camera too,
@@ -59,7 +53,7 @@ function sameSelection(
  * The selection lives here and dies with the tool, since the manager
  * disposes a tool it switches away from.
  */
-export class SelectionTool implements Tool {
+export class InspectTool implements Tool {
   private readonly aimedMark: SectionHighlight;
   private readonly selectedMark: SectionHighlight;
   private readonly decoration = new THREE.Group();

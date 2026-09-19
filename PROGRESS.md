@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M7 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M8 — Inspect tool**
-Next step: rename the selection tool to Inspect
+Next step: `docs/ui.md` design note for the inspect panel
 
 ## Milestones
 
@@ -203,7 +203,7 @@ something that is no longer what the user sees. Picking goes by the area a
 road covers, says so with an outline rather than a wireframe, and the tool
 becomes Inspect, with a panel saying what the selected thing is.
 
-- [ ] rename the selection tool to Inspect, its class and its palette entry
+- [x] rename the selection tool to Inspect, its class and its palette entry
 - [ ] pick by area: a click inside a roadway picks that section, a click
       inside a junction picks that node
 - [ ] keep current logic that within some pixel distance of a road wireframe

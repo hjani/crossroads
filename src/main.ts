@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { RoadLayout } from "./core/layout/RoadLayout";
 import { RoadNetwork } from "./core/network/RoadNetwork";
 import { ArcSectionTool } from "./input/ArcSectionTool";
+import { InspectTool } from "./input/InspectTool";
 import { PanZoomControls } from "./input/PanZoomControls";
-import { SelectionTool } from "./input/SelectionTool";
 import { SmartArcTool } from "./input/SmartArcTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
@@ -48,9 +48,9 @@ scene.add(tools.sceneObject);
 // disposes the one it replaces and an instance is single-use.
 const palette = new ToolPalette(document.body, [
   {
-    id: "select",
-    label: "Select",
-    activate: () => tools.setActiveTool(new SelectionTool(network, viewport)),
+    id: "inspect",
+    label: "Inspect",
+    activate: () => tools.setActiveTool(new InspectTool(network, viewport)),
   },
   {
     id: "straight",

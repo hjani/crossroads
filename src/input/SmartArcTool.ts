@@ -66,7 +66,7 @@ const HEADING_STEP_RADIANS = Math.PI / 12;
  *
  * The start is found by the same rule the section tools weld an endpoint
  * with, so a click catches exactly the node or road they would join onto. The
- * place a click would catch is marked before the click, as in `SelectionTool`.
+ * place a click would catch is marked before the click.
  */
 export class SmartArcTool implements Tool {
   private readonly aimedMark = new NodeHighlight();
