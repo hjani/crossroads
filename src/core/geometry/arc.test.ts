@@ -13,7 +13,7 @@ import {
 } from "./arc";
 import { distance, type Vec2 } from "./point";
 
-function at(x: number, z: number): Vec2 {
+function vec(x: number, z: number): Vec2 {
   return { x, z };
 }
 
@@ -21,10 +21,10 @@ function at(x: number, z: number): Vec2 {
 // due north, and the three quarters covering the rest of it. Same ends, same
 // circle: only `via` tells them apart, which is the whole point of naming an
 // arc by a position it passes through.
-const east = at(1, 0);
-const north = at(0, 1);
-const northeast = at(Math.SQRT1_2, Math.SQRT1_2);
-const southwest = at(-Math.SQRT1_2, -Math.SQRT1_2);
+const east = vec(1, 0);
+const north = vec(0, 1);
+const northeast = vec(Math.SQRT1_2, Math.SQRT1_2);
+const southwest = vec(-Math.SQRT1_2, -Math.SQRT1_2);
 
 function expectAt(point: Vec2, x: number, z: number): void {
   expect(point.x).toBeCloseTo(x);
@@ -66,9 +66,9 @@ describe("arcCircle", () => {
     // A half circle on the diagonal, shifted a kilometer out. Squaring
     // positions that size is what measuring from `from` avoids.
     const circle = circleThrough(
-      at(1001, 1000),
-      at(1000, 1001),
-      at(1000, 1000),
+      vec(1001, 1000),
+      vec(1000, 1001),
+      vec(1000, 1000),
     );
 
     expectAt(circle.center, 1000.5, 1000.5);
@@ -76,11 +76,11 @@ describe("arcCircle", () => {
   });
 
   it("is null for three positions in a line", () => {
-    expect(arcCircle(at(0, 0), at(10, 0), at(5, 0))).toBeNull();
+    expect(arcCircle(vec(0, 0), vec(10, 0), vec(5, 0))).toBeNull();
   });
 
   it("is null for a via off the ends but still in line with them", () => {
-    expect(arcCircle(at(0, 0), at(10, 0), at(20, 0))).toBeNull();
+    expect(arcCircle(vec(0, 0), vec(10, 0), vec(20, 0))).toBeNull();
   });
 
   it("is null for a via sitting on an end", () => {
@@ -101,13 +101,13 @@ function viaLeaving(from: Vec2, direction: Vec2, to: Vec2): Vec2 {
 describe("arcViaLeaving", () => {
   it("gives the midpoint of a quarter circle", () => {
     // From east heading north, to north: a quarter of the unit circle.
-    expectAt(viaLeaving(east, at(0, 1), north), northeast.x, northeast.z);
+    expectAt(viaLeaving(east, vec(0, 1), north), northeast.x, northeast.z);
   });
 
   it("bends to the side the direction points to", () => {
     // From east heading west, to north: a quarter of the circle around (1, 1).
     expectAt(
-      viaLeaving(east, at(-1, 0), north),
+      viaLeaving(east, vec(-1, 0), north),
       1 - Math.SQRT1_2,
       1 - Math.SQRT1_2,
     );
@@ -115,20 +115,20 @@ describe("arcViaLeaving", () => {
 
   it("takes the long way round for a direction pointing away from the end", () => {
     // From east heading south, to north: three quarters of the unit circle.
-    expectAt(viaLeaving(east, at(0, -1), north), southwest.x, southwest.z);
+    expectAt(viaLeaving(east, vec(0, -1), north), southwest.x, southwest.z);
   });
 
   it("gives a half circle for a direction perpendicular to the chord", () => {
-    expectAt(viaLeaving(at(0, 0), at(0, 1), at(10, 0)), 5, 5);
+    expectAt(viaLeaving(vec(0, 0), vec(0, 1), vec(10, 0)), 5, 5);
   });
 
   it("gives an arc that leaves in the direction and has the via halfway", () => {
     // The chord points at 135°. These directions avoid 135° and 315°, and
     // include some that point away from the end (long arcs).
-    const from = at(3, -2);
-    const to = at(-4, 5);
+    const from = vec(3, -2);
+    const to = vec(-4, 5);
     for (const angle of [0.3, 1.2, 2.0, 3.5, 4.5]) {
-      const direction = at(Math.cos(angle), Math.sin(angle));
+      const direction = vec(Math.cos(angle), Math.sin(angle));
       const via = viaLeaving(from, direction, to);
 
       expectAt(arcDirectionAt(from, to, via, 0), direction.x, direction.z);
@@ -137,22 +137,22 @@ describe("arcViaLeaving", () => {
   });
 
   it("gives a via in line with the ends for a direction aimed at the end", () => {
-    const via = viaLeaving(at(0, 0), at(1, 0), at(10, 0));
+    const via = viaLeaving(vec(0, 0), vec(1, 0), vec(10, 0));
 
     expectAt(via, 5, 0);
-    expect(arcCircle(at(0, 0), at(10, 0), via)).toBeNull();
+    expect(arcCircle(vec(0, 0), vec(10, 0), via)).toBeNull();
   });
 
   it("does not depend on the direction's length", () => {
-    expectAt(viaLeaving(at(0, 0), at(0, 3), at(10, 0)), 5, 5);
+    expectAt(viaLeaving(vec(0, 0), vec(0, 3), vec(10, 0)), 5, 5);
   });
 
   it("is null for a direction pointing exactly away from the end", () => {
-    expect(arcViaLeaving(at(0, 0), at(-1, 0), at(10, 0))).toBeNull();
+    expect(arcViaLeaving(vec(0, 0), vec(-1, 0), vec(10, 0))).toBeNull();
   });
 
   it("is null when the ends are the same point", () => {
-    expect(arcViaLeaving(east, at(0, 1), east)).toBeNull();
+    expect(arcViaLeaving(east, vec(0, 1), east)).toBeNull();
   });
 });
 
@@ -179,7 +179,7 @@ describe("pointOnArc", () => {
   });
 
   it("runs straight between the ends when the three are in a line", () => {
-    expectAt(pointOnArc(at(0, 0), at(10, 0), at(5, 0), 0.25), 2.5, 0);
+    expectAt(pointOnArc(vec(0, 0), vec(10, 0), vec(5, 0), 0.25), 2.5, 0);
   });
 });
 
@@ -197,7 +197,7 @@ describe("arcDirectionAt", () => {
   });
 
   it("heads from one end to the other when the three are in a line", () => {
-    expectAt(arcDirectionAt(at(0, 0), at(10, 0), at(5, 0), 0.25), 1, 0);
+    expectAt(arcDirectionAt(vec(0, 0), vec(10, 0), vec(5, 0), 0.25), 1, 0);
   });
 });
 
@@ -223,34 +223,34 @@ describe("arcFractionAt", () => {
     // Twice the radius out, in the direction of the arc's midpoint. Not on
     // the road, but it is halfway along it all the same, which is what a
     // node landing a little off the curve needs this to say.
-    const outside = at(2 * Math.SQRT1_2, 2 * Math.SQRT1_2);
+    const outside = vec(2 * Math.SQRT1_2, 2 * Math.SQRT1_2);
     expect(arcFractionAt(east, north, northeast, outside)).toBeCloseTo(0.5);
   });
 
   it("clamps a direction the arc never turns to", () => {
     // Due south: past the start of a quarter running east to north, so the
     // arc ran out before it got there.
-    expect(arcFractionAt(east, north, northeast, at(0, -1))).toBe(0);
+    expect(arcFractionAt(east, north, northeast, vec(0, -1))).toBe(0);
   });
 
   it("measures along the segment when the three are in a line", () => {
     expect(
-      arcFractionAt(at(0, 0), at(10, 0), at(5, 0), at(2.5, 0)),
+      arcFractionAt(vec(0, 0), vec(10, 0), vec(5, 0), vec(2.5, 0)),
     ).toBeCloseTo(0.25);
   });
 });
 
 describe("segmentArcCrossings", () => {
   // The upper half of the unit circle, running west to east through the top.
-  const west = at(-1, 0);
-  const top = at(0, 1);
+  const west = vec(-1, 0);
+  const top = vec(0, 1);
 
   it("finds both places a segment cuts across an arc", () => {
     // Level with the top of the circle's midriff, so it goes in one side
     // and out the other.
     const crossings = segmentArcCrossings(
-      at(-2, Math.SQRT1_2),
-      at(2, Math.SQRT1_2),
+      vec(-2, Math.SQRT1_2),
+      vec(2, Math.SQRT1_2),
       west,
       east,
       top,
@@ -265,8 +265,8 @@ describe("segmentArcCrossings", () => {
     // The same line walked the other way: the crossing nearer its start is
     // the one that was second before.
     const crossings = segmentArcCrossings(
-      at(2, Math.SQRT1_2),
-      at(-2, Math.SQRT1_2),
+      vec(2, Math.SQRT1_2),
+      vec(-2, Math.SQRT1_2),
       west,
       east,
       top,
@@ -279,7 +279,13 @@ describe("segmentArcCrossings", () => {
   it("says how far along each of the two the meeting is", () => {
     // Straight up the middle: it meets the top of the arc halfway along
     // itself, and halfway along the arc.
-    const [crossing] = segmentArcCrossings(at(0, 0), at(0, 2), west, east, top);
+    const [crossing] = segmentArcCrossings(
+      vec(0, 0),
+      vec(0, 2),
+      west,
+      east,
+      top,
+    );
 
     expect(crossing.alongA).toBeCloseTo(0.5);
     expect(crossing.alongB).toBeCloseTo(0.5);
@@ -288,7 +294,13 @@ describe("segmentArcCrossings", () => {
   it("ignores where the circle is met outside the arc's own sweep", () => {
     // Straight down the middle instead, meeting the circle at its bottom —
     // which this arc, running over the top, never reaches.
-    const crossings = segmentArcCrossings(at(0, 0), at(0, -2), west, east, top);
+    const crossings = segmentArcCrossings(
+      vec(0, 0),
+      vec(0, -2),
+      west,
+      east,
+      top,
+    );
 
     expect(crossings).toEqual([]);
   });
@@ -299,8 +311,8 @@ describe("segmentArcCrossings", () => {
     // neither.
     expect(
       segmentArcCrossings(
-        at(-3, Math.SQRT1_2),
-        at(-2, Math.SQRT1_2),
+        vec(-3, Math.SQRT1_2),
+        vec(-2, Math.SQRT1_2),
         west,
         east,
         top,
@@ -309,7 +321,7 @@ describe("segmentArcCrossings", () => {
   });
 
   it("has nothing to report for a segment that passes the circle by", () => {
-    expect(segmentArcCrossings(at(-2, 2), at(2, 2), west, east, top)).toEqual(
+    expect(segmentArcCrossings(vec(-2, 2), vec(2, 2), west, east, top)).toEqual(
       [],
     );
   });
@@ -320,7 +332,13 @@ describe("segmentArcCrossings", () => {
     // both roots come back — as the same place, to far inside the distance
     // that counts as one. Which of them is a separate junction is a
     // question about how close is the same place, and the chain answers it.
-    const crossings = segmentArcCrossings(at(-2, 1), at(2, 1), west, east, top);
+    const crossings = segmentArcCrossings(
+      vec(-2, 1),
+      vec(2, 1),
+      west,
+      east,
+      top,
+    );
 
     expect(crossings).toHaveLength(2);
     for (const crossing of crossings) {
@@ -330,11 +348,11 @@ describe("segmentArcCrossings", () => {
 
   it("crosses a via in line with the ends where the segment crosses it", () => {
     const [crossing] = segmentArcCrossings(
-      at(5, -5),
-      at(5, 5),
-      at(0, 0),
-      at(10, 0),
-      at(5, 0),
+      vec(5, -5),
+      vec(5, 5),
+      vec(0, 0),
+      vec(10, 0),
+      vec(5, 0),
     );
 
     expectAt(crossing.point, 5, 0);
@@ -343,14 +361,14 @@ describe("segmentArcCrossings", () => {
 
 describe("arcArcCrossings", () => {
   // The upper half of the unit circle, running west to east over the top.
-  const west = at(-1, 0);
-  const top = at(0, 1);
+  const west = vec(-1, 0);
+  const top = vec(0, 1);
 
   // The upper half of a second unit circle, centered one to the east, so
   // the two circles meet at (0.5, ±√3/2) — one of which both arcs reach.
-  const shiftedWest = at(0, 0);
-  const shiftedEast = at(2, 0);
-  const shiftedTop = at(1, 1);
+  const shiftedWest = vec(0, 0);
+  const shiftedEast = vec(2, 0);
+  const shiftedTop = vec(1, 1);
 
   it("finds where two arcs meet", () => {
     const crossings = arcArcCrossings(
@@ -386,35 +404,37 @@ describe("arcArcCrossings", () => {
     // The lower halves of the same two circles as above meet at
     // (0.5, -√3/2), which neither of these arcs reaches.
     expect(
-      arcArcCrossings(west, east, top, shiftedWest, shiftedEast, at(1, -1)),
+      arcArcCrossings(west, east, top, shiftedWest, shiftedEast, vec(1, -1)),
     ).toEqual([]);
   });
 
   it("has nothing to report for circles too far apart to reach", () => {
     expect(
-      arcArcCrossings(west, east, top, at(9, 0), at(11, 0), at(10, 1)),
+      arcArcCrossings(west, east, top, vec(9, 0), vec(11, 0), vec(10, 1)),
     ).toEqual([]);
   });
 
   it("has nothing to report for one circle inside another", () => {
     // A tenth the radius, sharing the midpoint of the bigger one's sweep.
     expect(
-      arcArcCrossings(west, east, top, at(-0.1, 0), at(0.1, 0), at(0, 0.1)),
+      arcArcCrossings(west, east, top, vec(-0.1, 0), vec(0.1, 0), vec(0, 0.1)),
     ).toEqual([]);
   });
 
   it("has nothing to report for two arcs of one circle", () => {
     // The same circle meets itself everywhere rather than at a point, which
     // is not a crossing — as two collinear segments are not.
-    expect(arcArcCrossings(west, east, top, east, west, at(0, -1))).toEqual([]);
+    expect(arcArcCrossings(west, east, top, east, west, vec(0, -1))).toEqual(
+      [],
+    );
   });
 
   it("crosses a via in line with the ends as a straight would", () => {
     // The first arc is really a line across the middle of the second.
     const crossings = arcArcCrossings(
-      at(-2, Math.SQRT1_2),
-      at(2, Math.SQRT1_2),
-      at(0, Math.SQRT1_2),
+      vec(-2, Math.SQRT1_2),
+      vec(2, Math.SQRT1_2),
+      vec(0, Math.SQRT1_2),
       west,
       east,
       top,
@@ -445,7 +465,7 @@ describe("arcLength", () => {
   });
 
   it("is the straight distance when the three are in a line", () => {
-    expect(arcLength(at(0, 0), at(10, 0), at(5, 0))).toBeCloseTo(10);
+    expect(arcLength(vec(0, 0), vec(10, 0), vec(5, 0))).toBeCloseTo(10);
   });
 });
 
@@ -457,7 +477,7 @@ describe("arcLength", () => {
 function worstSag(points: readonly Vec2[], circle: ArcCircle): number {
   let worst = 0;
   for (let i = 1; i < points.length; i++) {
-    const midpoint = at(
+    const midpoint = vec(
       (points[i - 1].x + points[i].x) / 2,
       (points[i - 1].z + points[i].z) / 2,
     );
@@ -478,7 +498,7 @@ describe("arcPolyline", () => {
     const points = arcPolyline(east, north, northeast, 0.01);
 
     for (const point of points) {
-      expect(distance(at(0, 0), point)).toBeCloseTo(1);
+      expect(distance(vec(0, 0), point)).toBeCloseTo(1);
     }
   });
 
@@ -512,7 +532,12 @@ describe("arcPolyline", () => {
     // gentler curve — but the arc grows faster than the chords do, so it
     // still takes more of them.
     const tight = arcPolyline(east, north, northeast, 0.01);
-    const wide = arcPolyline(at(10, 0), at(0, 10), at(7.07107, 7.07107), 0.01);
+    const wide = arcPolyline(
+      vec(10, 0),
+      vec(0, 10),
+      vec(7.07107, 7.07107),
+      0.01,
+    );
 
     expect(wide.length).toBeGreaterThan(tight.length);
   });
@@ -526,9 +551,9 @@ describe("arcPolyline", () => {
   });
 
   it("is the two ends alone when the three are in a line", () => {
-    expect(arcPolyline(at(0, 0), at(10, 0), at(5, 0), 0.01)).toEqual([
-      at(0, 0),
-      at(10, 0),
+    expect(arcPolyline(vec(0, 0), vec(10, 0), vec(5, 0), 0.01)).toEqual([
+      vec(0, 0),
+      vec(10, 0),
     ]);
   });
 
@@ -537,7 +562,7 @@ describe("arcPolyline", () => {
 
     expect(points.length).toBeLessThanOrEqual(513);
     for (const point of points) {
-      expect(distance(at(0, 0), point)).toBeCloseTo(1);
+      expect(distance(vec(0, 0), point)).toBeCloseTo(1);
     }
   });
 });
