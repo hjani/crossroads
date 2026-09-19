@@ -1,24 +1,13 @@
+/* The look of a panel comes from `.panel`, which every panel carries; what
+   is left here is the palette's own. */
+@import "./panel.css";
+
 .tool-palette {
-  position: fixed;
   top: 12px;
   left: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 7px;
-  /* Translucent, so the network stays faintly visible behind the panel —
-     which is why the panel needs an edge of its own: unbordered, it has
-     nothing to separate it from the black the canvas clears to. */
-  background: rgba(26, 28, 34, 0.82);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  font:
-    13px/1 system-ui,
-    sans-serif;
-  /* A click here is a command, not a text selection: dragging across the
-     buttons must not leave labels highlighted. */
-  user-select: none;
 }
 
 .tool-palette button {

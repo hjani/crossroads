@@ -10,6 +10,7 @@ import { ToolManager } from "./input/ToolManager";
 import { NetworkView } from "./render/NetworkView";
 import { RoadSurfaceView } from "./render/RoadSurfaceView";
 import { Viewport } from "./render/Viewport";
+import { InspectPanel } from "./ui/InspectPanel";
 import { ToolPalette } from "./ui/ToolPalette";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -50,7 +51,10 @@ const palette = new ToolPalette(document.body, [
   {
     id: "inspect",
     label: "Inspect",
-    activate: () => tools.setActiveTool(new InspectTool(network, viewport)),
+    activate: () =>
+      tools.setActiveTool(
+        new InspectTool(network, viewport, new InspectPanel(document.body)),
+      ),
   },
   {
     id: "straight",

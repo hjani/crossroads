@@ -42,7 +42,7 @@ export class ToolPalette {
     const doc = host.ownerDocument;
 
     const root = doc.createElement("div");
-    root.className = "tool-palette";
+    root.className = "panel tool-palette";
 
     for (const item of items) {
       const button = doc.createElement("button");

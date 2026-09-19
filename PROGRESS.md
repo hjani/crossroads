@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M7 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M8 — Inspect tool**
-Next step: the inspect panel itself, holding placeholder content
+Next step: the selected section in the panel — its id and its two lengths
 
 ## Milestones
 
@@ -206,7 +206,9 @@ becomes Inspect, with a panel saying what the selected thing is.
 - [x] rename the selection tool to Inspect, its class and its palette entry
 - [x] `docs/ui.md`: the inspect panel, a second DOM panel, shown while
       Inspect is active
-- [ ] the panel itself: holding placeholder content
+- [x] the panel itself: holding placeholder content. `.panel` in
+      `src/ui/panel.css` carries the look both panels share; each panel's
+      own stylesheet keeps where it sits and how it lays its contents out
 - [ ] a selected section in the panel: its id, its length from node to node,
       and its roadway's length
 - [ ] a selected node: its id and how many sections meet it

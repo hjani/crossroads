@@ -5,6 +5,7 @@ import type { NodeId, SectionId } from "../core/network/types";
 import { STATE_COLOR } from "../render/colors";
 import { SectionHighlight } from "../render/SectionHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
+import type { InspectPanel } from "../ui/InspectPanel";
 import type { Tool } from "./Tool";
 import type { Vec2 } from "../core/geometry/point";
 
@@ -63,6 +64,7 @@ export class InspectTool implements Tool {
   constructor(
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
+    private readonly panel: InspectPanel,
   ) {
     this.aimedMark = new SectionHighlight(network, STATE_COLOR.AIMED);
     this.selectedMark = new SectionHighlight(network, STATE_COLOR.SELECTED);
@@ -199,9 +201,13 @@ export class InspectTool implements Tool {
     }
   }
 
-  /** Releases the marks' GPU buffers. The tool is unusable after. */
+  /**
+   * Releases the marks' GPU buffers and takes the panel off the page. The
+   * tool is unusable after.
+   */
   dispose(): void {
     this.aimedMark.dispose();
     this.selectedMark.dispose();
+    this.panel.dispose();
   }
 }
