@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import { nearestNode, nearestSection } from "../core/network/queries";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
@@ -26,6 +27,11 @@ const PICK_RADIUS_PIXELS = 12;
 type Selection =
   | { readonly kind: "node"; readonly id: NodeId }
   | { readonly kind: "section"; readonly id: SectionId };
+
+/** A length as the panel shows it. */
+function displayMeters(length: number): string {
+  return `${length.toFixed(2)} m`;
+}
 
 /** Whether two selections name the same thing. */
 function sameSelection(
@@ -63,6 +69,7 @@ export class InspectTool implements Tool {
 
   constructor(
     private readonly network: RoadNetwork,
+    private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
     private readonly panel: InspectPanel,
   ) {
@@ -72,6 +79,9 @@ export class InspectTool implements Tool {
       this.aimedMark.sceneObject,
       this.selectedMark.sceneObject,
     );
+
+    // The panel opens saying nothing is selected, rather than blank.
+    this.showSelected();
   }
 
   get overlay(): THREE.Object3D {
@@ -178,16 +188,13 @@ export class InspectTool implements Tool {
   }
 
   /**
-   * Marks the selection: a section with the nodes at either end, a node
-   * with every section meeting it. Reaching past the thing named is what
-   * separates a selection from something merely under the cursor, beyond
-   * the color — and it reaches exactly that far, the far ends of a node's
-   * sections being where the selection stops rather than part of it.
+   * Marks the selection and updates the info panel contents.
    */
   private showSelected(): void {
     const selected = this.selected;
     if (selected === null) {
       this.selectedMark.hide();
+      this.panel.show("No selection", []);
       return;
     }
 
@@ -195,9 +202,14 @@ export class InspectTool implements Tool {
       this.selectedMark.show(this.network.sectionsAt(selected.id), [
         selected.id,
       ]);
+      this.panel.show("No selection", []);
     } else {
       const section = this.network.getSection(selected.id);
       this.selectedMark.show([selected.id], [section.from, section.to]);
+      this.panel.show(`Section ${section.id}`, [
+        ["Length", displayMeters(section.length)],
+        ["Roadway", displayMeters(this.layout.roadwayAlong(section.id).length)],
+      ]);
     }
   }
 

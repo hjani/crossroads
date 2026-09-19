@@ -53,7 +53,12 @@ const palette = new ToolPalette(document.body, [
     label: "Inspect",
     activate: () =>
       tools.setActiveTool(
-        new InspectTool(network, viewport, new InspectPanel(document.body)),
+        new InspectTool(
+          network,
+          layout,
+          viewport,
+          new InspectPanel(document.body),
+        ),
       ),
   },
   {

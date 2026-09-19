@@ -10,6 +10,8 @@ import "./inspectPanel.css";
  */
 export class InspectPanel {
   private readonly root: HTMLElement;
+  private readonly title: HTMLElement;
+  private readonly rows: HTMLElement;
 
   /**
    * Builds the panel and puts it in `host`, which decides where on the page
@@ -22,28 +24,36 @@ export class InspectPanel {
     this.root = doc.createElement("div");
     this.root.className = "panel inspect-panel";
 
-    const title = doc.createElement("div");
-    title.className = "inspect-panel-title";
-    title.textContent = "Section info";
+    this.title = doc.createElement("div");
+    this.title.className = "inspect-panel-title";
 
     // A description list: the HTML element for pairs of term and value, so
     // what the rows are is in the markup and not only in the styling.
-    const rows = doc.createElement("dl");
-    rows.className = "inspect-panel-rows";
-    for (const [label, value] of [
-      ["Id", "7"],
-      ["Length", "128.40 m"],
-      ["Roadway", "112.90 m"],
-    ]) {
+    this.rows = doc.createElement("dl");
+    this.rows.className = "inspect-panel-rows";
+
+    this.root.append(this.title, this.rows);
+    host.append(this.root);
+  }
+
+  /**
+   * Replaces what the panel shows: `title` over one row per label and value.
+   *
+   * No rows is a panel of its title alone — the stylesheet drops the empty
+   * list and the rule above it, so nothing dangles under the line.
+   */
+  show(title: string, rows: readonly (readonly [string, string])[]): void {
+    const doc = this.root.ownerDocument;
+
+    this.title.textContent = title;
+    this.rows.replaceChildren();
+    for (const [label, value] of rows) {
       const term = doc.createElement("dt");
       term.textContent = label;
       const measure = doc.createElement("dd");
       measure.textContent = value;
-      rows.append(term, measure);
+      this.rows.append(term, measure);
     }
-
-    this.root.append(title, rows);
-    host.append(this.root);
   }
 
   /** Takes the panel off the page. It is unusable after. */
