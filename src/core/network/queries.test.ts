@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sectionDirectionLeavingNode } from "./queries";
+import { sectionDirectionLeavingNode, sectionRadius } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
@@ -60,5 +60,27 @@ describe("sectionDirectionLeavingNode", () => {
     expect(() =>
       sectionDirectionLeavingNode(network, section, elsewhere.from),
     ).toThrow();
+  });
+});
+
+describe("sectionRadius", () => {
+  it("measures the circle an arc bends on", () => {
+    const network = new RoadNetwork();
+
+    // The half circle of radius 10 over the top of (0,0)-(20,0).
+    const arc = network.addSection(vec(0, 0), vec(20, 0), {
+      kind: "arc",
+      via: vec(10, 10),
+    });
+
+    expect(sectionRadius(network, arc)).toBeCloseTo(10);
+  });
+
+  it("gives a straight none", () => {
+    const network = new RoadNetwork();
+
+    const straight = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+
+    expect(sectionRadius(network, straight)).toBeNull();
   });
 });

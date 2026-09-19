@@ -7,7 +7,8 @@ Quick status for picking up where we left.
 M0 through M7 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M8 — Inspect tool**
-Next step: the selected section in the panel — its id and its two lengths
+Next step: the selected node in the panel — its id and how many sections
+meet it
 
 ## Milestones
 
@@ -209,8 +210,8 @@ becomes Inspect, with a panel saying what the selected thing is.
 - [x] the panel itself: holding placeholder content. `.panel` in
       `src/ui/panel.css` carries the look both panels share; each panel's
       own stylesheet keeps where it sits and how it lays its contents out
-- [ ] a selected section in the panel: its id, its length from node to node,
-      and its roadway's length
+- [x] a selected section in the panel: its id, its length from node to node,
+      its roadway's length, and the radius
 - [ ] a selected node: its id and how many sections meet it
 - [ ] pick by area: a click inside a roadway picks that section, a click
       inside a junction picks that node

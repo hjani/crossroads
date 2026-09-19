@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import type { RoadLayout } from "../core/layout/RoadLayout";
-import { nearestNode, nearestSection } from "../core/network/queries";
+import {
+  nearestNode,
+  nearestSection,
+  sectionRadius,
+} from "../core/network/queries";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
 import { STATE_COLOR } from "../render/colors";
@@ -206,9 +210,12 @@ export class InspectTool implements Tool {
     } else {
       const section = this.network.getSection(selected.id);
       this.selectedMark.show([selected.id], [section.from, section.to]);
+      const radius = sectionRadius(this.network, section);
       this.panel.show(`Section ${section.id}`, [
         ["Length", displayMeters(section.length)],
         ["Roadway", displayMeters(this.layout.roadwayAlong(section.id).length)],
+        // A straight has no radius
+        ["Radius", radius === null ? "n/a" : displayMeters(radius)],
       ]);
     }
   }

@@ -1,5 +1,6 @@
 import {
   arcArcCrossings,
+  arcCircle,
   arcDirectionAt,
   arcFractionAt,
   pointOnArc,
@@ -205,6 +206,26 @@ export function nodeWithin(
   }
 
   return null;
+}
+
+/**
+ * The radius a section's centerline bends at, in meters, or null for a
+ * straight — which has none, rather than an infinite one.
+ */
+export function sectionRadius(
+  network: RoadNetwork,
+  section: Section,
+): number | null {
+  if (section.centerlineGeometry.kind !== "arc") {
+    return null;
+  }
+
+  const circle = arcCircle(
+    network.getNode(section.from).position,
+    network.getNode(section.to).position,
+    section.centerlineGeometry.via,
+  );
+  return circle === null ? null : circle.radius;
 }
 
 /** Where an endpoint is, whether it names a node or carries a position. */
