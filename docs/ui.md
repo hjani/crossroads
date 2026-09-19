@@ -11,8 +11,10 @@
   - → this layer is never called an overlay: `Tool.overlay` is scene
     geometry, exactly what this is not.
 - Choosing a tool is in scope; what the tool does once chosen is not.
+  - A tool can still have a panel here. This layer owns the panel; the tool
+    decides what goes in it.
 
-## What it does
+## Tool palette
 
 - A panel of buttons, one per tool, fixed over the canvas.
 - Click → that tool becomes active and its button is marked → which tool is
@@ -35,9 +37,30 @@
   - the tool framework still knows which tool is active, without knowing
     its kind
 
+## Inspect panel
+
+- A second panel, fixed at the top-right, there while the Inspect tool is
+  active.
+- Says what is selected: a title naming the thing, then rows of label and
+  value measuring it.
+- Nothing selected → the panel stays, with one line saying so.
+  - It would otherwise flicker in and out as the user clicks around, and an
+    empty view never shows that the tool reports anything at all.
+- Fixed width, and the values in a tabular figure → a number that changes
+  moves neither the panel nor the digits beside it.
+- Created and removed with the tool → nothing has to track whether it is
+  shown. The tool is built when it is activated and disposed when the user
+  switches away, which is exactly how long the panel is wanted.
+- Knows only a title and rows of text. What to measure, and what to call it,
+  is the tool's.
+  - → the panel has no idea what a section or a node is, just as the palette
+    has no idea what a tool is.
+- Same look as the palette, from properties the two stylesheets share → one
+  place to change how a panel looks.
+
 ## Input
 
-- The panel is a sibling of the canvas, not a layer over it → the canvas
+- A panel is a sibling of the canvas, not a layer over it → the canvas
   never hears a button click, so it is never also a click in the world.
   - Neither side arbitrates for the other: the same separation as the
     camera and the tools sharing the canvas by mouse button, one level up.

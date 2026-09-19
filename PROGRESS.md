@@ -7,7 +7,7 @@ Quick status for picking up where we left.
 M0 through M7 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M8 — Inspect tool**
-Next step: `docs/ui.md` design note for the inspect panel
+Next step: the inspect panel itself, holding placeholder content
 
 ## Milestones
 
@@ -204,6 +204,12 @@ road covers, says so with an outline rather than a wireframe, and the tool
 becomes Inspect, with a panel saying what the selected thing is.
 
 - [x] rename the selection tool to Inspect, its class and its palette entry
+- [x] `docs/ui.md`: the inspect panel, a second DOM panel, shown while
+      Inspect is active
+- [ ] the panel itself: holding placeholder content
+- [ ] a selected section in the panel: its id, its length from node to node,
+      and its roadway's length
+- [ ] a selected node: its id and how many sections meet it
 - [ ] pick by area: a click inside a roadway picks that section, a click
       inside a junction picks that node
 - [ ] keep current logic that within some pixel distance of a road wireframe
@@ -213,11 +219,9 @@ becomes Inspect, with a panel saying what the selected thing is.
       translucent fill goes inside the outline is open, and so is whether a
       selected junction still reaches out to the sections meeting it, as the
       wireframe mark does today
-- [ ] `docs/ui.md`: the inspect panel, a second DOM panel, shown while
-      Inspect is active
-- [ ] a selected section in the panel: its id, its length from node to node,
-      and its roadway's length
-- [ ] a selected node: its id and how many sections meet it
+- [ ] `docs/tools.md`: rewrite `## Selection` as `## Inspect` — the tool's
+      name, picking by area, outlines instead of centerline marks. Left to
+      the end, since every step above changes what the section says
 
 ### M9 — Planning using road width
 
