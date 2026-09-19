@@ -203,10 +203,11 @@ export class InspectTool implements Tool {
     }
 
     if (selected.kind === "node") {
-      this.selectedMark.show(this.network.sectionsAt(selected.id), [
-        selected.id,
+      const section = this.network.sectionsAt(selected.id);
+      this.selectedMark.show(section, [selected.id]);
+      this.panel.show(`Node ${selected.id}`, [
+        ["Sections", String(section.length)],
       ]);
-      this.panel.show("No selection", []);
     } else {
       const section = this.network.getSection(selected.id);
       this.selectedMark.show([selected.id], [section.from, section.to]);
