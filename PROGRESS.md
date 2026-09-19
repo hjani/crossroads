@@ -4,10 +4,10 @@ Quick status for picking up where we left.
 
 ## Current status
 
-M0 through M6 are done — M3 came ahead of the curves because a second tool
+M0 through M7 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
-**M7 — Two-lane visuals (stretch)**
-Next step: optional — rebuild only what changed
+**M8 — Inspect tool**
+Next step: rename the selection tool to Inspect
 
 ## Milestones
 
@@ -195,10 +195,31 @@ still planned as if roads had no width. Geometry:
 - [x] `RoadLayout` (`docs/road-layout.md`); `RoadSurfaceView` reads through it.
       A junction is worked out once per edit rather than once per reader, and
       the roadways are cut by the very junctions drawn beside them
-- [ ] optional: rebuild only what changed, and decide how the view learns
-      what that is
 
-### M8 — Planning using road width
+### M8 — Inspect tool
+
+Roads cover ground now, so picking them by their centerline aims at
+something that is no longer what the user sees. Picking goes by the area a
+road covers, says so with an outline rather than a wireframe, and the tool
+becomes Inspect, with a panel saying what the selected thing is.
+
+- [ ] rename the selection tool to Inspect, its class and its palette entry
+- [ ] pick by area: a click inside a roadway picks that section, a click
+      inside a junction picks that node
+- [ ] keep current logic that within some pixel distance of a road wireframe
+      or junction point, they can be always selected, even when zoomed out
+- [ ] outline what is selected instead of marking its centerline: a section's
+      roadway, a node's junction. Hovered and selected alike. Whether a
+      translucent fill goes inside the outline is open, and so is whether a
+      selected junction still reaches out to the sections meeting it, as the
+      wireframe mark does today
+- [ ] `docs/ui.md`: the inspect panel, a second DOM panel, shown while
+      Inspect is active
+- [ ] a selected section in the panel: its id, its length from node to node,
+      and its roadway's length
+- [ ] a selected node: its id and how many sections meet it
+
+### M9 — Planning using road width
 
 Edits account for road width, and refuse what M7 can only draw wrong — such
 as a road too short for the setbacks at its two ends.
@@ -210,6 +231,8 @@ as a road too short for the setbacks at its two ends.
 
 Wanted, but not part of a milestone yet.
 
+- [ ] rebuild only what changed in the road surface, and decide how the view
+      learns what that is.
 - [ ] level of detail for arc tessellation
 - [ ] refuse a straight drawn between two points on the same straight road:
       both ends cut the road, and the new section lies on top of the piece
