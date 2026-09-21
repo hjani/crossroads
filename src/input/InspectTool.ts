@@ -9,7 +9,7 @@ import {
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
 import { STATE_COLOR } from "../render/colors";
-import { SectionHighlight } from "../render/SectionHighlight";
+import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { InspectPanel } from "../ui/InspectPanel";
 import type { Tool } from "./Tool";
@@ -66,8 +66,8 @@ function sameSelection(
  * disposes a tool it switches away from.
  */
 export class InspectTool implements Tool {
-  private readonly aimedMark: SectionHighlight;
-  private readonly selectedMark: SectionHighlight;
+  private readonly aimedMark: RoadNetworkHighlight;
+  private readonly selectedMark: RoadNetworkHighlight;
   private readonly decoration = new THREE.Group();
 
   private selected: Selection | null = null;
@@ -78,8 +78,8 @@ export class InspectTool implements Tool {
     private readonly viewport: Viewport,
     private readonly panel: InspectPanel,
   ) {
-    this.aimedMark = new SectionHighlight(network, STATE_COLOR.AIMED);
-    this.selectedMark = new SectionHighlight(network, STATE_COLOR.SELECTED);
+    this.aimedMark = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
+    this.selectedMark = new RoadNetworkHighlight(network, STATE_COLOR.SELECTED);
     this.decoration.add(
       this.aimedMark.sceneObject,
       this.selectedMark.sceneObject,

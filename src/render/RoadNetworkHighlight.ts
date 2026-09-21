@@ -20,7 +20,7 @@ const NODE_MARK_SIZE = 15;
  * something the network knows. It reads the model only to look up the ids it
  * is given, as `SectionPlanView` does.
  */
-export class SectionHighlight {
+export class RoadNetworkHighlight {
   readonly sceneObject = new THREE.Group();
 
   private readonly sectionLines: THREE.LineSegments<

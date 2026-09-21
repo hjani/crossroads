@@ -16,7 +16,7 @@ import { angleOf, distance, type Vec2 } from "../core/geometry/point";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
-import { SectionHighlight } from "../render/SectionHighlight";
+import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -71,7 +71,7 @@ const HEADING_STEP_RADIANS = Math.PI / 12;
 export class SmartArcTool implements Tool {
   private readonly aimedMark = new NodeHighlight();
   private readonly startMark = new NodeHighlight();
-  private readonly hoverHighlight: SectionHighlight;
+  private readonly hoverHighlight: RoadNetworkHighlight;
   /**
    * One view per plan on screen. Grown as needed and never shrunk: the ones
    * not in use are hidden.
@@ -100,7 +100,7 @@ export class SmartArcTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
-    this.hoverHighlight = new SectionHighlight(network, STATE_COLOR.AIMED);
+    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planLayer,
       this.aimedMark.sceneObject,

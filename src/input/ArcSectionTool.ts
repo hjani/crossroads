@@ -8,7 +8,7 @@ import { isSamePoint, type Vec2 } from "../core/geometry/point";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
-import { SectionHighlight } from "../render/SectionHighlight";
+import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -39,7 +39,7 @@ export class ArcSectionTool implements Tool {
   /** A point the second click would make. */
   private readonly endHighlight = new NodeHighlight();
   /** The section an end click would weld onto. */
-  private readonly hoverHighlight: SectionHighlight;
+  private readonly hoverHighlight: RoadNetworkHighlight;
   /** The full plan to build the arc. */
   private readonly planView = new SectionPlanView();
   private readonly decoration = new THREE.Group();
@@ -52,7 +52,7 @@ export class ArcSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
-    this.hoverHighlight = new SectionHighlight(network, STATE_COLOR.AIMED);
+    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planView.sceneObject,
       this.startHighlight.sceneObject,

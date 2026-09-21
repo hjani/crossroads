@@ -8,7 +8,7 @@ import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
-import { SectionHighlight } from "../render/SectionHighlight";
+import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -39,7 +39,7 @@ import type { Vec2 } from "../core/geometry/point";
 export class StraightSectionTool implements Tool {
   private readonly planView = new SectionPlanView();
   private readonly highlight = new NodeHighlight();
-  private readonly hoverHighlight: SectionHighlight;
+  private readonly hoverHighlight: RoadNetworkHighlight;
   private readonly decoration = new THREE.Group();
 
   private pending: Placement | null = null;
@@ -48,7 +48,7 @@ export class StraightSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly viewport: Viewport,
   ) {
-    this.hoverHighlight = new SectionHighlight(network, STATE_COLOR.AIMED);
+    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planView.sceneObject,
       this.highlight.sceneObject,
