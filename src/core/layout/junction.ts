@@ -17,10 +17,16 @@ import {
   type Leg,
 } from "./junctionLeg";
 
-/** One piece of a junction's outline: how it runs to `to` from the point before. */
+/**
+ * One piece of a junction's outline: a point on it, and how the outline
+ * arrives there from the point before.
+ *
+ * A piece carries no start of its own. The ring is closed, so the first piece
+ * starts where the last one ends.
+ */
 export interface OutlinePiece {
-  readonly to: Vec2;
-  readonly outlineGeometry: LineGeometry;
+  readonly point: Vec2;
+  readonly incomingGeometry: LineGeometry;
 }
 
 /**
@@ -93,7 +99,7 @@ export class Junction {
 
   /**
    * The junction's outline, counterclockwise around the node, as a closed
-   * ring: the first piece runs from the last piece's `to`.
+   * ring: the first piece runs from the last piece's `point`.
    *
    * Each leg contributes its two edge points — right then left, looking from
    * the node along it — with the cut across the road between them. Then the
@@ -113,12 +119,12 @@ export class Junction {
   outline(): readonly OutlinePiece[] {
     const pieces: OutlinePiece[] = [];
     let previous = this.edgePointOf(this.legs[0], -1);
-    const add = (to: Vec2, outlineGeometry: LineGeometry): void => {
-      if (isSamePoint(previous, to)) {
+    const add = (point: Vec2, incomingGeometry: LineGeometry): void => {
+      if (isSamePoint(previous, point)) {
         return;
       }
-      pieces.push({ to, outlineGeometry });
-      previous = to;
+      pieces.push({ point, incomingGeometry });
+      previous = point;
     };
 
     this.legs.forEach((leg, index) => {

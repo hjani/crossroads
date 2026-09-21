@@ -116,7 +116,11 @@ function outlineCorners(outline: readonly OutlinePiece[]): Vec2[] {
   return outline.flatMap((piece, index) => {
     const before =
       index === 0 ? outline[outline.length - 1] : outline[index - 1];
-    return polylineBetween(before.to, piece.to, piece.outlineGeometry).slice(1);
+    return polylineBetween(
+      before.point,
+      piece.point,
+      piece.incomingGeometry,
+    ).slice(1);
   });
 }
 
