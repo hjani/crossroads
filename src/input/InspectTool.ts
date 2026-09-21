@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { pick } from "../core/layout/pick";
 import type { RoadLayout } from "../core/layout/RoadLayout";
 import {
   nearestNode,
@@ -148,11 +149,19 @@ export class InspectTool implements Tool {
   }
 
   /**
-   * What a click at `ground` would select, or null for nothing in reach.
+   * What a click at `ground` would select, or null for nothing in reach. The
+   * first of these to answer wins:
    *
-   * A node wins outright rather than the two being weighed on distance: it
-   * sits on the sections meeting it, so measured against them it would
-   * never be the nearer thing.
+   * - a node within the pick radius — a junction can contain no ground at
+   *   all, as where two roads meet in line, and its node must still be
+   *   reachable
+   * - the actual area: a junction picks its node, a roadway its section
+   * - a section within the pick radius — zoomed out, a road is too thin on
+   *   screen to aim inside
+   *
+   * The layout is asked before the sections' radius: a section's line runs
+   * on through the junction to the node, and would otherwise steal clicks
+   * from the junction.
    */
   private selectionAt(ground: Vec2): Selection | null {
     const radius = PICK_RADIUS_PIXELS * this.viewport.metersPerPixel;
@@ -160,6 +169,13 @@ export class InspectTool implements Tool {
     const node = nearestNode(this.network, ground, radius);
     if (node !== null) {
       return { kind: "node", id: node.id };
+    }
+
+    const outline = pick(this.layout, ground);
+    if (outline !== null) {
+      return outline.kind === "junction"
+        ? { kind: "node", id: outline.node }
+        : { kind: "section", id: outline.section };
     }
 
     const section = nearestSection(this.network, ground, radius);

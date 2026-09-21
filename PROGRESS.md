@@ -7,8 +7,8 @@ Quick status for picking up where we left.
 M0 through M7 are done — M3 came ahead of the curves because a second tool
 needs a way to be chosen, and because nothing could be deleted. Current:
 **M8 — Inspect tool**
-Next step: pick by area — a click inside a roadway picks that section, a
-click inside a junction picks that node
+Next step: outline what is selected instead of marking its centerline — a
+section's roadway, a node's junction
 
 ## Milestones
 
@@ -213,9 +213,9 @@ becomes Inspect, with a panel saying what the selected thing is.
 - [x] a selected section in the panel: its id, its length from node to node,
       its roadway's length, and the radius
 - [x] a selected node: its id and how many sections meet it
-- [ ] pick by area: a click inside a roadway picks that section, a click
+- [x] pick by area: a click inside a roadway picks that section, a click
       inside a junction picks that node
-- [ ] keep current logic that within some pixel distance of a road wireframe
+- [x] keep current logic that within some pixel distance of a road wireframe
       or junction point, they can be always selected, even when zoomed out
 - [ ] outline what is selected instead of marking its centerline: a section's
       roadway, a node's junction. Hovered and selected alike. Whether a
@@ -233,6 +233,10 @@ as a road too short for the setbacks at its two ends.
 
 - [ ] minimum arc radius of 10 m, global. Fits the 8 m road; once width can
       vary, `max(10 m, w/2)`
+- [ ] section tools weld by area, in Inspect's order: a node within the pick
+      radius, then the part containing the click (a junction welds to its
+      node, a roadway onto its section), then a section within the radius. A
+      weld onto a roadway still lands on its centerline
 
 ## Backlog
 

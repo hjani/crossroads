@@ -61,6 +61,20 @@ export class RoadLayout {
     return roadway;
   }
 
+  /** The junction at every node, in no particular order. */
+  allJunctions(): Junction[] {
+    return Array.from(this.network.allNodes(), (node) =>
+      this.junctionAt(node.id),
+    );
+  }
+
+  /** The roadway along every section, in no particular order. */
+  allRoadways(): Roadway[] {
+    return Array.from(this.network.allSections(), (section) =>
+      this.roadwayAlong(section.id),
+    );
+  }
+
   /** Empties the cache if the network has changed since it was filled. */
   private dropStaleCache(): void {
     if (this.network.version === this.cachedVersion) {
