@@ -3,10 +3,16 @@ import { isSamePoint, unitDirection, type Vec2 } from "../core/geometry/point";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { LineGeometry } from "../core/geometry/lineGeometry";
 import type { Section } from "../core/network/types";
+import type {
+  JunctionOutline,
+  Outline,
+  OutlinePiece,
+  RoadwayOutline,
+} from "../core/layout/outline";
 
 /**
- * The points a road is drawn along: a line broken into chords, and the slices
- * across a section's ribbon.
+ * Splits up geometry into primitives: a line broken into chords, and the ground an
+ * outline covers broken into triangles.
  *
  * Shared by everything that draws sections rather than owned by one of them,
  * so a mark on a section lands on the same shape the section itself is drawn
@@ -71,18 +77,85 @@ export function polylineBetween(
 }
 
 /**
+ * The ground an outline covers, as triangles: a flat list, every three points
+ * one triangle.
+ *
+ * Each kind is filled the way its shape allows — a junction fanned from its
+ * center, a roadway as a strip along its centerline.
+ */
+export function tessellateOutline(outline: Outline): Vec2[] {
+  return outline.kind === "junction"
+    ? tessellateJunctionOutline(outline)
+    : tessellateRoadwayOutline(outline);
+}
+
+/**
+ * A junction as a fan: a triangle from the center out to each pair of
+ * neighboring corners, the last pair wrapping back to the first.
+ *
+ * The fan is how a junction is drawn, not what it is: on a tight arc beside a
+ * sharp gap a triangle can flip over and pave a sliver of grass
+ * (`docs/road-surface.md`, Limits). The surface is double-sided, so a flipped
+ * triangle still draws.
+ */
+function tessellateJunctionOutline(outline: JunctionOutline): Vec2[] {
+  const { center } = outline;
+  const corners = outlineCorners(outline.pieces);
+  return corners.flatMap((corner, i) => [
+    center,
+    corner,
+    corners[(i + 1) % corners.length],
+  ]);
+}
+
+/**
+ * The corners a junction's outline is drawn through, with its arcs broken into
+ * chords.
+ *
+ * A piece runs from the piece before it — the last one for the first piece,
+ * the outline being closed — and each drawn piece gives back both of its ends,
+ * so every piece contributes all but its first point.
+ */
+function outlineCorners(pieces: readonly OutlinePiece[]): Vec2[] {
+  return pieces.flatMap((piece, index) => {
+    const before = index === 0 ? pieces[pieces.length - 1] : pieces[index - 1];
+    return polylineBetween(
+      before.point,
+      piece.point,
+      piece.incomingGeometry,
+    ).slice(1);
+  });
+}
+
+/**
+ * A roadway as a strip: two triangles between each pair of neighboring
+ * slices.
+ */
+function tessellateRoadwayOutline(outline: RoadwayOutline): Vec2[] {
+  const slices = ribbonSlicesBetween(outline);
+  const triangles: Vec2[] = [];
+  for (let i = 1; i < slices.length; i++) {
+    const back = slices[i - 1];
+    const front = slices[i];
+    triangles.push(back.edgeB, front.edgeB, front.edgeA);
+    triangles.push(back.edgeB, front.edgeA, back.edgeA);
+  }
+  return triangles;
+}
+
+/**
  * A cut straight across a ribbon, from one edge to the other.
  *
  * `edgeA` is on the same edge in every slice of a section, so the ribbon
  * between two slices doesn't twist.
  */
-export interface RibbonSlice {
+interface RibbonSlice {
   readonly edgeA: Vec2;
   readonly edgeB: Vec2;
 }
 
 /**
- * Slices across a section's ribbon, `widthMeters` wide, close enough together
+ * Slices across a roadway's ribbon, `widthMeters` wide, close enough together
  * that the edges stay within `ARC_SAG_METERS` of their curve.
  *
  * Each slice is `p ± (w/2)·n`: a centerline point `p`, the unit normal `n`
@@ -111,12 +184,8 @@ export interface RibbonSlice {
  *
  * Ends at the same place → no slices, and an error logged.
  */
-export function ribbonSlicesBetween(
-  from: Vec2,
-  to: Vec2,
-  centerlineGeometry: LineGeometry,
-  widthMeters: number,
-): readonly RibbonSlice[] {
+function ribbonSlicesBetween(outline: RoadwayOutline): readonly RibbonSlice[] {
+  const { from, to, centerlineGeometry, widthMeters } = outline;
   if (isSamePoint(from, to)) {
     console.error(
       `No ribbon for a section of no length, at (${from.x}, ${from.z})`,

@@ -1,19 +1,14 @@
 import * as THREE from "three";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
-import type { Vec2 } from "../core/geometry/point";
-import type { JunctionOutline, OutlinePiece } from "../core/layout/outline";
+import type { Outline } from "../core/layout/outline";
 import type { RoadLayout } from "../core/layout/RoadLayout";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import {
-  polylineBetween,
-  ribbonSlicesBetween,
-  type RibbonSlice,
-} from "./tessellate";
+import { tessellateOutline } from "./tessellate";
 
 /**
- * Draws a road network as asphalt: a ribbon along each roadway, and a fan
- * filling the junction at each node.
+ * Draws a road network as asphalt, filling the ground every roadway and
+ * junction covers.
  *
  * Rebuilt as a whole when the network's version says the drawing is stale.
  */
@@ -63,17 +58,10 @@ export class RoadSurfaceView {
   private rebuild(): void {
     const coordinates: number[] = [];
     for (const section of this.network.allSections()) {
-      const { outline } = this.layout.roadwayAlong(section.id);
-      const slices = ribbonSlicesBetween(
-        outline.from,
-        outline.to,
-        outline.centerlineGeometry,
-        outline.widthMeters,
-      );
-      appendRibbon(slices, coordinates);
+      appendOutline(this.layout.roadwayAlong(section.id).outline, coordinates);
     }
     for (const node of this.network.allNodes()) {
-      appendJunction(this.layout.junctionAt(node.id).outline(), coordinates);
+      appendOutline(this.layout.junctionAt(node.id).outline(), coordinates);
     }
 
     this.surface.geometry.dispose();
@@ -81,68 +69,10 @@ export class RoadSurfaceView {
   }
 }
 
-/**
- * Appends a junction: a triangle fan from the node out to each pair of
- * neighboring outline corners, the last pair wrapping back to the first.
- *
- * The fan is how a junction is drawn, not what it is: on a tight arc beside a
- * sharp gap a triangle can flip over and pave a sliver of grass
- * (`docs/road-surface.md`, Limits). The surface is double-sided, so a flipped
- * triangle still draws.
- */
-function appendJunction(outline: JunctionOutline, coordinates: number[]): void {
-  const { center } = outline;
-  const corners = outlineCorners(outline.pieces);
-  for (let i = 0; i < corners.length; i++) {
-    for (const corner of [
-      center,
-      corners[i],
-      corners[(i + 1) % corners.length],
-    ]) {
-      coordinates.push(corner.x, LAYER.ROAD_SURFACE, corner.z);
-    }
-  }
-}
-
-/**
- * The corners the outline is drawn through, with its arcs broken into chords
- * here rather than in the layout.
- *
- * A piece runs from the piece before it — the last one for the first piece,
- * the ring being closed — and each drawn piece gives back both of its ends,
- * so every piece contributes all but its first point.
- */
-function outlineCorners(outline: readonly OutlinePiece[]): Vec2[] {
-  return outline.flatMap((piece, index) => {
-    const before =
-      index === 0 ? outline[outline.length - 1] : outline[index - 1];
-    return polylineBetween(
-      before.point,
-      piece.point,
-      piece.incomingGeometry,
-    ).slice(1);
-  });
-}
-
-/** Appends a ribbon: two triangles between each pair of neighboring slices. */
-function appendRibbon(
-  slices: readonly RibbonSlice[],
-  coordinates: number[],
-): void {
-  for (let i = 1; i < slices.length; i++) {
-    const back = slices[i - 1];
-    const front = slices[i];
-
-    for (const corner of [
-      back.edgeB,
-      front.edgeB,
-      front.edgeA,
-      back.edgeB,
-      front.edgeA,
-      back.edgeA,
-    ]) {
-      coordinates.push(corner.x, LAYER.ROAD_SURFACE, corner.z);
-    }
+/** Appends the triangles filling an outline, at the road surface's height. */
+function appendOutline(outline: Outline, coordinates: number[]): void {
+  for (const point of tessellateOutline(outline)) {
+    coordinates.push(point.x, LAYER.ROAD_SURFACE, point.z);
   }
 }
 
