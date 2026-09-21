@@ -16,18 +16,7 @@ import {
   setbackThrough,
   type Leg,
 } from "./junctionLeg";
-
-/**
- * One piece of a junction's outline: a point on it, and how the outline
- * arrives there from the point before.
- *
- * A piece carries no start of its own. The ring is closed, so the first piece
- * starts where the last one ends.
- */
-export interface OutlinePiece {
-  readonly point: Vec2;
-  readonly incomingGeometry: LineGeometry;
-}
+import type { JunctionOutline, OutlinePiece } from "./outline";
 
 /**
  * The gap after a leg, between it and the next leg counterclockwise, as the
@@ -73,6 +62,9 @@ export class Junction {
   private readonly gaps: readonly Gap[];
   private readonly setbacks: ReadonlyMap<SectionId, number>;
 
+  /** Worked out once, at construction; `outline` hands it out. */
+  private readonly junctionOutline: JunctionOutline;
+
   constructor(
     network: RoadNetwork,
     readonly node: NodeId,
@@ -83,6 +75,7 @@ export class Junction {
     this.legs = legsAt(network, node);
     this.gaps = gapsAround(node, this.at, this.legs, widthMeters);
     this.setbacks = longestSetbacks(this.legs, this.gaps);
+    this.junctionOutline = this.buildOutline();
   }
 
   /**
@@ -116,7 +109,12 @@ export class Junction {
    * the corner point adds nothing, and a round join over a gap of exactly a
    * half turn adds no arc. A ring can come out empty.
    */
-  outline(): readonly OutlinePiece[] {
+  outline(): JunctionOutline {
+    return this.junctionOutline;
+  }
+
+  /** Builds the outline of the junction. */
+  private buildOutline(): JunctionOutline {
     const pieces: OutlinePiece[] = [];
     let previous = this.edgePointOf(this.legs[0], -1);
     const add = (point: Vec2, incomingGeometry: LineGeometry): void => {
@@ -163,7 +161,12 @@ export class Junction {
       }
     });
 
-    return pieces;
+    return {
+      kind: "junction",
+      node: this.node,
+      center: this.at,
+      pieces,
+    };
   }
 
   /**

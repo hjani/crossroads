@@ -235,14 +235,14 @@ describe("Junction", () => {
 describe("Junction.outline", () => {
   /** The corners the outline runs through, in order. */
   function cornersOf(junction: Junction): readonly Vec2[] {
-    return junction.outline().map((piece) => piece.point);
+    return junction.outline().pieces.map((piece) => piece.point);
   }
 
   /** The `via` of every piece the outline runs round rather than straight. */
   function viasOf(junction: Junction): readonly Vec2[] {
     return junction
       .outline()
-      .map((piece) => piece.incomingGeometry)
+      .pieces.map((piece) => piece.incomingGeometry)
       .filter((geometry) => geometry.kind === "arc")
       .map((geometry) => geometry.via);
   }
@@ -342,8 +342,8 @@ describe("Junction.outline", () => {
     const outer = R + WIDTH_METERS / 2;
     const half = WIDTH_METERS / 2;
     const corner = vec(Math.sqrt(outer * outer - half * half) - R, half);
-    expect(junction.outline()).toHaveLength(6);
-    expectPoints([junction.outline()[0].point], [corner]);
+    expect(junction.outline().pieces).toHaveLength(6);
+    expectPoints([junction.outline().pieces[0].point], [corner]);
 
     // The one arc piece is that run down the outer edge: the west–east gap is
     // a half turn, so its round join has no arc in it.
@@ -371,12 +371,9 @@ describe("Junction.outline", () => {
     // Piece 1 is east's cut across the road, piece 2 the arc's. Then the
     // join: back down the inner edge to (−4, 0), round the node to (0, −4),
     // and out along east's edge.
-    const outline = junction.outline();
-    expect(outline).toHaveLength(5);
-    expectPoints(
-      [outline[2].point, outline[3].point],
-      [vec(-4, 0), vec(0, -4)],
-    );
+    const pieces = junction.outline().pieces;
+    expect(pieces).toHaveLength(5);
+    expectPoints([pieces[2].point, pieces[3].point], [vec(-4, 0), vec(0, -4)]);
 
     const vias = viasOf(junction);
     expect(vias).toHaveLength(2);

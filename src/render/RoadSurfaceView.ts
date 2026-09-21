@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { Vec2 } from "../core/geometry/point";
-import { type OutlinePiece } from "../core/layout/junction";
+import type { JunctionOutline, OutlinePiece } from "../core/layout/outline";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
@@ -73,8 +73,7 @@ export class RoadSurfaceView {
       appendRibbon(slices, coordinates);
     }
     for (const node of this.network.allNodes()) {
-      const junction = this.layout.junctionAt(node.id);
-      appendJunction(node.position, junction.outline(), coordinates);
+      appendJunction(this.layout.junctionAt(node.id).outline(), coordinates);
     }
 
     this.surface.geometry.dispose();
@@ -91,14 +90,15 @@ export class RoadSurfaceView {
  * (`docs/road-surface.md`, Limits). The surface is double-sided, so a flipped
  * triangle still draws.
  */
-function appendJunction(
-  at: Vec2,
-  outline: readonly OutlinePiece[],
-  coordinates: number[],
-): void {
-  const corners = outlineCorners(outline);
+function appendJunction(outline: JunctionOutline, coordinates: number[]): void {
+  const { center } = outline;
+  const corners = outlineCorners(outline.pieces);
   for (let i = 0; i < corners.length; i++) {
-    for (const corner of [at, corners[i], corners[(i + 1) % corners.length]]) {
+    for (const corner of [
+      center,
+      corners[i],
+      corners[(i + 1) % corners.length],
+    ]) {
       coordinates.push(corner.x, LAYER.ROAD_SURFACE, corner.z);
     }
   }
