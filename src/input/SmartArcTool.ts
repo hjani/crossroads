@@ -13,6 +13,7 @@ import {
   type SectionPlan,
 } from "../core/network/edits";
 import { angleOf, distance, type Vec2 } from "../core/geometry/point";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -98,9 +99,14 @@ export class SmartArcTool implements Tool {
 
   constructor(
     private readonly network: RoadNetwork,
+    layout: RoadLayout,
     private readonly viewport: Viewport,
   ) {
-    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
+    this.hoverHighlight = new RoadNetworkHighlight(
+      network,
+      layout,
+      STATE_COLOR.AIMED,
+    );
     this.decoration.add(
       this.planLayer,
       this.aimedMark.sceneObject,
@@ -214,7 +220,7 @@ export class SmartArcTool implements Tool {
       // the start would be the cursor's own position.
       const aimed = this.startAt(ground, modifiers);
       if (aimed.kind === "section") {
-        this.hoverHighlight.show([aimed.section], []);
+        this.hoverHighlight.show({ sections: [aimed.section] });
       }
       if (aimed.kind !== "free") {
         this.aimedMark.show(
@@ -241,7 +247,7 @@ export class SmartArcTool implements Tool {
     // As in `StraightSectionTool`: while a plan is drawn, the section its far
     // end welds onto is hovered. With no plan a click builds nothing to hover.
     if (plans.length > 0 && end?.kind === "section") {
-      this.hoverHighlight.show([end.section], []);
+      this.hoverHighlight.show({ sections: [end.section] });
     } else {
       this.hoverHighlight.hide();
     }

@@ -8,6 +8,8 @@
 export const LAYER = {
   /** The roads, so every line over it stays visible. */
   ROAD_SURFACE: 0.01,
+  /** Areas a tool tints on the road, under every line. */
+  SURFACE_DECORATION: 0.015,
   /** The network's sections. */
   SECTIONS: 0.02,
   /** Lines a tool draws, so a marked or planned section reads over the rest. */

@@ -215,6 +215,12 @@ network and changes none of it.
   reaching past the thing it names.
 - Either mark on a section follows the shape it is drawn in → it sits on the
   road, not beside it.
+- The thing itself also gets its area tinted in the mark's color: a node its
+  junction, a section its roadway.
+  - The thing alone, even for a selection → what is tinted is exactly what
+    a click there picks.
+  - On top of the lines, not instead of them: zoomed out, a road is under a
+    pixel and only the lines still show.
 - The aimed thing is unmarked while it is exactly the selection: nothing
   worth painting over it.
   - A section meeting the selected node is still marked: clicking it would

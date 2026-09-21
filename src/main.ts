@@ -65,17 +65,19 @@ const palette = new ToolPalette(document.body, [
     id: "straight",
     label: "Straight",
     activate: () =>
-      tools.setActiveTool(new StraightSectionTool(network, viewport)),
+      tools.setActiveTool(new StraightSectionTool(network, layout, viewport)),
   },
   {
     id: "arc",
     label: "Arc",
-    activate: () => tools.setActiveTool(new ArcSectionTool(network, viewport)),
+    activate: () =>
+      tools.setActiveTool(new ArcSectionTool(network, layout, viewport)),
   },
   {
     id: "smart-arc",
     label: "Smart Arc",
-    activate: () => tools.setActiveTool(new SmartArcTool(network, viewport)),
+    activate: () =>
+      tools.setActiveTool(new SmartArcTool(network, layout, viewport)),
   },
 ]);
 palette.select("straight");

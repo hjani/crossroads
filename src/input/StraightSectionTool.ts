@@ -4,6 +4,7 @@ import {
   planSection,
   type SectionPlan,
 } from "../core/network/edits";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
 import { STATE_COLOR } from "../render/colors";
@@ -46,9 +47,14 @@ export class StraightSectionTool implements Tool {
 
   constructor(
     private readonly network: RoadNetwork,
+    layout: RoadLayout,
     private readonly viewport: Viewport,
   ) {
-    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
+    this.hoverHighlight = new RoadNetworkHighlight(
+      network,
+      layout,
+      STATE_COLOR.AIMED,
+    );
     this.decoration.add(
       this.planView.sceneObject,
       this.highlight.sceneObject,
@@ -133,7 +139,7 @@ export class StraightSectionTool implements Tool {
       this.planView.showPlan(this.network, plan);
       this.highlight.hide();
       if (placed.kind === "section") {
-        this.hoverHighlight.show([placed.section], []);
+        this.hoverHighlight.show({ sections: [placed.section] });
       } else {
         this.hoverHighlight.hide();
       }
@@ -147,7 +153,7 @@ export class StraightSectionTool implements Tool {
     // point is the cursor's own position.
     this.planView.hide();
     if (this.pending === null && placed.kind === "section") {
-      this.hoverHighlight.show([placed.section], []);
+      this.hoverHighlight.show({ sections: [placed.section] });
     } else {
       this.hoverHighlight.hide();
     }

@@ -78,8 +78,16 @@ export class InspectTool implements Tool {
     private readonly viewport: Viewport,
     private readonly panel: InspectPanel,
   ) {
-    this.aimedMark = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
-    this.selectedMark = new RoadNetworkHighlight(network, STATE_COLOR.SELECTED);
+    this.aimedMark = new RoadNetworkHighlight(
+      network,
+      layout,
+      STATE_COLOR.AIMED,
+    );
+    this.selectedMark = new RoadNetworkHighlight(
+      network,
+      layout,
+      STATE_COLOR.SELECTED,
+    );
     this.decoration.add(
       this.aimedMark.sceneObject,
       this.selectedMark.sceneObject,
@@ -184,9 +192,9 @@ export class InspectTool implements Tool {
 
   /**
    * Marks what the cursor at `ground` is aimed at — that thing alone: a
-   * section is its line, a node the one mark. Marking what hangs off it as
-   * well would be a lot of movement for a question the line, or the node,
-   * has already answered.
+   * section is its line and its roadway, a node the one mark and its
+   * junction. Marking what hangs off it as well would be a lot of movement
+   * for a question the thing itself has already answered.
    *
    * Nothing is drawn over what is already selected, there being nothing
    * worth painting over the selection to say. Over that exact thing only,
@@ -201,9 +209,9 @@ export class InspectTool implements Tool {
     }
 
     if (aimed.kind === "node") {
-      this.aimedMark.show([], [aimed.id]);
+      this.aimedMark.show({ nodes: [aimed.id], junctions: [aimed.id] });
     } else {
-      this.aimedMark.show([aimed.id], []);
+      this.aimedMark.show({ sections: [aimed.id], roadways: [aimed.id] });
     }
   }
 
@@ -219,14 +227,22 @@ export class InspectTool implements Tool {
     }
 
     if (selected.kind === "node") {
-      const section = this.network.sectionsAt(selected.id);
-      this.selectedMark.show(section, [selected.id]);
+      const sections = this.network.sectionsAt(selected.id);
+      this.selectedMark.show({
+        sections,
+        nodes: [selected.id],
+        junctions: [selected.id],
+      });
       this.panel.show(`Node ${selected.id}`, [
-        ["Sections", String(section.length)],
+        ["Sections", String(sections.length)],
       ]);
     } else {
       const section = this.network.getSection(selected.id);
-      this.selectedMark.show([selected.id], [section.from, section.to]);
+      this.selectedMark.show({
+        sections: [selected.id],
+        nodes: [section.from, section.to],
+        roadways: [selected.id],
+      });
       const radius = sectionRadius(this.network, section);
       this.panel.show(`Section ${section.id}`, [
         ["Length", displayMeters(section.length)],

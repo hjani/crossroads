@@ -217,7 +217,7 @@ becomes Inspect, with a panel saying what the selected thing is.
       inside a junction picks that node
 - [x] keep current logic that within some pixel distance of a road wireframe
       or junction point, they can be always selected, even when zoomed out
-- [ ] outline what is selected instead of marking its centerline: a section's
+- [x] outline what is selected instead of marking its centerline: a section's
       roadway, a node's junction. Hovered and selected alike. Whether a
       translucent fill goes inside the outline is open, and so is whether a
       selected junction still reaches out to the sections meeting it, as the
@@ -245,6 +245,8 @@ Wanted, but not part of a milestone yet.
 - [ ] rebuild only what changed in the road surface, and decide how the view
       learns what that is.
 - [ ] level of detail for arc tessellation
+- [ ] level of detail for the network: one way of drawing per zoom level,
+      not the wireframe drawn over the road surface and its marks
 - [ ] refuse a straight drawn between two points on the same straight road:
       both ends cut the road, and the new section lies on top of the piece
       between them. An arc does the same only if its control point lands on

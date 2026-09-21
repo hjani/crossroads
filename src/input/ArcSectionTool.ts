@@ -5,6 +5,7 @@ import {
   type SectionPlan,
 } from "../core/network/edits";
 import { isSamePoint, type Vec2 } from "../core/geometry/point";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -50,9 +51,14 @@ export class ArcSectionTool implements Tool {
 
   constructor(
     private readonly network: RoadNetwork,
+    layout: RoadLayout,
     private readonly viewport: Viewport,
   ) {
-    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
+    this.hoverHighlight = new RoadNetworkHighlight(
+      network,
+      layout,
+      STATE_COLOR.AIMED,
+    );
     this.decoration.add(
       this.planView.sceneObject,
       this.startHighlight.sceneObject,
@@ -178,7 +184,7 @@ export class ArcSectionTool implements Tool {
    */
   private markWhereClickLands(mark: NodeHighlight, placed: Placement): void {
     if (placed.kind === "section") {
-      this.hoverHighlight.show([placed.section], []);
+      this.hoverHighlight.show({ sections: [placed.section] });
     }
     if (placed.kind !== "free") {
       mark.show(
