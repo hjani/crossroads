@@ -47,10 +47,15 @@ export class RoadLayout {
     let roadway = this.roadways.get(sectionId);
     if (roadway === undefined) {
       const section = this.network.getSection(sectionId);
-      roadway = roadwayOf(this.network, section, {
-        from: this.junctionAt(section.from).setbackOf(sectionId),
-        to: this.junctionAt(section.to).setbackOf(sectionId),
-      });
+      roadway = roadwayOf(
+        this.network,
+        section,
+        {
+          from: this.junctionAt(section.from).setbackOf(sectionId),
+          to: this.junctionAt(section.to).setbackOf(sectionId),
+        },
+        ROAD_WIDTH_METERS,
+      );
       this.roadways.set(sectionId, roadway);
     }
     return roadway;

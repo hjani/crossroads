@@ -1,6 +1,6 @@
 import type { LineGeometry } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
-import type { NodeId } from "../network/types";
+import type { NodeId, SectionId } from "../network/types";
 
 /**
  * The ground a part that different items of the layout cover.
@@ -31,3 +31,23 @@ export interface JunctionOutline {
   readonly center: Vec2;
   readonly pieces: readonly OutlinePiece[];
 }
+
+/**
+ * The ground a roadway covers: a band `widthMeters` wide along its
+ * centerline, ending square to the road at each end.
+ *
+ * The centerline and the width fix the edges between them, so the edges are
+ * not named beside them — one curve written down twice could disagree with
+ * itself.
+ */
+export interface RoadwayOutline {
+  readonly kind: "roadway";
+  readonly section: SectionId;
+  readonly from: Vec2;
+  readonly to: Vec2;
+  readonly centerlineGeometry: LineGeometry;
+  readonly widthMeters: number;
+}
+
+/** The ground any one part of the layout covers. */
+export type Outline = JunctionOutline | RoadwayOutline;

@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { Vec2 } from "../core/geometry/point";
 import type { JunctionOutline, OutlinePiece } from "../core/layout/outline";
-import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import {
@@ -63,12 +63,12 @@ export class RoadSurfaceView {
   private rebuild(): void {
     const coordinates: number[] = [];
     for (const section of this.network.allSections()) {
-      const roadway = this.layout.roadwayAlong(section.id);
+      const { outline } = this.layout.roadwayAlong(section.id);
       const slices = ribbonSlicesBetween(
-        roadway.from,
-        roadway.to,
-        roadway.centerlineGeometry,
-        ROAD_WIDTH_METERS,
+        outline.from,
+        outline.to,
+        outline.centerlineGeometry,
+        outline.widthMeters,
       );
       appendRibbon(slices, coordinates);
     }

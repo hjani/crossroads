@@ -54,6 +54,15 @@
 - Never shorter than zero: both setbacks clamped → a roadway of zero length,
   halfway along the section. Not an error.
 
+## Outline
+
+- Every part says what ground it covers, as an outline. Each kind says it the
+  way that kind is shaped:
+  - junction → as described above in the Junction chanpter
+  - roadway → a band defined by its centerline and the width of the road
+- An outline names the network part it belongs to.
+- Says what ground the part covers, not how to tesselate or render it.
+
 ## Derivation
 
 - Each part (a setback, a junction, a roadway) is worked out from the network
@@ -81,6 +90,8 @@
   - → read a part again after an edit rather than storing it.
 - Junctions and roadways share the one cache: a roadway reads junctions, and
   both must come from the same version.
+- The whole layout can be iterated.
+
 
 ## Relationship to other modules
 

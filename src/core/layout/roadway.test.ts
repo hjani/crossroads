@@ -46,12 +46,32 @@ describe("roadwayOf", () => {
     network.addSection(road.from, vec(0, 20), STRAIGHT);
     network.addSection(road.to, vec(10, 10 * Math.sqrt(3)), STRAIGHT);
 
-    const roadway = roadwayOf(network, road, setbacksOf(network, road));
+    const { length, outline } = roadwayOf(
+      network,
+      road,
+      setbacksOf(network, road),
+      WIDTH_METERS,
+    );
 
-    expectPoint(roadway.from, vec(4, 0));
-    expectPoint(roadway.to, vec(20 - 4 * Math.sqrt(3), 0));
-    expect(roadway.centerlineGeometry).toBe(road.centerlineGeometry);
-    expect(roadway.length).toBeCloseTo(20 - 4 - 4 * Math.sqrt(3));
+    expectPoint(outline.from, vec(4, 0));
+    expectPoint(outline.to, vec(20 - 4 * Math.sqrt(3), 0));
+    expect(outline.centerlineGeometry).toBe(road.centerlineGeometry);
+    expect(length).toBeCloseTo(20 - 4 - 4 * Math.sqrt(3));
+  });
+
+  it("names its section in its outline, with the width of the road", () => {
+    const network = new RoadNetwork();
+    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+
+    const { outline } = roadwayOf(
+      network,
+      road,
+      setbacksOf(network, road),
+      WIDTH_METERS,
+    );
+
+    expect(outline.section).toBe(road.id);
+    expect(outline.widthMeters).toBe(WIDTH_METERS);
   });
 
   it("shrinks to nothing halfway along when both setbacks are clamped", () => {
@@ -61,11 +81,16 @@ describe("roadwayOf", () => {
     network.addSection(road.from, vec(0, 20), STRAIGHT);
     network.addSection(road.to, vec(6, 20), STRAIGHT);
 
-    const roadway = roadwayOf(network, road, setbacksOf(network, road));
+    const { length, outline } = roadwayOf(
+      network,
+      road,
+      setbacksOf(network, road),
+      WIDTH_METERS,
+    );
 
-    expectPoint(roadway.from, vec(3, 0));
-    expectPoint(roadway.to, vec(3, 0));
-    expect(roadway.length).toBeCloseTo(0);
+    expectPoint(outline.from, vec(3, 0));
+    expectPoint(outline.to, vec(3, 0));
+    expect(length).toBeCloseTo(0);
   });
 
   it("cuts an arc back along its own circle", () => {
@@ -82,20 +107,25 @@ describe("roadwayOf", () => {
     network.addSection(arc.from, vec(-20, 20), STRAIGHT);
     const s = new Junction(network, arc.from, WIDTH_METERS).setbackOf(arc.id);
 
-    const roadway = roadwayOf(network, arc, setbacksOf(network, arc));
+    const { length, outline } = roadwayOf(
+      network,
+      arc,
+      setbacksOf(network, arc),
+      WIDTH_METERS,
+    );
 
     // Set back s along the circle → turned s/R from the start.
     const startAngle = Math.PI - s / R;
     expect(s).toBeGreaterThan(0);
-    expectPoint(roadway.from, onCircle(center, R, startAngle));
-    expectPoint(roadway.to, vec(20, 0));
+    expectPoint(outline.from, onCircle(center, R, startAngle));
+    expectPoint(outline.to, vec(20, 0));
     // Measured along the curve: only the start is set back, so what is left
     // of the half circle is π·R − s.
-    expect(roadway.length).toBeCloseTo(Math.PI * R - s);
-    expect(roadway.centerlineGeometry.kind).toBe("arc");
-    if (roadway.centerlineGeometry.kind === "arc") {
+    expect(length).toBeCloseTo(Math.PI * R - s);
+    expect(outline.centerlineGeometry.kind).toBe("arc");
+    if (outline.centerlineGeometry.kind === "arc") {
       expectPoint(
-        roadway.centerlineGeometry.via,
+        outline.centerlineGeometry.via,
         onCircle(center, R, startAngle / 2),
       );
     }

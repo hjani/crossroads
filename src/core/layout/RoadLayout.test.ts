@@ -42,12 +42,12 @@ describe("RoadLayout", () => {
     network.addSection(road.to, vec(10, 10 * Math.sqrt(3)), STRAIGHT);
     const layout = new RoadLayout(network);
 
-    const roadway = layout.roadwayAlong(road.id);
+    const { outline } = layout.roadwayAlong(road.id);
 
     const start = layout.junctionAt(road.from).setbackOf(road.id);
     const end = layout.junctionAt(road.to).setbackOf(road.id);
-    expect(roadway.from.x).toBeCloseTo(start);
-    expect(roadway.to.x).toBeCloseTo(20 - end);
+    expect(outline.from.x).toBeCloseTo(start);
+    expect(outline.to.x).toBeCloseTo(20 - end);
   });
 
   it("throws for a node or section the network no longer has", () => {
