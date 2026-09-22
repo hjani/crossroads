@@ -133,6 +133,15 @@ cross.**
   section asked for → the preview shows what was refused, not only that
   something was.
 
+**The tool's own: an arc tighter than `max(10 m, w/2)`.**
+
+- `w` is the road's width: under `w/2` the arc has no inner edge. 10 m is a global practical limit regardless of road width.
+- Measured on the whole section as asked for, before any cut.
+- The network builds any arc → the limit is the tools', like the smart
+  arc's ¾ turn.
+- Planned anyway and shown refused, like a refusal from the network: the
+  user aimed at it, so it is shown turned down, not hidden.
+
 None of this reaches the model: it still receives exact positions and ids
 of existing nodes, and decides nothing about either.
 
@@ -179,53 +188,55 @@ place.
   joins smoothly without aiming any join.
 - Cancel ends the run and keeps what was built.
 
-## Selection
+## Inspect
 
-A tool like any other. While it is active nothing is built: it reads the
-network and changes none of it.
+A tool like any other, and the one that builds nothing: it names what the
+cursor is on and measures what is selected. Delete is its only edit.
 
 **What a click catches**
 
-- The nearest node within the pick radius; failing that, the nearest
-  section within the same radius.
-  - Distance to the road as it runs → a click beside the middle of a long
-    section finds it; a click past either end falls back to being near that
-    end.
-  - Measured against the shape the model holds, not the drawn pieces → what
-    a click catches doesn't depend on how finely anything was drawn.
-  - Radius in pixels, like the welding one: how close the cursor _looks_
-    should not change with zoom.
-- A node wins outright, not weighed on distance:
-  - it sits on its sections, so on distance it would never be the nearer
-    thing
-  - a section's end is where most reasons to click one are
-- What a click would catch is marked before the click: the same question
-  asked one move earlier, like the landing mark and the edit preview → mark
-  and click can't disagree.
-- Clicking clear of everything selects nothing → drops the selection
-  without leaving the tool. Cancel drops it too.
+First to answer wins:
+
+1. a node within the pick radius
+2. the part of the layout the click is inside → a junction picks its node, a
+   roadway its section
+3. a section within the pick radius
+
+- Area is the answer; the radii cover what it can't reach.
+  - a junction may enclose no ground — two roads meeting in line
+  - zoomed out, a road is under a pixel: too thin to aim inside
+- The order: a node sits inside its junction, a section's centerline runs on
+  through it → asked on distance first, either would steal the junction's
+  clicks.
+- Radius in pixels, its own number, not the one the section tools weld
+  within.
+- Measured against the model and the layout, never the drawn pieces.
+- What a click would catch is marked before the click → mark and click can't
+  disagree.
+- Clicking clear of everything selects nothing. Cancel drops it too.
 
 **Marks**
 
-- Selected section → itself + the nodes at both ends.
-- Selected node → itself + every section meeting it, but not the nodes at
-  those sections' far ends (the selection stops there).
-- Aimed → the thing alone: a section is the road, a node its one mark.
-- → selected and aimed differ twice over: by color, and by only a selection
-  reaching past the thing it names.
-- Either mark on a section follows the shape it is drawn in → it sits on the
-  road, not beside it.
-- The thing itself also gets its area tinted in the mark's color: a node its
-  junction, a section its roadway.
-  - The thing alone, even for a selection → what is tinted is exactly what
-    a click there picks.
-  - On top of the lines, not instead of them: zoomed out, a road is under a
-    pixel and only the lines still show.
-- The aimed thing is unmarked while it is exactly the selection: nothing
-  worth painting over it.
-  - A section meeting the selected node is still marked: clicking it would
-    change the selection.
+- The thing is marked by its area, tinted: a node its junction, a section
+  its roadway → what is tinted is what a click there picks.
+  - Over the lines, not instead of them: zoomed out only the lines show.
+- A selection reaches past it, in lines and node marks:
+  - section → the nodes at both ends
+  - node → every section meeting it, not their far ends
+- Aimed → the thing alone.
+- → selected and aimed differ twice over: by color, and by reach.
+- A line on a section follows the shape it is drawn in.
+- The aimed mark is dropped while it is exactly the selection.
+  - a section meeting the selected node is still marked: clicking it would
+    change the selection
 - A selection is tool state → it doesn't survive a tool switch.
+
+**What the panel says**
+
+- Node → its id, how many sections meet it.
+- Section → its id, its length, its roadway's length, its radius (a straight
+  has none).
+- The panel is `docs/ui.md`'s; what is worth measuring is this tool's.
 
 **Deleting**
 

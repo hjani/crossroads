@@ -222,7 +222,7 @@ becomes Inspect, with a panel saying what the selected thing is.
       translucent fill goes inside the outline is open, and so is whether a
       selected junction still reaches out to the sections meeting it, as the
       wireframe mark does today
-- [ ] `docs/tools.md`: rewrite `## Selection` as `## Inspect` — the tool's
+- [x] `docs/tools.md`: rewrite `## Selection` as `## Inspect` — the tool's
       name, picking by area, outlines instead of centerline marks. Left to
       the end, since every step above changes what the section says
 
@@ -231,7 +231,7 @@ becomes Inspect, with a panel saying what the selected thing is.
 Edits account for road width, and refuse what M7 can only draw wrong — such
 as a road too short for the setbacks at its two ends.
 
-- [ ] minimum arc radius of 10 m, global. Fits the 8 m road; once width can
+- [x] minimum arc radius of 10 m, global. Fits the 8 m road; once width can
       vary, `max(10 m, w/2)`
 - [ ] section tools weld by area, in Inspect's order: a node within the pick
       radius, then the part containing the click (a junction welds to its

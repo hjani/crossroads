@@ -5,7 +5,7 @@ import {
   type SectionPlan,
 } from "../core/network/edits";
 import { isSamePoint, type Vec2 } from "../core/geometry/point";
-import type { RoadLayout } from "../core/layout/RoadLayout";
+import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -19,6 +19,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
+import { isTooTight } from "./curveLimits";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -219,18 +220,29 @@ export class ArcSectionTool implements Tool {
    *
    * A plan that does come back may still be unbuildable, which is the
    * network's to say. Three points in a line are the common one, and are
-   * what the control point drags through crossing from side to side.
+   * what the control point drags through crossing from side to side. It is
+   * also unbuildable where the arc curves too tightly, which is the tool's
+   * own limit.
    */
   private planThrough(via: Vec2): SectionPlan | null {
     if (this.start === null || this.end === null) return null;
 
+    const geometry = { kind: "arc", via } as const;
     const plan = planSection(
       this.network,
       endpointFrom(this.start),
       endpointFrom(this.end),
-      { kind: "arc", via },
+      geometry,
     );
-    return plan.pieces.length === 0 ? null : plan;
+    if (plan.pieces.length === 0) return null;
+
+    const tooTight = isTooTight(
+      this.start.position,
+      this.end.position,
+      geometry,
+      ROAD_WIDTH_METERS,
+    );
+    return tooTight ? { ...plan, buildable: false } : plan;
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */

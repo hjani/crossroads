@@ -13,7 +13,7 @@ import {
   type SectionPlan,
 } from "../core/network/edits";
 import { angleOf, distance, type Vec2 } from "../core/geometry/point";
-import type { RoadLayout } from "../core/layout/RoadLayout";
+import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
@@ -26,6 +26,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
+import { isTooTight } from "./curveLimits";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -291,7 +292,8 @@ export class SmartArcTool implements Tool {
    * A direction is left out where it gives no road worth drawing: one turning
    * further round than `MAX_SWEEP_RADIANS`, or one whose plan has no piece
    * because the end resolved onto the start's own place. A plan that does come
-   * back may still be unbuildable, which is the network's to say.
+   * back may still be unbuildable: the network's to say, or the tool's own
+   * where the arc curves too tightly.
    */
   private plansTo(
     start: Placement,
@@ -311,7 +313,15 @@ export class SmartArcTool implements Tool {
         endpointFrom(end),
         geometry,
       );
-      if (plan.pieces.length > 0) plans.push(plan);
+      if (plan.pieces.length === 0) continue;
+
+      const tooTight = isTooTight(
+        start.position,
+        end.position,
+        geometry,
+        ROAD_WIDTH_METERS,
+      );
+      plans.push(tooTight ? { ...plan, buildable: false } : plan);
     }
     return plans;
   }
