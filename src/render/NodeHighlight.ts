@@ -39,9 +39,6 @@ export class NodeHighlight {
         sizeAttenuation: false,
       }),
     );
-    // The bounding sphere is computed once, from a point at the origin, so
-    // culling would drop the mark as soon as the camera moved away from it.
-    this.sceneObject.frustumCulled = false;
     this.sceneObject.visible = false;
   }
 

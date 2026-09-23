@@ -62,13 +62,11 @@ export class SectionPlanView {
         side: THREE.DoubleSide,
       }),
     );
-    this.roadSurface.frustumCulled = false;
 
     this.centerline = new THREE.Line(
       makeGeometry([]),
       new THREE.LineBasicMaterial({ color: STATE_COLOR.PLANNED }),
     );
-    this.centerline.frustumCulled = false;
 
     this.newNodes = makeMarks(STATE_COLOR.PLANNED, NEW_NODE_SIZE);
     this.existingNodes = makeMarks(STATE_COLOR.SELECTED, EXISTING_NODE_SIZE);
@@ -180,7 +178,7 @@ function makeMarks(
       sizeAttenuation: false,
     }),
   );
-  marks.frustumCulled = false;
+
   return marks;
 }
 
@@ -201,9 +199,6 @@ function makeGeometry(coordinates: readonly number[]): THREE.BufferGeometry {
 /**
  * Rebuilt rather than updated in place: a plan has a handful of points,
  * and how many changes with every crossing the cursor drags across.
- *
- * The bounding sphere is rebuilt with it, and an empty geometry leaves
- * none at all, which is why nothing here is frustum-culled.
  */
 function replaceGeometry(
   target: THREE.Line | THREE.Points | THREE.Mesh,

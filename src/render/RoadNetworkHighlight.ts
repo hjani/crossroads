@@ -87,9 +87,6 @@ export class RoadNetworkHighlight {
         side: THREE.DoubleSide,
       }),
     );
-    this.sectionLines.frustumCulled = false;
-    this.nodeMarks.frustumCulled = false;
-    this.areas.frustumCulled = false;
 
     this.sceneObject.add(this.areas, this.sectionLines, this.nodeMarks);
     this.sceneObject.visible = false;
@@ -213,9 +210,6 @@ function makeGeometry(coordinates: readonly number[]): THREE.BufferGeometry {
  * Rebuilt rather than updated in place, as in `SectionPlanView`: how many
  * sections are marked is not fixed, and what is marked changes on a gesture
  * rather than continuously.
- *
- * The bounding sphere is rebuilt with it, and an empty geometry leaves none
- * at all, which is why nothing here is frustum-culled.
  */
 function replaceGeometry(
   target: THREE.LineSegments | THREE.Points | THREE.Mesh,
