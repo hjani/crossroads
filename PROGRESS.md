@@ -237,6 +237,28 @@ as a road too short for the setbacks at its two ends.
       radius, then the part containing the click (a junction welds to its
       node, a roadway onto its section), then a section within the radius. A
       weld onto a roadway still lands on its centerline
+- [ ] draw a planned section as a band `w` wide rather than a thin line, so
+      the preview covers the ground the road will
+- [ ] `docs/intersections.md` rewritten for width: the three pairings
+      (junction–junction, junction–roadway, roadway–roadway), the circle a
+      junction is measured by, why parts sharing a node or a section are
+      exempt, and the verdict composed in the layout layer.
+      `docs/road-layout.md` loses its "planned as if roads had no width" line
+- [ ] judge a plan on the layout it would leave: `RoadNetwork.clone()`, and a
+      planner in `src/core/layout/` that applies the plan to a throwaway
+      network and reads what it changed. `planSection` is untouched and the
+      verdict stays on the plan. First rule: a section too short for the
+      setbacks at both ends is refused rather than clamped
+- [ ] a junction's bounding circle, and two junctions sharing no section may
+      not overlap. Only the changed parts are laid out speculatively — the
+      plan's points, the far ends of the sections it cuts, and the roadways
+      meeting them; the rest comes from the live layout
+- [ ] a roadway may not run into a junction it does not meet
+- [ ] two straight roadways may not overlap: centerlines at least `w` apart
+      (core geometry, with tests)
+- [ ] the same where an arc is involved: segment–arc and arc–arc
+- [ ] preview from the speculative layout instead of the band: the junctions
+      and roadways the edit would really make
 
 ## Backlog
 
