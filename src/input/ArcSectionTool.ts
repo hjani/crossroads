@@ -20,6 +20,7 @@ import {
   type Placement,
 } from "./sectionPointPlacement";
 import { isTooTight } from "./curveLimits";
+import { showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -40,7 +41,7 @@ export class ArcSectionTool implements Tool {
   private readonly startHighlight = new NodeHighlight();
   /** A point the second click would make. */
   private readonly endHighlight = new NodeHighlight();
-  /** The section an end click would weld onto. */
+  /** The highlight of the item under the cursor. */
   private readonly hoverHighlight: RoadNetworkHighlight;
   /** The full plan to build the arc. */
   private readonly planView = new SectionPlanView();
@@ -52,7 +53,7 @@ export class ArcSectionTool implements Tool {
 
   constructor(
     private readonly network: RoadNetwork,
-    layout: RoadLayout,
+    private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
   ) {
     this.hoverHighlight = new RoadNetworkHighlight(
@@ -77,16 +78,28 @@ export class ArcSectionTool implements Tool {
     if (ground === null) return;
 
     if (this.start === null) {
-      this.start = placeSectionEnd(this.network, this.viewport, ground, {
-        useGrid: !modifiers.ctrl,
-      });
+      this.start = placeSectionEnd(
+        this.network,
+        this.layout,
+        this.viewport,
+        ground,
+        {
+          useGrid: !modifiers.ctrl,
+        },
+      );
       return;
     }
 
     if (this.end === null) {
-      const placed = placeSectionEnd(this.network, this.viewport, ground, {
-        useGrid: !modifiers.ctrl,
-      });
+      const placed = placeSectionEnd(
+        this.network,
+        this.layout,
+        this.viewport,
+        ground,
+        {
+          useGrid: !modifiers.ctrl,
+        },
+      );
       if (!this.reachesBeyondStart(ground, placed)) return;
 
       this.end = placed;
@@ -156,9 +169,15 @@ export class ArcSectionTool implements Tool {
       return;
     }
 
-    const placed = placeSectionEnd(this.network, this.viewport, ground, {
-      useGrid,
-    });
+    const placed = placeSectionEnd(
+      this.network,
+      this.layout,
+      this.viewport,
+      ground,
+      {
+        useGrid,
+      },
+    );
 
     // Nothing placed: only where the first click would land.
     if (this.start === null) {
@@ -180,13 +199,10 @@ export class ArcSectionTool implements Tool {
 
   /**
    * Marks where an end click would land: a node already there, or one it
-   * would make, with the section it would be made on hovered. Nothing when
-   * it would land on the cursor's own position.
+   * would make.
    */
   private markWhereClickLands(mark: NodeHighlight, placed: Placement): void {
-    if (placed.kind === "section") {
-      this.hoverHighlight.show({ sections: [placed.section] });
-    }
+    showWeldTarget(this.hoverHighlight, placed);
     if (placed.kind !== "free") {
       mark.show(
         placed.position,

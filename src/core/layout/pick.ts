@@ -1,8 +1,10 @@
 import { arcCircle, arcFractionAt, pointOnArc } from "../geometry/arc";
 import { distance, lerp, type Vec2 } from "../geometry/point";
 import { segmentFractionAt } from "../geometry/segment";
-import type { JunctionOutline, Outline, RoadwayOutline } from "./outline";
+import type { NodeId, SectionId } from "../network/types";
+import type { Junction } from "./junction";
 import type { RoadLayout } from "./RoadLayout";
+import type { Roadway } from "./roadway";
 
 /**
  * Which part of the layout contains a point on the ground.
@@ -11,27 +13,31 @@ import type { RoadLayout } from "./RoadLayout";
  * enough on screen is the caller's business.
  */
 
+/** The part found at the given location. */
+export type PickResult =
+  | { readonly kind: "junction"; readonly node: NodeId }
+  | { readonly kind: "roadway"; readonly section: SectionId };
+
 /**
- * The outline of the part containing `point`, or null where no part does.
+ * The part containing `point`, or null where no part does.
  *
  * Junctions are asked before roadways, and the first to contain the point
- * answers. Outlines overlap only where a section is too short for its
- * setbacks (`docs/road-layout.md`).
+ * answers. Parts overlap only where a section is too short for its setbacks
+ * (`docs/road-layout.md`).
  *
- * A point on an outline's edge may go either way.
+ * A point on a part's edge may go either way.
  *
  * A linear scan over every part, like `nearestNode` over every node.
  */
-export function pick(layout: RoadLayout, point: Vec2): Outline | null {
+export function pick(layout: RoadLayout, point: Vec2): PickResult | null {
   for (const junction of layout.allJunctions()) {
-    const outline = junction.outline();
-    if (junctionContains(outline, point)) {
-      return outline;
+    if (junctionContains(junction, point)) {
+      return { kind: "junction", node: junction.node };
     }
   }
-  for (const { outline } of layout.allRoadways()) {
-    if (roadwayContains(outline, point)) {
-      return outline;
+  for (const roadway of layout.allRoadways()) {
+    if (roadwayContains(roadway, point)) {
+      return { kind: "roadway", section: roadway.outline.section };
     }
   }
   return null;
@@ -61,8 +67,8 @@ export function pick(layout: RoadLayout, point: Vec2): Outline | null {
  * curve. Two pieces on one line, as at a straight join, cover nothing. A dead
  * end's cut and cap give `P` no area, and the cap's `S` is the half disc.
  */
-function junctionContains(outline: JunctionOutline, p: Vec2): boolean {
-  const { pieces } = outline;
+export function junctionContains(junction: Junction, p: Vec2): boolean {
+  const { pieces } = junction.outline();
   let covered = false;
   pieces.forEach((piece, index) => {
     const a = pieces[index === 0 ? pieces.length - 1 : index - 1].point;
@@ -119,8 +125,8 @@ function inCircularSegment(a: Vec2, b: Vec2, v: Vec2, p: Vec2): boolean {
  * A roadway of no length has no `t` strictly between its ends → covers
  * nothing.
  */
-function roadwayContains(outline: RoadwayOutline, p: Vec2): boolean {
-  const { from, to, centerlineGeometry, widthMeters } = outline;
+function roadwayContains(roadway: Roadway, p: Vec2): boolean {
+  const { from, to, centerlineGeometry, widthMeters } = roadway.outline;
   const t =
     centerlineGeometry.kind === "arc"
       ? arcFractionAt(from, to, centerlineGeometry.via, p)

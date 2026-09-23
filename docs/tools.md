@@ -67,29 +67,30 @@
 
 ## Snapping
 
-Each point is placed in one of two modes:
+Placing a point works in one of two modes:
 
 - **Snapped**: the normal one.
-- **Unsnapped**: while the un-snap modifier is held → chosen per point, not
-  set and forgotten.
+- **Unsnapped**: while the un-snap modifier is held.
 
-Snapped, first match wins:
+Placement first tries to weld onto an existing node or section, first match wins:
 
-1. within a small radius of a node → that node (the sections share one
-   point)
-2. within a small radius of a road → on the road, where it crosses the
-   nearest grid line
-3. anywhere else → rounded to the grid
+1. within a small pixel radius of a node → that node
+2. inside a junction area → the node of the junction
+3. inside a roadway → the section of the roadway
+4. within a small pixel radius of a section → that section
 
-- Welding beats the grid: a grid point is never a join, and a road that
-  reaches an existing one should meet it.
+When welded to a section, the weld point is always on the centerline, at the position:
 
-Unsnapped, nothing is rounded, but welding still applies:
+- when **snapped**: where it crosses the nearest grid line.
+- when **unsnapped**: the nearest point of the section
 
-- near a node → that node
-- near a road → the nearest place on the road
-- anywhere else → the exact position under the cursor
-- A point near the network that must not join it → zoom in to place it.
+That point may fall inside one of the section's own junctions → welds onto that
+node instead.
+
+When no welding, placement is at:
+
+- when **snapped**: the nearest grid point
+- when **unsnapped**: the exact cursor position
 
 Units:
 

@@ -179,11 +179,11 @@ export class InspectTool implements Tool {
       return { kind: "node", id: node.id };
     }
 
-    const outline = pick(this.layout, ground);
-    if (outline !== null) {
-      return outline.kind === "junction"
-        ? { kind: "node", id: outline.node }
-        : { kind: "section", id: outline.section };
+    const picked = pick(this.layout, ground);
+    if (picked !== null) {
+      return picked.kind === "junction"
+        ? { kind: "node", id: picked.node }
+        : { kind: "section", id: picked.section };
     }
 
     const section = nearestSection(this.network, ground, radius);

@@ -27,6 +27,7 @@ import {
   type Placement,
 } from "./sectionPointPlacement";
 import { isTooTight } from "./curveLimits";
+import { showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -100,7 +101,7 @@ export class SmartArcTool implements Tool {
 
   constructor(
     private readonly network: RoadNetwork,
-    layout: RoadLayout,
+    private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
   ) {
     this.hoverHighlight = new RoadNetworkHighlight(
@@ -216,13 +217,8 @@ export class SmartArcTool implements Tool {
       this.hoverHighlight.hide();
       if (ground === null) return;
 
-      // As in `StraightSectionTool`: a node already there, or one to be made,
-      // with the section it would be made on hovered. Nothing to mark where
-      // the start would be the cursor's own position.
       const aimed = this.startAt(ground, modifiers);
-      if (aimed.kind === "section") {
-        this.hoverHighlight.show({ sections: [aimed.section] });
-      }
+      showWeldTarget(this.hoverHighlight, aimed);
       if (aimed.kind !== "free") {
         this.aimedMark.show(
           aimed.position,
@@ -245,10 +241,8 @@ export class SmartArcTool implements Tool {
     const plans = end === null ? [] : this.plansTo(this.start, end, directions);
     this.showPlans(plans);
 
-    // As in `StraightSectionTool`: while a plan is drawn, the section its far
-    // end welds onto is hovered. With no plan a click builds nothing to hover.
-    if (plans.length > 0 && end?.kind === "section") {
-      this.hoverHighlight.show({ sections: [end.section] });
+    if (plans.length > 0 && end !== null) {
+      showWeldTarget(this.hoverHighlight, end);
     } else {
       this.hoverHighlight.hide();
     }
@@ -345,7 +339,7 @@ export class SmartArcTool implements Tool {
 
   /** The place a click at `ground` would start from. */
   private startAt(ground: Vec2, modifiers: Modifiers): Placement {
-    return placeSectionEnd(this.network, this.viewport, ground, {
+    return placeSectionEnd(this.network, this.layout, this.viewport, ground, {
       useGrid: !modifiers.ctrl,
     });
   }
@@ -363,7 +357,7 @@ export class SmartArcTool implements Tool {
   ): Placement | null {
     if (withinPickRadius(this.viewport, ground, start.position)) return null;
 
-    return placeSectionEnd(this.network, this.viewport, ground, {
+    return placeSectionEnd(this.network, this.layout, this.viewport, ground, {
       useGrid: !modifiers.ctrl,
     });
   }

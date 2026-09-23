@@ -18,6 +18,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
+import { showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 import type { Vec2 } from "../core/geometry/point";
 
@@ -47,7 +48,7 @@ export class StraightSectionTool implements Tool {
 
   constructor(
     private readonly network: RoadNetwork,
-    layout: RoadLayout,
+    private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
   ) {
     this.hoverHighlight = new RoadNetworkHighlight(
@@ -70,9 +71,15 @@ export class StraightSectionTool implements Tool {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
-    const end = placeSectionEnd(this.network, this.viewport, ground, {
-      useGrid: !modifiers.ctrl,
-    });
+    const end = placeSectionEnd(
+      this.network,
+      this.layout,
+      this.viewport,
+      ground,
+      {
+        useGrid: !modifiers.ctrl,
+      },
+    );
 
     if (this.pending === null) {
       this.pending = end;
@@ -127,33 +134,35 @@ export class StraightSectionTool implements Tool {
       return;
     }
 
-    const placed = placeSectionEnd(this.network, this.viewport, ground, {
-      useGrid: !modifiers.ctrl,
-    });
+    const placed = placeSectionEnd(
+      this.network,
+      this.layout,
+      this.viewport,
+      ground,
+      {
+        useGrid: !modifiers.ctrl,
+      },
+    );
     const plan = this.planTo(ground, placed);
 
     if (plan !== null) {
       // The plan stands in for the placement mark: its last point is where
       // the click would land, and says more about it than "a click lands
-      // here" does. Only the section it would weld onto is hovered.
+      // here" does. Only what it would weld onto is hovered.
       this.planView.showPlan(this.network, plan);
       this.highlight.hide();
-      if (placed.kind === "section") {
-        this.hoverHighlight.show({ sections: [placed.section] });
-      } else {
-        this.hoverHighlight.hide();
-      }
+      showWeldTarget(this.hoverHighlight, placed);
       return;
     }
 
     // No plan with a start down means the cursor is still on that start, so
     // the start is what gets marked: already clicked, not only hovered — and
     // a click there does nothing, so nothing is hovered either. Before a
-    // start, the section welded onto is hovered. Nothing to mark when the
-    // point is the cursor's own position.
+    // start, what the start would weld onto is hovered. Nothing to mark when
+    // the point is the cursor's own position.
     this.planView.hide();
-    if (this.pending === null && placed.kind === "section") {
-      this.hoverHighlight.show({ sections: [placed.section] });
+    if (this.pending === null) {
+      showWeldTarget(this.hoverHighlight, placed);
     } else {
       this.hoverHighlight.hide();
     }

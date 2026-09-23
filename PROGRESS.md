@@ -233,7 +233,7 @@ as a road too short for the setbacks at its two ends.
 
 - [x] minimum arc radius of 10 m, global. Fits the 8 m road; once width can
       vary, `max(10 m, w/2)`
-- [ ] section tools weld by area, in Inspect's order: a node within the pick
+- [x] section tools weld by area, in Inspect's order: a node within the pick
       radius, then the part containing the click (a junction welds to its
       node, a roadway onto its section), then a section within the radius. A
       weld onto a roadway still lands on its centerline
@@ -297,6 +297,9 @@ Written down so the decision is not made again from scratch.
 
 Not blocking anything; do them when they start to bite.
 
+- [ ] weigh a `SectionEndPlacer` class over `sectionPointPlacement.ts`'s
+      functions: network, layout and viewport are threaded through every
+      call. `toolHelpers.ts` wants a real home in the same pass
 - [ ] weigh `crossing.ts` owning where two shapes meet, not just the
       `Crossing` it already holds, instead of each pairing sitting in the
       module whose shape it names — segment–segment in `segment.ts`, the two

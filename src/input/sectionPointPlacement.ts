@@ -8,7 +8,10 @@ import {
 } from "../core/network/queries";
 import type { Endpoint, RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
+import { junctionContains, pick } from "../core/layout/pick";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import {
+  type Node,
   type NodeId,
   type Section,
   type SectionId,
@@ -29,10 +32,11 @@ import { GRID_PITCH_METERS, snapToGrid } from "./gridSnap";
  */
 
 /**
- * How close the cursor must look to a node or a road to weld onto it. In
- * pixels, so either is the same size of target at every zoom. One radius for
- * both: a node is asked about first, so it wins over the road it sits on
- * without needing a larger one.
+ * How close the cursor must look to a node or a road to weld onto it where
+ * the ground it covers is out of reach — a junction enclosing no ground, a
+ * road too thin on screen to aim inside. In pixels, so either is the same
+ * size of target at every zoom. One radius for both: a node is asked about
+ * first, so it wins over the road it sits on without needing a larger one.
  *
  * A radius around the network, and nothing to do with the grid — the other
  * way a point is placed, which rounds each axis on its own and is measured
@@ -71,16 +75,28 @@ export function endpointFrom(placement: Placement): Endpoint {
 }
 
 /**
- * Decides where a section's end at `ground` lands: on a nearby node, else on
- * a nearby road, else on the grid — or exactly at `ground` without `useGrid`.
+ * Decides where a section's end at `ground` lands. The same order Inspect
+ * picks in (`docs/tools.md`)..
+ * First to answer wins:
  *
- * Welding beats the grid where both could apply — a grid point is never
- * a join — and a node beats the road it sits on, since the end of a road is
- * where most joins are made. Turning `useGrid` off skips only the grid
- * snapping but not the welding.
+ * - a node within the pick radius
+ * - the layout part the click is inside — a junction welds onto its node, a
+ *   roadway onto its section
+ * - a section within the pick radius
+ * - else the grid, or `ground` itself without `useGrid`
+ *
+ * The area is the answer; the radii handle the case when the visible area is
+ * too small. A node is asked first because its junction may enclose no ground
+ * at all, as where two roads meet in line. A section is asked last because its
+ * centerline runs on through the junction to the node, and would otherwise
+ * take the junction's clicks.
+ *
+ * Welding beats the grid where both could apply — a grid point is never a
+ * join. Turning `useGrid` off skips only the grid snapping, not the welding.
  */
 export function placeSectionEnd(
   network: RoadNetwork,
+  layout: RoadLayout,
   viewport: Viewport,
   ground: Vec2,
   { useGrid }: { useGrid: boolean },
@@ -89,22 +105,25 @@ export function placeSectionEnd(
 
   const node = nearestNode(network, ground, radius);
   if (node !== null) {
-    return { kind: "node", node: node.id, position: node.position };
+    return atNode(node);
+  }
+
+  const picked = pick(layout, ground);
+  if (picked !== null) {
+    return picked.kind === "junction"
+      ? atNode(network.getNode(picked.node))
+      : weldOntoSection(
+          network,
+          layout,
+          network.getSection(picked.section),
+          ground,
+          useGrid,
+        );
   }
 
   const section = nearestSection(network, ground, radius);
   if (section !== null) {
-    const onRoad = nearestPointOnSection(network, section, ground);
-    const position = useGrid
-      ? roundAlongSection(network, section, onRoad, ground)
-      : onRoad;
-
-    // Rounding can land on a node of the road.
-    const landedOn = nodeWithin(network, position, SAME_POINT_METERS);
-    if (landedOn !== null) {
-      return { kind: "node", node: landedOn.id, position: landedOn.position };
-    }
-    return { kind: "section", section: section.id, position };
+    return weldOntoSection(network, layout, section, ground, useGrid);
   }
 
   if (!useGrid) {
@@ -112,6 +131,46 @@ export function placeSectionEnd(
   }
 
   return { kind: "grid", position: snapToGrid(ground) };
+}
+
+/** The placement welding onto an existing node. */
+function atNode(node: Node): Placement {
+  return { kind: "node", node: node.id, position: node.position };
+}
+
+/**
+ * Where an end welding onto `section` lands, on its centerline:
+ *  - with `useGrid`: at the nearest place the road crosses a grid line
+ *  - else at the nearest place on the road.
+ *
+ * Landing inside one of the section's own junctions welds onto that node
+ * instead.
+ */
+function weldOntoSection(
+  network: RoadNetwork,
+  layout: RoadLayout,
+  section: Section,
+  ground: Vec2,
+  useGrid: boolean,
+): Placement {
+  const onRoad = nearestPointOnSection(network, section, ground);
+  const position = useGrid
+    ? roundAlongSection(network, section, onRoad, ground)
+    : onRoad;
+
+  // Check if position landed within one of the end junctions.
+  for (const node of [section.from, section.to]) {
+    if (junctionContains(layout.junctionAt(node), position)) {
+      return atNode(network.getNode(node));
+    }
+  }
+
+  // A junction covering no ground still has its node to land on.
+  const landedOn = nodeWithin(network, position, SAME_POINT_METERS);
+  if (landedOn !== null) {
+    return atNode(landedOn);
+  }
+  return { kind: "section", section: section.id, position };
 }
 
 /**
