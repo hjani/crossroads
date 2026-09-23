@@ -75,11 +75,12 @@ export class SmartArcTool implements Tool {
   private readonly aimedMark = new NodeHighlight();
   private readonly startMark = new NodeHighlight();
   private readonly hoverHighlight: RoadNetworkHighlight;
+  private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
   /**
-   * One view per plan on screen. Grown as needed and never shrunk: the ones
+   * One view per candidate plan on screen. Grown as needed and never shrunk: the ones
    * not in use are hidden.
    */
-  private readonly planViews: SectionPlanView[] = [];
+  private readonly candidateViews: SectionPlanView[] = [];
   /** Holds the plan views, first in the decoration so the marks draw over. */
   private readonly planLayer = new THREE.Group();
   private readonly decoration = new THREE.Group();
@@ -109,6 +110,7 @@ export class SmartArcTool implements Tool {
       layout,
       STATE_COLOR.AIMED,
     );
+    this.planLayer.add(this.planView.sceneObject);
     this.decoration.add(
       this.planLayer,
       this.aimedMark.sceneObject,
@@ -212,7 +214,7 @@ export class SmartArcTool implements Tool {
 
     if (this.start === null) {
       this.startMark.hide();
-      this.showPlans([]);
+      this.showPlans(null, []);
       this.aimedMark.hide();
       this.hoverHighlight.hide();
       if (ground === null) return;
@@ -234,22 +236,26 @@ export class SmartArcTool implements Tool {
 
     const end =
       ground === null ? null : this.endAt(this.start, ground, modifiers);
-    const directions = [
-      ...(this.flickedDirection === null ? [] : [this.flickedDirection]),
-      ...(this.showCandidates ? this.directionsAt(this.start) : []),
-    ];
-    const plans = end === null ? [] : this.plansTo(this.start, end, directions);
-    this.showPlans(plans);
+    const flicked =
+      end === null || this.flickedDirection === null
+        ? null
+        : (this.plansTo(this.start, end, [this.flickedDirection]).at(0) ??
+          null);
+    const candidates =
+      end === null || !this.showCandidates
+        ? []
+        : this.plansTo(this.start, end, this.directionsAt(this.start));
+    this.showPlans(flicked, candidates);
 
-    if (plans.length > 0 && end !== null) {
+    if (flicked !== null && end !== null) {
       showWeldTarget(this.hoverHighlight, end);
     } else {
       this.hoverHighlight.hide();
     }
 
-    // The start is marked on its own only until a plan marks it, as in
+    // The start is marked on its own only until the plan marks it, as in
     // `StraightSectionTool`: a node already there, or one to be made.
-    if (plans.length > 0) {
+    if (flicked !== null) {
       this.startMark.hide();
     } else {
       this.startMark.show(
@@ -320,17 +326,26 @@ export class SmartArcTool implements Tool {
     return plans;
   }
 
-  /** Draws each plan in a view of its own, and hides the views left over. */
-  private showPlans(plans: readonly SectionPlan[]): void {
-    while (this.planViews.length < plans.length) {
-      const view = new SectionPlanView();
-      this.planViews.push(view);
+  /** Draws each plan, and hides the views left over. */
+  private showPlans(
+    flicked: SectionPlan | null,
+    candidates: readonly SectionPlan[],
+  ): void {
+    if (flicked !== null) {
+      this.planView.showPlan(this.network, flicked);
+    } else {
+      this.planView.hide();
+    }
+
+    while (this.candidateViews.length < candidates.length) {
+      const view = new SectionPlanView(0);
+      this.candidateViews.push(view);
       this.planLayer.add(view.sceneObject);
     }
 
-    this.planViews.forEach((view, index) => {
-      if (index < plans.length) {
-        view.showPlan(this.network, plans[index]);
+    this.candidateViews.forEach((view, index) => {
+      if (index < candidates.length) {
+        view.showPlan(this.network, candidates[index]);
       } else {
         view.hide();
       }
@@ -367,7 +382,8 @@ export class SmartArcTool implements Tool {
     this.aimedMark.dispose();
     this.startMark.dispose();
     this.hoverHighlight.dispose();
-    for (const view of this.planViews) {
+    this.planView.dispose();
+    for (const view of this.candidateViews) {
       view.dispose();
     }
   }

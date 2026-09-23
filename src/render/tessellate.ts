@@ -132,7 +132,24 @@ function outlineCorners(pieces: readonly OutlinePiece[]): Vec2[] {
  * slices.
  */
 function tessellateRoadwayOutline(outline: RoadwayOutline): Vec2[] {
-  const slices = ribbonSlicesBetween(outline);
+  return tessellateRibbon(
+    outline.from,
+    outline.to,
+    outline.centerlineGeometry,
+    outline.widthMeters,
+  );
+}
+
+/**
+ * A strip following lineGeometry, `widthMeters` wide, broken into triangles.
+ */
+export function tessellateRibbon(
+  from: Vec2,
+  to: Vec2,
+  lineGeometry: LineGeometry,
+  widthMeters: number,
+): Vec2[] {
+  const slices = ribbonSlicesBetween(from, to, lineGeometry, widthMeters);
   const triangles: Vec2[] = [];
   for (let i = 1; i < slices.length; i++) {
     const back = slices[i - 1];
@@ -155,8 +172,8 @@ interface RibbonSlice {
 }
 
 /**
- * Slices across a roadway's ribbon, `widthMeters` wide, close enough together
- * that the edges stay within `ARC_SAG_METERS` of their curve.
+ * Slices across a ribbon, `widthMeters` wide, with a level of detail that the
+ * edges stay within `ARC_SAG_METERS` of their curve.
  *
  * Each slice is `p ± (w/2)·n`: a centerline point `p`, the unit normal `n`
  * there, and `w = widthMeters`.
@@ -184,8 +201,12 @@ interface RibbonSlice {
  *
  * Ends at the same place → no slices, and an error logged.
  */
-function ribbonSlicesBetween(outline: RoadwayOutline): readonly RibbonSlice[] {
-  const { from, to, centerlineGeometry, widthMeters } = outline;
+function ribbonSlicesBetween(
+  from: Vec2,
+  to: Vec2,
+  centerlineGeometry: LineGeometry,
+  widthMeters: number,
+): readonly RibbonSlice[] {
   if (isSamePoint(from, to)) {
     console.error(
       `No ribbon for a section of no length, at (${from.x}, ${from.z})`,

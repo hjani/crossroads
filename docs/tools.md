@@ -185,6 +185,8 @@ place.
 - The road leaving the start in the picked direction and reaching the far
   end is planned and drawn like any other edit, unless it would turn more
   than ¾ of a circle.
+- A plan for every offered direction can be drawn beside it, as a debug view.
+  - Displayed as centerlines only.
 - A click builds it, and its far end starts the next arc → a run of curves
   joins smoothly without aiming any join.
 - Cancel ends the run and keeps what was built.

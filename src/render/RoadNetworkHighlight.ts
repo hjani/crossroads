@@ -2,14 +2,12 @@ import * as THREE from "three";
 import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
+import { HIGHLIGHT_OPACITY } from "./colors";
 import { LAYER } from "./layers";
 import { centerline, tessellateOutline } from "./tessellate";
 
 /** In pixels, and wider than a node, so the mark shows around it. */
 const NODE_MARK_SIZE = 15;
-
-/** How much of the mark's color a tinted area takes; the rest is asphalt. */
-const AREA_OPACITY = 0.35;
 
 /** What to mark, by id. A list left out marks nothing. */
 export interface HighlightMarks {
@@ -82,7 +80,7 @@ export class RoadNetworkHighlight {
         color,
         // A tint, so whatever the surface shows still shows through.
         transparent: true,
-        opacity: AREA_OPACITY,
+        opacity: HIGHLIGHT_OPACITY,
         // Blended over what is under it; nothing needs hiding behind it.
         depthWrite: false,
         // Seen only from above, so which way a triangle winds doesn't matter.

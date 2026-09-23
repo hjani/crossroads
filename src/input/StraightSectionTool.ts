@@ -4,7 +4,7 @@ import {
   planSection,
   type SectionPlan,
 } from "../core/network/edits";
-import type { RoadLayout } from "../core/layout/RoadLayout";
+import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
 import { STATE_COLOR } from "../render/colors";
@@ -39,7 +39,7 @@ import type { Vec2 } from "../core/geometry/point";
  * looks like is the tool's business, not its caller's.
  */
 export class StraightSectionTool implements Tool {
-  private readonly planView = new SectionPlanView();
+  private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
   private readonly highlight = new NodeHighlight();
   private readonly hoverHighlight: RoadNetworkHighlight;
   private readonly decoration = new THREE.Group();

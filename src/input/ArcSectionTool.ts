@@ -44,7 +44,7 @@ export class ArcSectionTool implements Tool {
   /** The highlight of the item under the cursor. */
   private readonly hoverHighlight: RoadNetworkHighlight;
   /** The full plan to build the arc. */
-  private readonly planView = new SectionPlanView();
+  private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
   private readonly decoration = new THREE.Group();
 
   /** The ends, in the order they were clicked. */

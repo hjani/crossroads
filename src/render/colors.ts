@@ -17,3 +17,9 @@ export const STATE_COLOR = {
   /** What the edit would try to create, but unable to do so. */
   REFUSED: 0xff5555,
 } as const;
+
+/** The opacity of an overlay on a part, to highlight it. */
+export const HIGHLIGHT_OPACITY = 0.35;
+
+/** The opacity used on parts that are being planned. */
+export const PLANNING_OPACITY = 0.35;

@@ -2,9 +2,9 @@ import * as THREE from "three";
 import type { PlannedPoint, SectionPlan } from "../core/network/edits";
 import { positionOf } from "../core/network/queries";
 import { isNodeId, type RoadNetwork } from "../core/network/RoadNetwork";
-import { STATE_COLOR } from "./colors";
+import { PLANNING_OPACITY, STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import { polylineBetween } from "./tessellate";
+import { polylineBetween, tessellateRibbon } from "./tessellate";
 import type { Vec2 } from "../core/geometry/point";
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
@@ -14,9 +14,9 @@ const EXISTING_NODE_SIZE = 15;
 
 /**
  * A planned section, drawn as the whole of what committing it would do:
- * the chain of road it would run, in the shapes it would run in, a mark on
- * every node it would make, and a mark on every node already there that it
- * would meet.
+ * the road surface and the centerline,
+ * in the shapes it would run in, a mark on every node it would make, and a
+ * mark on every node already there that it would meet.
  *
  * One drawable for one plan, because a plan is one answer. Which pieces
  * are drawn and what color they take both follow from it, so there is no
@@ -30,7 +30,11 @@ const EXISTING_NODE_SIZE = 15;
 export class SectionPlanView {
   readonly sceneObject = new THREE.Group();
 
-  private readonly chain: THREE.Line<
+  private readonly roadSurface: THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.MeshBasicMaterial
+  >;
+  private readonly centerline: THREE.Line<
     THREE.BufferGeometry,
     THREE.LineBasicMaterial
   >;
@@ -43,23 +47,45 @@ export class SectionPlanView {
     THREE.PointsMaterial
   >;
 
-  constructor() {
-    this.chain = new THREE.Line(
+  /**
+   * `roadWidth` the width of the road being planned. If 0, only the centerline is drawn.
+   */
+  constructor(private readonly roadWidth: number) {
+    this.roadSurface = new THREE.Mesh(
+      makeGeometry([]),
+      new THREE.MeshBasicMaterial({
+        color: STATE_COLOR.PLANNED,
+        transparent: true,
+        opacity: PLANNING_OPACITY,
+        depthWrite: false,
+        // Seen only from above, so which way a triangle winds doesn't matter.
+        side: THREE.DoubleSide,
+      }),
+    );
+    this.roadSurface.frustumCulled = false;
+
+    this.centerline = new THREE.Line(
       makeGeometry([]),
       new THREE.LineBasicMaterial({ color: STATE_COLOR.PLANNED }),
     );
-    this.chain.frustumCulled = false;
+    this.centerline.frustumCulled = false;
 
     this.newNodes = makeMarks(STATE_COLOR.PLANNED, NEW_NODE_SIZE);
     this.existingNodes = makeMarks(STATE_COLOR.SELECTED, EXISTING_NODE_SIZE);
 
-    this.sceneObject.add(this.chain, this.newNodes, this.existingNodes);
+    this.sceneObject.add(
+      this.roadSurface,
+      this.centerline,
+      this.newNodes,
+      this.existingNodes,
+    );
     this.sceneObject.visible = false;
   }
 
   /** Draws the plan, and makes it visible if it was not. */
   showPlan(network: RoadNetwork, plan: SectionPlan): void {
-    const chainCoordinates: number[] = [];
+    const surfaceCoordinates: number[] = [];
+    const centerlineCoordinates: number[] = [];
     const newNodeCoordinates: number[] = [];
     const existingNodeCoordinates: number[] = [];
 
@@ -73,7 +99,11 @@ export class SectionPlanView {
     };
 
     let previous = positionOf(network, plan.start.at);
-    chainCoordinates.push(previous.x, LAYER.SECTION_DECORATION, previous.z);
+    centerlineCoordinates.push(
+      previous.x,
+      LAYER.SECTION_DECORATION,
+      previous.z,
+    );
     mark(plan.start, previous);
 
     for (const piece of plan.pieces) {
@@ -89,7 +119,19 @@ export class SectionPlanView {
         piece.centerlineGeometry,
       );
       for (const step of along.slice(1)) {
-        chainCoordinates.push(step.x, LAYER.SECTION_DECORATION, step.z);
+        centerlineCoordinates.push(step.x, LAYER.SECTION_DECORATION, step.z);
+      }
+
+      // The road surface as a ribbon.
+      if (this.roadWidth > 0) {
+        for (const corner of tessellateRibbon(
+          previous,
+          position,
+          piece.centerlineGeometry,
+          this.roadWidth,
+        )) {
+          surfaceCoordinates.push(corner.x, LAYER.SURFACE_DECORATION, corner.z);
+        }
       }
 
       mark(piece.to, position);
@@ -97,10 +139,12 @@ export class SectionPlanView {
     }
 
     const verdict = plan.buildable ? STATE_COLOR.PLANNED : STATE_COLOR.REFUSED;
-    this.chain.material.color.setHex(verdict);
+    this.roadSurface.material.color.setHex(verdict);
+    this.centerline.material.color.setHex(verdict);
     this.newNodes.material.color.setHex(verdict);
 
-    replaceGeometry(this.chain, chainCoordinates);
+    replaceGeometry(this.roadSurface, surfaceCoordinates);
+    replaceGeometry(this.centerline, centerlineCoordinates);
     replaceGeometry(this.newNodes, newNodeCoordinates);
     replaceGeometry(this.existingNodes, existingNodeCoordinates);
     this.sceneObject.visible = true;
@@ -112,8 +156,10 @@ export class SectionPlanView {
 
   /** Releases the GPU buffers behind the view. Unusable after. */
   dispose(): void {
-    this.chain.geometry.dispose();
-    this.chain.material.dispose();
+    this.roadSurface.geometry.dispose();
+    this.roadSurface.material.dispose();
+    this.centerline.geometry.dispose();
+    this.centerline.material.dispose();
     this.newNodes.geometry.dispose();
     this.newNodes.material.dispose();
     this.existingNodes.geometry.dispose();
@@ -160,7 +206,7 @@ function makeGeometry(coordinates: readonly number[]): THREE.BufferGeometry {
  * none at all, which is why nothing here is frustum-culled.
  */
 function replaceGeometry(
-  target: THREE.Line | THREE.Points,
+  target: THREE.Line | THREE.Points | THREE.Mesh,
   coordinates: readonly number[],
 ): void {
   target.geometry.dispose();

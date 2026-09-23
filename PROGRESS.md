@@ -237,7 +237,7 @@ as a road too short for the setbacks at its two ends.
       radius, then the part containing the click (a junction welds to its
       node, a roadway onto its section), then a section within the radius. A
       weld onto a roadway still lands on its centerline
-- [ ] draw a planned section as a band `w` wide rather than a thin line, so
+- [x] draw a planned section as a band `w` wide rather than a thin line, so
       the preview covers the ground the road will
 - [ ] `docs/intersections.md` rewritten for width: the three pairings
       (junction–junction, junction–roadway, roadway–roadway), the circle a
