@@ -51,11 +51,6 @@ function circleThrough(from: Vec2, to: Vec2, via: Vec2): ArcCircle {
   return circle;
 }
 
-/** Every place a plan runs through, in order. */
-function chainPoints(network: RoadNetwork, plan: SectionPlan): Vec2[] {
-  return pointsOf(plan).map((point) => positionOf(network, point.at));
-}
-
 /** Where a plan would cut a section in two, in the order it meets them. */
 function cutPoints(network: RoadNetwork, plan: SectionPlan): Vec2[] {
   return pointsOf(plan)
@@ -271,57 +266,12 @@ describe("planning and building a section", () => {
     expect(layout(network)).toEqual(before);
   });
 
-  it("refuses a section too short to be a road, crossing or not", () => {
+  it("builds a short section standing on its own", () => {
+    // Covers no ground twice, so nothing here or in clearance refuses it.
     const network = new RoadNetwork();
 
     const plan = planSection(network, vec(0, 0), vec(0.4, 0), STRAIGHT);
-    expect(plan.buildable).toBe(false);
-    expect(layout(network)).toEqual([]);
-  });
-
-  it("refuses a crossing that lands just off an existing node", () => {
-    const network = new RoadNetwork();
-    build(network, vec(0, 0), vec(10, 0));
-    build(network, vec(5, -5), vec(5, 5));
-    const before = layout(network);
-
-    // Parallel to the first road and 40 cm from it, so it crosses the second
-    // one just short of the junction the two already share.
-    const plan = planSection(network, vec(0, 0.4), vec(10, 0.4), STRAIGHT);
-
-    expect(plan.buildable).toBe(false);
-    expect(layout(network)).toEqual(before);
-    expect(nodeCount(network)).toBe(5);
-  });
-
-  it("refuses a crossing that would leave a stub of a section behind", () => {
-    const network = new RoadNetwork();
-    build(network, vec(0, 0), vec(10, 0));
-    const before = layout(network);
-
-    // Ends 40 cm past the road it crosses: too short a piece to be a road,
-    // and too far from its end to be the same place.
-    const plan = planSection(network, vec(5, -5), vec(5, 0.4), STRAIGHT);
-
-    expect(plan.buildable).toBe(false);
-    expect(layout(network)).toEqual(before);
-  });
-
-  it("describes the section it refuses, not just that it refused it", () => {
-    const network = new RoadNetwork();
-    build(network, vec(0, 0), vec(10, 0));
-
-    // The stub above, asked about again: a refusal still says where the
-    // section was going and what it would have cut on the way, which is
-    // what lets a refused edit be drawn as the edit it was.
-    const plan = planSection(network, vec(5, -5), vec(5, 0.4), STRAIGHT);
-
-    expect(chainPoints(network, plan)).toEqual([
-      vec(5, -5),
-      vec(5, 0),
-      vec(5, 0.4),
-    ]);
-    expect(cutPoints(network, plan)).toEqual([vec(5, 0)]);
+    expect(plan.buildable).toBe(true);
   });
 
   it("refuses a section that ends where it started, with nothing to draw", () => {
@@ -391,22 +341,6 @@ describe("planning and building an arc", () => {
       STRAIGHT,
     ]);
     expect(cutPoints(network, plan)).toEqual([]);
-  });
-
-  it("measures an arc along its curve rather than across it", () => {
-    const network = new RoadNetwork();
-
-    // Half a meter apart, which is too short for a straight road. The arc
-    // between them runs most of the way round a small circle, so as a road
-    // it is nearly a meter and a half of one.
-    const ends = [vec(0, 0), vec(0.5, 0)] as const;
-    expect(planSection(network, ...ends, STRAIGHT).buildable).toBe(false);
-
-    const curved = planSection(network, ...ends, {
-      kind: "arc",
-      via: vec(0.25, 0.5),
-    });
-    expect(curved.buildable).toBe(true);
   });
 
   it("cuts into two arcs rather than two straights", () => {
@@ -621,27 +555,5 @@ describe("starting or ending on a road", () => {
       .sort();
     expect(kinds).toEqual(["arc", "arc", "straight"]);
     expect(nodeCount(network)).toBe(4);
-  });
-
-  it("refuses a start on a road too close to that road's node", () => {
-    const network = new RoadNetwork();
-    build(network, vec(0, 0), vec(10, 0));
-    const before = layout(network);
-
-    const plan = planSection(network, vec(9.5, 0.005), vec(9.5, 6), STRAIGHT);
-
-    expect(plan.buildable).toBe(false);
-    expect(layout(network)).toEqual(before);
-  });
-
-  it("refuses an end on a road too close to that road's node", () => {
-    const network = new RoadNetwork();
-    build(network, vec(0, 0), vec(10, 0));
-    const before = layout(network);
-
-    const plan = planSection(network, vec(9.5, 6), vec(9.5, 0.005), STRAIGHT);
-
-    expect(plan.buildable).toBe(false);
-    expect(layout(network)).toEqual(before);
   });
 });

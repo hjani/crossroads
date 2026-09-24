@@ -76,14 +76,14 @@ describe("Junction", () => {
     expect(junction.setbackOf(west.id)).toBeCloseTo(4 / Math.sqrt(3));
   });
 
-  it("sets a road back by no more than half its length", () => {
+  it("sets a road back regardless of its length", () => {
     const network = new RoadNetwork();
     const short = network.addSection(vec(0, 0), vec(6, 0), STRAIGHT);
     const long = network.addSection(short.from, vec(0, 20), STRAIGHT);
 
     const junction = new Junction(network, short.from, WIDTH_METERS);
 
-    expect(junction.setbackOf(short.id)).toBeCloseTo(3);
+    expect(junction.setbackOf(short.id)).toBeCloseTo(4);
     expect(junction.setbackOf(long.id)).toBeCloseTo(4);
   });
 

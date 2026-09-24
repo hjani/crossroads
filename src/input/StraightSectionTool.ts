@@ -4,6 +4,7 @@ import {
   planSection,
   type SectionPlan,
 } from "../core/network/edits";
+import { verifyClearance } from "../core/layout/clearance";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
@@ -213,7 +214,9 @@ export class StraightSectionTool implements Tool {
       endpointFrom(end),
       STRAIGHT,
     );
-    return plan.pieces.length === 0 ? null : plan;
+    return plan.pieces.length === 0
+      ? null
+      : verifyClearance(this.network, plan);
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */

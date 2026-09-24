@@ -236,12 +236,9 @@ as a road too short for the setbacks at its two ends.
       junction is measured by, why parts sharing a node or a section are
       exempt, and the verdict composed in the layout layer.
       `docs/road-layout.md` loses its "planned as if roads had no width" line
-- [ ] judge a plan on the layout it would leave: `RoadNetwork.clone()`, and a
-      planner in `src/core/layout/` that applies the plan to a throwaway
-      network and reads what it changed. `planSection` is untouched and the
-      verdict stays on the plan. First rule: a section too short for the
-      setbacks at both ends is refused rather than clamped. The 1 m minimum
-      piece length goes with it.
+- [x] the clearing step, measured on the speculative network. First rule:
+      a section too short for the setbacks at its two ends is refused. The
+      1 m minimum goes
 - [ ] a junction's bounding circle, and two junctions sharing no section may
       not overlap. Only the changed parts are laid out speculatively — the
       plan's points, the far ends of the sections it cuts, and the roadways
@@ -287,6 +284,9 @@ Wanted, but not part of a milestone yet.
       and commit would stop agreeing
 - [ ] a refusal reason on `UnbuildableSectionPlan`, so a preview can say what
       the section conflicts with
+- [ ] clearance refuses a setback over a fixed limit. It grows without limit
+      as a gap closes, and a junction hundreds of meters long is not
+      practical.
 
 ## Deferred, probably to be dropped
 

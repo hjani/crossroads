@@ -74,7 +74,7 @@ describe("roadwayOf", () => {
     expect(outline.widthMeters).toBe(WIDTH_METERS);
   });
 
-  it("shrinks to nothing halfway along when both setbacks are clamped", () => {
+  it("comes out negative where its setbacks overlap", () => {
     const network = new RoadNetwork();
     const road = network.addSection(vec(0, 0), vec(6, 0), STRAIGHT);
     // Right-angle bends at both ends, each wanting 4 m of a 6 m road.
@@ -88,9 +88,9 @@ describe("roadwayOf", () => {
       WIDTH_METERS,
     );
 
-    expectPoint(outline.from, vec(3, 0));
-    expectPoint(outline.to, vec(3, 0));
-    expect(length).toBeCloseTo(0);
+    expectPoint(outline.from, vec(4, 0));
+    expectPoint(outline.to, vec(2, 0));
+    expect(length).toBeCloseTo(-2);
   });
 
   it("cuts an arc back along its own circle", () => {

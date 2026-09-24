@@ -1,0 +1,140 @@
+import { assert, describe, expect, it } from "vitest";
+import { verifyClearance } from "./clearance";
+import { applySectionPlan, planSection } from "../network/edits";
+import { RoadNetwork } from "../network/RoadNetwork";
+import { STRAIGHT } from "../geometry/lineGeometry";
+import type { Vec2 } from "../geometry/point";
+
+function vec(x: number, z: number): Vec2 {
+  return { x, z };
+}
+
+/** Plans, clears and builds a straight section, as a tool does. */
+function build(network: RoadNetwork, from: Vec2, to: Vec2): void {
+  const plan = verifyClearance(
+    network,
+    planSection(network, from, to, STRAIGHT),
+  );
+  assert(plan.buildable);
+  applySectionPlan(network, plan);
+}
+
+/** Whether a straight section from `from` to `to` would be refused. */
+function isRefused(network: RoadNetwork, from: Vec2, to: Vec2): boolean {
+  return !verifyClearance(network, planSection(network, from, to, STRAIGHT))
+    .buildable;
+}
+
+/** Two parallel roads running north, `apart` meters apart. */
+function twoRoads(apart: number): RoadNetwork {
+  const network = new RoadNetwork();
+  network.addSection(vec(0, -20), vec(0, 20), STRAIGHT);
+  network.addSection(vec(apart, -20), vec(apart, 20), STRAIGHT);
+  return network;
+}
+
+describe("verifyClearance", () => {
+  it("passes a plan with room for every setback as it is", () => {
+    const network = twoRoads(20);
+    const plan = planSection(network, vec(-20, 0), vec(40, 0), STRAIGHT);
+    assert(plan.buildable);
+
+    expect(verifyClearance(network, plan)).toBe(plan);
+  });
+
+  it("refuses a piece too short for the setbacks at its two ends", () => {
+    // Both crossings are square, so each sets the 2 m piece between them
+    // back by w/2 = 4 m: more than half of it.
+    const network = twoRoads(2);
+    const plan = planSection(network, vec(-20, 0), vec(20, 0), STRAIGHT);
+    assert(plan.buildable);
+
+    const cleared = verifyClearance(network, plan);
+
+    expect(cleared.buildable).toBe(false);
+    expect(cleared.pieces).toEqual(plan.pieces);
+  });
+
+  it("refuses a plan that leaves an existing section too short", () => {
+    // A 6 m road with a right-angle bend at its far end, taking 4 m of it,
+    // and ending alone at the near one. A road leaving that end north makes
+    // a second bend, wanting 4 m more: 8 m of setbacks on 6 m of road.
+    const network = new RoadNetwork();
+    const short = network.addSection(vec(0, 0), vec(6, 0), STRAIGHT);
+    network.addSection(short.to, vec(6, 20), STRAIGHT);
+    const plan = planSection(network, short.from, vec(0, 20), STRAIGHT);
+    assert(plan.buildable);
+
+    expect(verifyClearance(network, plan).buildable).toBe(false);
+  });
+
+  it("lets one end take more than half where the other takes less", () => {
+    // A bend at one end of a 6 m road wants 4 m of it; its other end ends
+    // alone and takes none.
+    const network = new RoadNetwork();
+    const short = network.addSection(vec(0, 0), vec(6, 0), STRAIGHT);
+    const plan = planSection(network, short.from, vec(0, 20), STRAIGHT);
+    assert(plan.buildable);
+
+    expect(verifyClearance(network, plan)).toBe(plan);
+  });
+
+  it("lets two junctions just touch", () => {
+    // Two right-angle bends 8 m apart, each wanting w/2 = 4 m.
+    const network = new RoadNetwork();
+    const road = network.addSection(vec(0, 0), vec(8, 0), STRAIGHT);
+    network.addSection(road.to, vec(8, 20), STRAIGHT);
+    const plan = planSection(network, road.from, vec(0, 20), STRAIGHT);
+    assert(plan.buildable);
+
+    expect(verifyClearance(network, plan)).toBe(plan);
+  });
+
+  it("refuses a crossing just off an existing junction", () => {
+    const network = new RoadNetwork();
+    build(network, vec(0, 0), vec(10, 0));
+    build(network, vec(5, -5), vec(5, 5));
+
+    // 40 cm north of the first road, so it cuts a 40 cm piece off the
+    // second one, between two square junctions.
+    expect(isRefused(network, vec(0, 0.4), vec(10, 0.4))).toBe(true);
+  });
+
+  it("refuses a stub left past the road it crosses", () => {
+    const network = new RoadNetwork();
+    build(network, vec(0, 0), vec(10, 0));
+
+    expect(isRefused(network, vec(5, -5), vec(5, 0.4))).toBe(true);
+  });
+
+  it("refuses a start or an end on a road just short of its node", () => {
+    // The cut leaves 50 cm of the road between the new junction and its end.
+    const network = new RoadNetwork();
+    build(network, vec(0, 0), vec(10, 0));
+
+    expect(isRefused(network, vec(9.5, 0.005), vec(9.5, 6))).toBe(true);
+    expect(isRefused(network, vec(9.5, 6), vec(9.5, 0.005))).toBe(true);
+  });
+
+  it("hands back a refused plan as it is", () => {
+    const network = new RoadNetwork();
+    const corner = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT).from;
+    const plan = planSection(network, corner, vec(0, 0), STRAIGHT);
+    assert(!plan.buildable);
+
+    expect(verifyClearance(network, plan)).toBe(plan);
+  });
+
+  it("leaves the real network as it was, and its plan still applicable", () => {
+    const network = twoRoads(20);
+    const version = network.version;
+    const plan = planSection(network, vec(-20, 0), vec(40, 0), STRAIGHT);
+    assert(plan.buildable);
+
+    verifyClearance(network, plan);
+
+    expect(network.version).toBe(version);
+    expect([...network.allSections()]).toHaveLength(2);
+    expect(() => applySectionPlan(network, plan)).not.toThrow();
+  });
+});

@@ -327,9 +327,8 @@ function longestSetbacks(
  * - no candidates (parallel lines, circles that miss)
  * - no candidate ahead of `N` on both legs
  *
- * `s > ℓ/2`: the section is too short → `ℓ/2`, so its two setbacks never
- * overlap. `P` stands, so the outline still reaches it
- * (`docs/road-surface.md`, Limits).
+ * Not limited by `ℓ`: a section too short for its setbacks is the clearing
+ * step's to refuse (`docs/intersections.md`, Clearance).
  */
 function gapBetween(
   node: NodeId,
@@ -394,25 +393,8 @@ function gapBetween(
   return {
     join: { kind: "corner", point: nearest.point },
     setbacks: {
-      first: clampedToHalf(node, first, Math.max(0, nearest.first)),
-      second: clampedToHalf(node, second, Math.max(0, nearest.second)),
+      first: Math.max(0, nearest.first),
+      second: Math.max(0, nearest.second),
     },
   };
-}
-
-/**
- * A leg's setback, but no more than half its length; logs an error where it
- * had to be cut.
- */
-function clampedToHalf(node: NodeId, leg: Leg, setback: number): number {
-  const half = leg.length / 2;
-  if (setback <= half) {
-    return setback;
-  }
-  console.error(
-    `Node ${node}: section ${leg.section.id} is too short for its setback ` +
-      `(${setback.toFixed(2)} m of ${leg.length.toFixed(2)} m); ` +
-      `set back by half its length`,
-  );
-  return half;
 }

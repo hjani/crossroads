@@ -58,7 +58,12 @@ export class RoadSurfaceView {
   private rebuild(): void {
     const coordinates: number[] = [];
     for (const section of this.network.allSections()) {
-      appendOutline(this.layout.roadwayAlong(section.id).outline, coordinates);
+      const roadway = this.layout.roadwayAlong(section.id);
+      // Negative may happen when junction setbacks overlap:
+      // it shouldn't have been built, but just skip rendering for it
+      if (roadway.length >= 0) {
+        appendOutline(roadway.outline, coordinates);
+      }
     }
     for (const node of this.network.allNodes()) {
       appendOutline(this.layout.junctionAt(node.id).outline(), coordinates);

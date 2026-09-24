@@ -21,12 +21,13 @@ export interface Roadway {
  * back the junctions at its two ends set it — `s₁` at `from` and `s₂` at
  * `to`, in meters along the centerline (`Junction.setbackOf`).
  *
- * - each setback is at most half the section → the ends never pass each other
- * - both clamped → a roadway of zero length, halfway along
  * - a setback is measured along the centerline, whatever shape it takes, so
  *   the length is what is left of the section either way:
  *
  *       length = L − s₁ − s₂
+ *
+ * - `s₁ + s₂ > L` → negative, and the outline runs backwards. Only a
+ *   network the clearing step refuses gets there.
  */
 export function roadwayOf(
   network: RoadNetwork,

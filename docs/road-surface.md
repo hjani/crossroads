@@ -33,8 +33,6 @@
 
 Drawn wrong, never an error. Nothing here refuses an edit.
 
-- A setback clamped to half its section → the junction still reaches `P`,
-  past the halfway point → overlaps what lies beyond it.
 - Arc radius under `w/2` → the inner edge doesn't exist → the ribbon folds
   over itself.
 - A tight arc beside a sharp gap → the fan paves a sliver of grass. Accepted.

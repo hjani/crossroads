@@ -3,17 +3,12 @@ import { isSamePoint, SAME_POINT_METERS, type Vec2 } from "../geometry/point";
 import { segmentFractionAt } from "../geometry/segment";
 import {
   crossingsAlong,
-  nearestNode,
   nearestSection,
   nodeWithin,
   positionOf,
 } from "./queries";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import {
-  lineLength,
-  STRAIGHT,
-  type LineGeometry,
-} from "../geometry/lineGeometry";
+import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
 import { type NodeId, type Section, type SectionId } from "./types";
 
 /**
@@ -30,16 +25,6 @@ import { type NodeId, type Section, type SectionId } from "./types";
  * asked of a section that is only being dragged around, and the answer it
  * gave is the one that lands.
  */
-
-/**
- * The shortest a section may be, in meters.
- *
- * Not a tolerance but a judgment: anything shorter is not a road, it is
- * the residue of a click that nearly hit something. Every piece an edit
- * would leave is measured against it — the whole section included, when it
- * crosses nothing to be cut at.
- */
-export const MIN_SECTION_LENGTH_METERS = 1;
 
 /** A place a planned section runs through: where it starts, where it
  * crosses something, where it ends. */
@@ -114,16 +99,10 @@ export function pointsOf(plan: SectionPlan): PlannedPoint[] {
  * Works out what adding a section from `from` to `to` would build, without
  * building any of it.
  *
- * Unbuildable unless the network it would leave is worth having: every
- * piece the section is cut into is a road, and every crossing falls
- * somewhere a junction can go. With nothing crossed, the single piece is
- * the whole section.
- *
- * The chain is walked to the end whether or not it can be built, and
- * judged once it is whole. A refusal is a verdict on the section, not the
- * point a walk gave up at — so it comes back describing the section that
- * was asked for rather than the part of it that was reached, and anything
- * showing the user what a click would do has all of it to draw.
+ * Unbuildable only where there is no section to build: an arc with no
+ * circle, or ends in the same place. Whether the ground it would cover is
+ * clear is the layout's to judge (`verifyClearance`). With nothing crossed,
+ * the single piece is the whole section.
  */
 export function planSection(
   network: RoadNetwork,
@@ -136,7 +115,6 @@ export function planSection(
   const points: [PlannedPoint, ...PlannedPoint[]] = [
     plannedPointAt(network, from),
   ];
-  let buildable = true;
 
   const begin = positionOf(network, from);
   const end = positionOf(network, to);
@@ -148,53 +126,32 @@ export function planSection(
     return refusedAsStraight(network, from, to);
   }
 
-  if (points[0].cuts.length > 0 && !landsCleanly(network, begin)) {
-    // The plan starts on a section, but a junction is not possible there.
-    buildable = false;
-  }
-
   for (const crossing of crossingsAlong(
     network,
     from,
     to,
     centerlineGeometry,
   )) {
-    if (!landsCleanly(network, crossing.point)) {
-      buildable = false;
-    }
-
     const reached = points[points.length - 1].at;
     const at = pickPoint(network, crossing.point, [reached, to]);
     append(network, points, plannedCrossing(network, crossing.section, at));
   }
-  const finish = plannedPointAt(network, to);
-  append(network, points, finish);
-  if (finish.cuts.length > 0 && !landsCleanly(network, end)) {
-    // plan ends on a section, but a junction is not possible there.
-    buildable = false;
-  }
+  append(network, points, plannedPointAt(network, to));
 
   // One piece per gap in the chain: the first point is where the section
   // starts, and every one after it is a piece arriving there.
   //
-  // A second walk, because neither a piece's shape nor its length can be
-  // settled before the chain is whole. Both are read off where the points
-  // landed rather than off the crossings that sent them there: merging may
-  // have moved one, and the landed places are what the pieces get built
-  // between.
+  // A second walk, because a piece's shape can't be settled before the
+  // chain is whole. It is read off where the points landed rather than off
+  // the crossings that sent them there: merging may have moved one, and the
+  // landed places are what the pieces get built between.
   const [start, ...reached] = points;
   const pieces: PlannedPiece[] = [];
   let previous = positionOf(network, start.at);
 
   for (const arrival of reached) {
     const at = positionOf(network, arrival.at);
-
     const shape = subGeometry(centerlineGeometry, begin, end, previous, at);
-
-    if (!isBuildableLength(lineLength(previous, at, shape))) {
-      buildable = false;
-    }
-
     pieces.push({ centerlineGeometry: shape, to: arrival });
     previous = at;
   }
@@ -204,9 +161,6 @@ export function planSection(
   if (firstPiece === undefined) {
     // Everything merged into one point: the section begins and ends in the
     // same place.
-    return { buildable: false, networkVersion, start, pieces };
-  }
-  if (!buildable) {
     return { buildable: false, networkVersion, start, pieces };
   }
 
@@ -521,23 +475,4 @@ function endAt(
     return section.to;
   }
   return null;
-}
-
-/**
- * Whether a crossing falls somewhere a junction can go: on an existing
- * node, or clear of every one of them.
- *
- * In between is a miss — the user was aiming at that node — and it is also
- * where a junction would leave a stub behind, since a node that close is
- * the end of some road. Asking for the nearest node covers the ends of the
- * section being crossed along with every other one.
- */
-function landsCleanly(network: RoadNetwork, point: Vec2): boolean {
-  const near = nearestNode(network, point, MIN_SECTION_LENGTH_METERS);
-  return near === null || isSamePoint(near.position, point);
-}
-
-/** Whether a piece is long enough to be a road. */
-function isBuildableLength(length: number): boolean {
-  return length >= MIN_SECTION_LENGTH_METERS;
 }

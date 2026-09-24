@@ -90,9 +90,9 @@ road.
     already say how
   - two roadways at a gap `ψ` end `w·cos(ψ/2)` apart → always under `w`,
     approaching it as the gap closes
-- A section must be long enough for the setbacks at its two ends.
-  - the layout clamps a setback to half the section rather than let the two
-    pass each other (`docs/road-layout.md`) → clamped is refused
+- A section must be long enough for the setbacks at its two ends: its
+  roadway's length ≥ 0, within 1 cm.
+  - zero is allowed: the two junctions touch along one cut, with no overlap
 - Any of these → the plan cannot be built.
 
 ## Tolerances

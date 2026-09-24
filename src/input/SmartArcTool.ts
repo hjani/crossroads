@@ -13,6 +13,7 @@ import {
   type SectionPlan,
 } from "../core/network/edits";
 import { angleOf, distance, type Vec2 } from "../core/geometry/point";
+import { verifyClearance } from "../core/layout/clearance";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
@@ -321,7 +322,11 @@ export class SmartArcTool implements Tool {
         geometry,
         ROAD_WIDTH_METERS,
       );
-      plans.push(tooTight ? { ...plan, buildable: false } : plan);
+      plans.push(
+        tooTight
+          ? { ...plan, buildable: false }
+          : verifyClearance(this.network, plan),
+      );
     }
     return plans;
   }

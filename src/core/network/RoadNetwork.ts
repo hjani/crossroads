@@ -156,6 +156,27 @@ export class RoadNetwork {
     return this.sections.values();
   }
 
+  /**
+   * An independent copy, to edit without touching this one.
+   *
+   * Version and id counters come along too: a plan made on this network
+   * applies to the copy, and the ids it hands out are the ones this network
+   * would. Nodes and sections are immutable, so they are shared; only the
+   * lists that get spliced are copied.
+   */
+  clone(): RoadNetwork {
+    const copy = new RoadNetwork();
+    for (const [id, node] of this.nodes) copy.nodes.set(id, node);
+    for (const [id, section] of this.sections) copy.sections.set(id, section);
+    for (const [id, attached] of this.adjacency) {
+      copy.adjacency.set(id, [...attached]);
+    }
+    copy.nextNodeId = this.nextNodeId;
+    copy.nextSectionId = this.nextSectionId;
+    copy.currentVersion = this.currentVersion;
+    return copy;
+  }
+
   /** Records that the network changed. */
   private commit(): void {
     this.currentVersion++;

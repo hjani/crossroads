@@ -22,13 +22,12 @@
   ends, measured along the centerline.
   - Each gap under 180° sets its two roads back, to end square through `P`.
     A road set back from both sides takes the longer setback.
-  - At most half the section's length.
-    - → a section's two setbacks never overlap, and each junction still
-      needs only its own node.
-    - Bites as a gap → 0, where the setback grows without limit.
+  - Not limited by the section's length → a junction needs only its own
+    node, not the sections' lengths.
+    - As a gap → 0, the setback grows without limit.
   - A gap whose edges don't cross ahead of the node sets nothing back.
-  - Where the network can't be drawn right (cut to half, or nothing set
-    back), an error is logged, with the reason.
+  - No setback because of an error → error is logged, with the
+    reason.
   - Asked for a section not meeting the node → error.
 - The area it covers, walked around the node gap by gap:
   - gap under 180° → reaches `P`
@@ -51,8 +50,11 @@
   roadway's end is the border between the two.
 - Knows its length: the section's, less the setback at each end. A setback is
   measured along the centerline, so this holds whatever shape it takes.
-- Never shorter than zero: both setbacks clamped → a roadway of zero length,
-  halfway along the section. Not an error.
+- Negative where the two setbacks overlap: the section is too short for its
+  junctions, and an edit leaving it so is refused (`docs/intersections.md`,
+  Clearance).
+  - The outline then runs backwards. Ugly but harmless: only a refused
+    plan's network gets there.
 
 ## Outline
 
