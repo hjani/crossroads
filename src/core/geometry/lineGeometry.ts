@@ -1,6 +1,11 @@
-import { arcFractionAt, arcLength, pointOnArc } from "./arc";
-import { distance, lerp, type Vec2 } from "./point";
-import { segmentFractionAt } from "./segment";
+import {
+  arcLength,
+  nearestPointOnArc,
+  nearestPointsBetweenArcs,
+  nearestPointsBetweenSegmentAndArc,
+} from "./arc";
+import { distance, type Vec2 } from "./point";
+import { nearestPointOnSegment, nearestPointsBetweenSegments } from "./segment";
 
 /**
  * The shapes a line on the ground can take.
@@ -65,9 +70,69 @@ export function nearestPointOnLine(
   geometry: LineGeometry,
   point: Vec2,
 ): Vec2 {
-  if (geometry.kind === "arc") {
-    const t = arcFractionAt(from, to, geometry.via, point);
-    return pointOnArc(from, to, geometry.via, t);
+  return geometry.kind === "arc"
+    ? nearestPointOnArc(point, from, to, geometry.via)
+    : nearestPointOnSegment(point, from, to);
+}
+
+/**
+ * The point on each of two lines nearest the other, whichever shapes they
+ * run in, the first line's first. The same point twice where they meet.
+ */
+export function nearestPointsBetweenLines(
+  fromA: Vec2,
+  toA: Vec2,
+  geometryA: LineGeometry,
+  fromB: Vec2,
+  toB: Vec2,
+  geometryB: LineGeometry,
+): readonly [Vec2, Vec2] {
+  if (geometryA.kind === "arc" && geometryB.kind === "arc") {
+    return nearestPointsBetweenArcs(
+      fromA,
+      toA,
+      geometryA.via,
+      fromB,
+      toB,
+      geometryB.via,
+    );
   }
-  return lerp(from, to, segmentFractionAt(point, from, to));
+  if (geometryA.kind === "arc") {
+    // Measured from B's side, so the pair comes back B's point first.
+    const [onB, onA] = nearestPointsBetweenSegmentAndArc(
+      fromB,
+      toB,
+      fromA,
+      toA,
+      geometryA.via,
+    );
+    return [onA, onB];
+  }
+  if (geometryB.kind === "arc") {
+    return nearestPointsBetweenSegmentAndArc(
+      fromA,
+      toA,
+      fromB,
+      toB,
+      geometryB.via,
+    );
+  }
+  return nearestPointsBetweenSegments(fromA, toA, fromB, toB);
+}
+
+/**
+ * The shortest distance between two lines, in meters, whichever shapes they
+ * run in: 0 where they meet.
+ */
+export function distanceBetweenLines(
+  fromA: Vec2,
+  toA: Vec2,
+  geometryA: LineGeometry,
+  fromB: Vec2,
+  toB: Vec2,
+  geometryB: LineGeometry,
+): number {
+  return distance(
+    ...nearestPointsBetweenLines(fromA, toA, geometryA, fromB, toB, geometryB),
+  );
 }

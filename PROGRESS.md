@@ -243,9 +243,9 @@ as a road too short for the setbacks at its two ends.
       plan's points, the far ends of the sections it cuts, and the roadways
       meeting them; the rest comes from the live layout
 - [x] a roadway may not run into a junction it does not meet
-- [ ] two straight roadways may not overlap: centerlines at least `w` apart
-      (core geometry, with tests)
-- [ ] the same where an arc is involved: segment–arc and arc–arc
+- [x] two roadways may not overlap: centerlines at least `w` apart, straight
+      or curved — segment–segment, segment–arc, arc–arc (core geometry, with
+      tests)
 - [ ] preview from the speculative layout instead of the band: the junctions
       and roadways the edit would really make
 
@@ -281,6 +281,8 @@ Wanted, but not part of a milestone yet.
       out. The seam is what keeps the write rules in one place — a
       hand-written second model could drift from `RoadNetwork`, and preview
       and commit would stop agreeing
+- [ ] clearance on large networks: a bounding-box test before each pair's
+      exact one, with the boxes cached per part in `RoadLayout`
 - [ ] a refusal reason on `UnbuildableSectionPlan`, so a preview can say what
       the section conflicts with
 - [ ] add more clearance rules for real-life practical limits:

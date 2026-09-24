@@ -1,5 +1,5 @@
 import type { Crossing } from "./crossing";
-import { clamp01, lerp, type Vec2 } from "./point";
+import { clamp01, distance, lerp, type Vec2 } from "./point";
 
 /**
  * Straight sections as plane geometry: where along one a position falls, and
@@ -36,6 +36,14 @@ export function segmentFractionAt(point: Vec2, from: Vec2, to: Vec2): number {
   return clamp01(
     ((point.x - from.x) * alongX + (point.z - from.z) * alongZ) / squaredLength,
   );
+}
+
+/**
+ * The point on the segment `from`–`to` nearest `point`: the foot of its
+ * perpendicular, or the nearer end where the foot falls past one.
+ */
+export function nearestPointOnSegment(point: Vec2, from: Vec2, to: Vec2): Vec2 {
+  return lerp(from, to, segmentFractionAt(point, from, to));
 }
 
 /**
@@ -106,4 +114,48 @@ export function segmentCrossing(
     return null;
   }
   return crossing;
+}
+
+/**
+ * The point on each of the segments `a1`–`a2` and `b1`–`b2` nearest the
+ * other, the first segment's first: the crossing twice where they meet.
+ *
+ * Let `A = a2 − a1`, `B = b2 − b1`, and a point on each
+ * `a(s) = a1 + s·A`, `b(t) = b1 + t·B`, with `s, t` in 0..1.
+ *
+ * - `|a(s) − b(t)|` is convex in `(s, t)` → its least value over the square
+ *   is at a stationary point inside it, or on its edge.
+ * - Stationary inside: `a(s) − b(t)` square to both `A` and `B`.
+ *   - `A`, `B` not parallel → only the zero vector → the segments meet
+ *     (`segmentCrossing`).
+ *   - parallel → the distance is constant along a line of `(s, t)`, which
+ *     runs on to the edge → found there too.
+ * - On the edge: `s` or `t` is 0 or 1 → an end of one segment, paired with
+ *   the nearest point of the other (`nearestPointOnSegment`). The closest of
+ *   the four pairs:
+ *
+ *       (a1, b), (a2, b), (a, b1), (a, b2)
+ *
+ * A segment of no length is a point, and comes out paired with its nearest
+ * point on the other segment.
+ */
+export function nearestPointsBetweenSegments(
+  a1: Vec2,
+  a2: Vec2,
+  b1: Vec2,
+  b2: Vec2,
+): readonly [Vec2, Vec2] {
+  const crossing = segmentCrossing(a1, a2, b1, b2);
+  if (crossing !== null) {
+    return [crossing.point, crossing.point];
+  }
+  const pairs: (readonly [Vec2, Vec2])[] = [
+    [a1, nearestPointOnSegment(a1, b1, b2)],
+    [a2, nearestPointOnSegment(a2, b1, b2)],
+    [nearestPointOnSegment(b1, a1, a2), b1],
+    [nearestPointOnSegment(b2, a1, a2), b2],
+  ];
+  return pairs.reduce((best, pair) =>
+    distance(...pair) < distance(...best) ? pair : best,
+  );
 }

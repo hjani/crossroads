@@ -1,4 +1,7 @@
-import { nearestPointOnLine } from "../geometry/lineGeometry";
+import {
+  distanceBetweenLines,
+  nearestPointOnLine,
+} from "../geometry/lineGeometry";
 import { distance, SAME_POINT_METERS } from "../geometry/point";
 import { applySectionPlan, type SectionPlan } from "../network/edits";
 import type { RoadNetwork } from "../network/RoadNetwork";
@@ -65,6 +68,9 @@ export function verifyClearance(
       sections,
     )
   ) {
+    return { ...plan, buildable: false };
+  }
+  if (roadwaysOverlap(speculative, roadwayAlong, sections)) {
     return { ...plan, buildable: false };
   }
   return plan;
@@ -157,6 +163,57 @@ function roadwayRunsInto(roadway: Roadway, junction: Junction): boolean {
   const q = nearestPointOnLine(from, to, centerlineGeometry, c);
   const reach = junction.boundingRadius() + widthMeters / 2;
   return distance(c, q) < reach - OVERLAP_TOLERANCE_METERS;
+}
+
+/**
+ * Whether a changed roadway overlaps another roadway it shares no node with.
+ * Each pair is tested once, even where both are changed.
+ */
+function roadwaysOverlap(
+  speculative: RoadNetwork,
+  roadwayAlong: (section: SectionId) => Roadway,
+  changed: ReadonlySet<SectionId>,
+): boolean {
+  const tested = new Set<SectionId>();
+  for (const id of changed) {
+    tested.add(id);
+    const section = speculative.getSection(id);
+    for (const other of speculative.allSections()) {
+      if (
+        !tested.has(other.id) &&
+        !shareNode(section, other) &&
+        roadwayOverlaps(roadwayAlong(id), roadwayAlong(other.id))
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Whether two roadways' bands overlap: their centerlines come closer than
+ * their two half-widths added up.
+ */
+function roadwayOverlaps(a: Roadway, b: Roadway): boolean {
+  const lineA = a.outline;
+  const lineB = b.outline;
+  const apart = distanceBetweenLines(
+    lineA.from,
+    lineA.to,
+    lineA.centerlineGeometry,
+    lineB.from,
+    lineB.to,
+    lineB.centerlineGeometry,
+  );
+  const reach = lineA.widthMeters / 2 + lineB.widthMeters / 2;
+  return apart < reach - OVERLAP_TOLERANCE_METERS;
+}
+
+function shareNode(a: Section, b: Section): boolean {
+  return (
+    a.from === b.from || a.from === b.to || a.to === b.from || a.to === b.to
+  );
 }
 
 /**

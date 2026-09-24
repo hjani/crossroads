@@ -150,6 +150,39 @@ describe("verifyClearance", () => {
     expect(clear(network, plan).buildable).toBe(false);
   });
 
+  it("refuses an arc roadway bulging into a straight one", () => {
+    // Every junction is 20 m or more from the other road; only the bulge
+    // comes near, to 7 m of the straight's middle, and w = 8 m.
+    const network = new RoadNetwork();
+    network.addSection(vec(-50, 0), vec(50, 0), STRAIGHT);
+    const planBulgingTo = (z: number): SectionPlan =>
+      planSection(network, vec(-30, -20), vec(30, -20), {
+        kind: "arc",
+        via: vec(0, z),
+      });
+
+    expect(clear(network, planBulgingTo(-7)).buildable).toBe(false);
+    expect(clear(network, planBulgingTo(-8.5)).buildable).toBe(true);
+  });
+
+  it("refuses two arc roadways bulging into each other", () => {
+    // The same, with the straight bent down to z = 7 in the middle: the
+    // bulges face each other, 7 m apart at z = 0 and 8.5 m at z = −1.5.
+    const network = new RoadNetwork();
+    network.addSection(vec(-30, 20), vec(30, 20), {
+      kind: "arc",
+      via: vec(0, 7),
+    });
+    const planBulgingTo = (z: number): SectionPlan =>
+      planSection(network, vec(-30, -20), vec(30, -20), {
+        kind: "arc",
+        via: vec(0, z),
+      });
+
+    expect(clear(network, planBulgingTo(0)).buildable).toBe(false);
+    expect(clear(network, planBulgingTo(-1.5)).buildable).toBe(true);
+  });
+
   it("hands back a refused plan as it is", () => {
     const network = new RoadNetwork();
     const corner = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT).from;

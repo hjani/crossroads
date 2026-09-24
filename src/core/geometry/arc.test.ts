@@ -7,6 +7,8 @@ import {
   arcLength,
   arcPolyline,
   arcViaLeaving,
+  nearestPointsBetweenArcs,
+  nearestPointsBetweenSegmentAndArc,
   pointOnArc,
   segmentArcCrossings,
   type ArcCircle,
@@ -359,6 +361,69 @@ describe("segmentArcCrossings", () => {
   });
 });
 
+describe("nearestPointsBetweenSegmentAndArc", () => {
+  // The upper half of the unit circle again, west to east through the top.
+  const west = vec(-1, 0);
+  const top = vec(0, 1);
+
+  it("gives the crossing twice where the segment cuts the arc", () => {
+    const [onSegment, onArc] = nearestPointsBetweenSegmentAndArc(
+      vec(0, 0),
+      vec(0, 2),
+      west,
+      east,
+      top,
+    );
+
+    expectAt(onSegment, 0, 1);
+    expectAt(onArc, 0, 1);
+  });
+
+  it("pairs the middles of the two where the arc bulges toward it", () => {
+    // Level above the top: neither end is near, the common normal is.
+    const [onSegment, onArc] = nearestPointsBetweenSegmentAndArc(
+      vec(-2, 2),
+      vec(2, 2),
+      west,
+      east,
+      top,
+    );
+
+    expectAt(onSegment, 0, 2);
+    expectAt(onArc, 0, 1);
+  });
+
+  it("falls back to the arc's ends where its sweep misses the normal", () => {
+    // Level below the circle: the normal meets it at the bottom, which the
+    // arc never reaches, so an end of the arc is nearest, 2 m up.
+    const [onSegment, onArc] = nearestPointsBetweenSegmentAndArc(
+      vec(-2, -2),
+      vec(2, -2),
+      west,
+      east,
+      top,
+    );
+
+    expect(distance(onSegment, onArc)).toBeCloseTo(2);
+    expect(onArc.z).toBeCloseTo(0);
+  });
+
+  it("pairs a segment's end with the arc when the normal is farther", () => {
+    // Short and inside the circle, below the top: its middle is the part
+    // farthest from the arc, and its ends are the nearest.
+    const [onSegment, onArc] = nearestPointsBetweenSegmentAndArc(
+      vec(-0.2, 0.5),
+      vec(0.2, 0.5),
+      west,
+      east,
+      top,
+    );
+
+    expect(Math.abs(onSegment.x)).toBeCloseTo(0.2);
+    expect(distance(onSegment, onArc)).toBeCloseTo(1 - Math.hypot(0.2, 0.5));
+  });
+});
+
 describe("arcArcCrossings", () => {
   // The upper half of the unit circle, running west to east over the top.
   const west = vec(-1, 0);
@@ -442,6 +507,91 @@ describe("arcArcCrossings", () => {
 
     expect(crossings).toHaveLength(2);
     expectAt(crossings[0].point, -Math.SQRT1_2, Math.SQRT1_2);
+  });
+});
+
+describe("nearestPointsBetweenArcs", () => {
+  // The upper half of the unit circle, west to east through the top.
+  const west = vec(-1, 0);
+  const top = vec(0, 1);
+
+  it("gives the crossing twice where the arcs cross", () => {
+    // The upper half of the unit circle one to the east: the two circles
+    // meet above and below, and both arcs reach the one above.
+    const [onA, onB] = nearestPointsBetweenArcs(
+      west,
+      east,
+      top,
+      vec(0, 0),
+      vec(2, 0),
+      vec(1, 1),
+    );
+
+    expectAt(onA, 0.5, Math.sqrt(3) / 2);
+    expectAt(onB, 0.5, Math.sqrt(3) / 2);
+  });
+
+  it("pairs the sides of two circles facing each other", () => {
+    // The lower half of a unit circle 5 m north, bulging back at this one.
+    const [onA, onB] = nearestPointsBetweenArcs(
+      west,
+      east,
+      top,
+      vec(-1, 5),
+      vec(1, 5),
+      vec(0, 4),
+    );
+
+    expectAt(onA, 0, 1);
+    expectAt(onB, 0, 4);
+  });
+
+  it("pairs the same sides where one circle is inside the other", () => {
+    // Radius 3 about (0, −1), over its top: both tops face the same way,
+    // 1 m apart, which only the pairing of the two near-north sides finds.
+    const [onA, onB] = nearestPointsBetweenArcs(
+      west,
+      east,
+      top,
+      vec(-3, -1),
+      vec(3, -1),
+      vec(0, 2),
+    );
+
+    expectAt(onA, 0, 1);
+    expectAt(onB, 0, 2);
+  });
+
+  it("measures two arcs about one center by their ends", () => {
+    // The upper half of the circle of radius 3: 2 m out all along.
+    const [onA, onB] = nearestPointsBetweenArcs(
+      west,
+      east,
+      top,
+      vec(-3, 0),
+      vec(3, 0),
+      vec(0, 3),
+    );
+
+    expect(distance(onA, onB)).toBeCloseTo(2);
+  });
+
+  it("falls back to an end where a sweep misses the normal", () => {
+    // The upper half of a unit circle 5 m south: its top faces this arc's
+    // bottom, which this arc never reaches. Either end is nearer the other
+    // circle than its top is.
+    const [onA, onB] = nearestPointsBetweenArcs(
+      west,
+      east,
+      top,
+      vec(-1, -5),
+      vec(1, -5),
+      vec(0, -4),
+    );
+
+    expect(Math.abs(onA.x)).toBeCloseTo(1);
+    expect(onA.z).toBeCloseTo(0);
+    expect(distance(onA, onB)).toBeCloseTo(Math.sqrt(26) - 1);
   });
 });
 

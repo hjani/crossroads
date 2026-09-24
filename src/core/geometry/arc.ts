@@ -1,6 +1,11 @@
 import { distance, lerp, unitDirection, type Vec2 } from "./point";
 import { fromTheOtherSide, type Crossing } from "./crossing";
-import { segmentCrossing, segmentFractionAt } from "./segment";
+import {
+  nearestPointOnSegment,
+  nearestPointsBetweenSegments,
+  segmentCrossing,
+  segmentFractionAt,
+} from "./segment";
 
 /**
  * Curved sections as plane geometry: the circle three positions lie on, and
@@ -230,6 +235,19 @@ export function arcFractionAt(
       : 1;
 }
 
+/**
+ * The point on the arc `from`–`via`–`to` nearest `point`: the one the same
+ * way from the center, or the nearer end where the arc never turns that way.
+ */
+export function nearestPointOnArc(
+  point: Vec2,
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+): Vec2 {
+  return pointOnArc(from, to, via, arcFractionAt(from, to, via, point));
+}
+
 /** The whole arc's length, in meters. */
 export function arcLength(from: Vec2, to: Vec2, via: Vec2): number {
   const run = arcRun(from, to, via);
@@ -382,6 +400,75 @@ export function segmentArcCrossings(
 }
 
 /**
+ * The point on the segment `a1`–`a2` nearest the arc `from`–`via`–`to`, and
+ * the point on the arc nearest the segment, the segment's first: the
+ * crossing twice where they meet.
+ *
+ * Let `c` and `r` be the arc's center and radius.
+ *
+ * - They meet → a crossing (`segmentArcCrossings`).
+ * - Otherwise the closest pair is an end of one, paired with the nearest
+ *   point of the other, or a pair inside both joined by a line square to
+ *   both there (a common normal):
+ *   - square to the circle → runs through `c`
+ *   - square to the segment → meets it at `q`, the foot of `c` on it
+ *   - on the circle, the point nearest `q` is the one toward it:
+ *
+ *         p = c + r·(q − c)/|q − c|
+ *
+ *     kept only where the arc reaches `p`
+ * - The closest of the four end pairs and `(q, p)`.
+ *
+ * - `c − r·(q − c)/|q − c|` is the circle's farthest point from `q` → never
+ *   the closest pair, not tried.
+ * - `q = c`: every point of the circle equally far → no `p`; the ends cover
+ *   it.
+ * - `q` clamped to an end of the segment: `(q, p)` is still a real pair of
+ *   points, only no longer square to the segment → harmless.
+ *
+ * A `via` in line with the ends is a straight, and this returns what
+ * `nearestPointsBetweenSegments` returns.
+ */
+export function nearestPointsBetweenSegmentAndArc(
+  a1: Vec2,
+  a2: Vec2,
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+): readonly [Vec2, Vec2] {
+  const run = arcRun(from, to, via);
+  if (run === null) {
+    return nearestPointsBetweenSegments(a1, a2, from, to);
+  }
+
+  const crossing = segmentArcCrossings(a1, a2, from, to, via)[0];
+  if (crossing !== undefined) {
+    return [crossing.point, crossing.point];
+  }
+
+  const pairs: (readonly [Vec2, Vec2])[] = [
+    [a1, nearestPointOnArc(a1, from, to, via)],
+    [a2, nearestPointOnArc(a2, from, to, via)],
+    [nearestPointOnSegment(from, a1, a2), from],
+    [nearestPointOnSegment(to, a1, a2), to],
+  ];
+
+  const { center, radius } = run.circle;
+  const q = nearestPointOnSegment(center, a1, a2);
+  const fromCenter = distance(center, q);
+  if (fromCenter > 0) {
+    const p = {
+      x: center.x + (radius * (q.x - center.x)) / fromCenter,
+      z: center.z + (radius * (q.z - center.z)) / fromCenter,
+    };
+    if (sweptFractionAt(run, p) !== null) {
+      pairs.push([q, p]);
+    }
+  }
+  return closestPair(pairs);
+}
+
+/**
  * Where the arc `fromA`–`viaA`–`toA` meets the arc `fromB`–`viaB`–`toB`, in
  * order along the first arc. Up to two: the `circleCircleCrossings` of their
  * circles, kept only where both arcs' sweeps reach the point.
@@ -420,6 +507,102 @@ export function arcArcCrossings(
     }
   }
   return crossings.sort((left, right) => left.alongA - right.alongA);
+}
+
+/**
+ * The point on the arc `fromA`–`viaA`–`toA` nearest the arc
+ * `fromB`–`viaB`–`toB`, and the point on the second nearest the first, the
+ * first arc's first: the crossing twice where they meet.
+ *
+ * Let `cA, rA` and `cB, rB` be the two circles, and `u = (cB − cA)/|cB − cA|`.
+ *
+ * - They meet → a crossing (`arcArcCrossings`).
+ * - Otherwise the closest pair is an end of one, paired with the nearest
+ *   point of the other, or a pair inside both joined by a line square to
+ *   both there (a common normal):
+ *   - square to a circle → runs through its center
+ *   - through both centers → the line along `u`, meeting each circle twice:
+ *
+ *         cA ± rA·u,   cB ± rB·u
+ *
+ *   - all four pairings of those, each kept only where both arcs reach it
+ * - The closest of the four end pairs and those.
+ *
+ * - Not every pairing is a closest pair (the two far sides, for circles
+ *   apart), but each is a real pair of points → harmless to try. Which one
+ *   is nearest depends on whether one circle lies inside the other, and
+ *   trying all four leaves that unasked.
+ * - `cA = cB`: every line through the center is a common normal, and all
+ *   are the same length → no `u`; the ends cover it, since two arcs of one
+ *   center that overlap in angle have an end of one inside the other.
+ *
+ * A `via` in line with its ends is a straight, and the answer comes from
+ * `nearestPointsBetweenSegmentAndArc`.
+ */
+export function nearestPointsBetweenArcs(
+  fromA: Vec2,
+  toA: Vec2,
+  viaA: Vec2,
+  fromB: Vec2,
+  toB: Vec2,
+  viaB: Vec2,
+): readonly [Vec2, Vec2] {
+  const runA = arcRun(fromA, toA, viaA);
+  if (runA === null) {
+    return nearestPointsBetweenSegmentAndArc(fromA, toA, fromB, toB, viaB);
+  }
+
+  const runB = arcRun(fromB, toB, viaB);
+  if (runB === null) {
+    // Measured from B's side, so the pair comes back B's point first.
+    const [onB, onA] = nearestPointsBetweenSegmentAndArc(
+      fromB,
+      toB,
+      fromA,
+      toA,
+      viaA,
+    );
+    return [onA, onB];
+  }
+
+  const crossing = arcArcCrossings(fromA, toA, viaA, fromB, toB, viaB)[0];
+  if (crossing !== undefined) {
+    return [crossing.point, crossing.point];
+  }
+
+  const pairs: (readonly [Vec2, Vec2])[] = [
+    [fromA, nearestPointOnArc(fromA, fromB, toB, viaB)],
+    [toA, nearestPointOnArc(toA, fromB, toB, viaB)],
+    [nearestPointOnArc(fromB, fromA, toA, viaA), fromB],
+    [nearestPointOnArc(toB, fromA, toA, viaA), toB],
+  ];
+
+  const centerA = runA.circle.center;
+  const centerB = runB.circle.center;
+  const between = distance(centerA, centerB);
+  if (between > 0) {
+    const u = {
+      x: (centerB.x - centerA.x) / between,
+      z: (centerB.z - centerA.z) / between,
+    };
+    const along = (center: Vec2, reach: number): Vec2 => ({
+      x: center.x + reach * u.x,
+      z: center.z + reach * u.z,
+    });
+    const radiusA = runA.circle.radius;
+    const radiusB = runB.circle.radius;
+    for (const onA of [along(centerA, radiusA), along(centerA, -radiusA)]) {
+      for (const onB of [along(centerB, radiusB), along(centerB, -radiusB)]) {
+        if (
+          sweptFractionAt(runA, onA) !== null &&
+          sweptFractionAt(runB, onB) !== null
+        ) {
+          pairs.push([onA, onB]);
+        }
+      }
+    }
+  }
+  return closestPair(pairs);
 }
 
 /**
@@ -506,6 +689,15 @@ function sweptFractionAt(run: ArcRun, point: Vec2): number | null {
 
   const fraction = along / run.sweep;
   return fraction <= 1 ? fraction : null;
+}
+
+/** The pair whose two points lie closest together. */
+function closestPair(
+  pairs: readonly (readonly [Vec2, Vec2])[],
+): readonly [Vec2, Vec2] {
+  return pairs.reduce((best, pair) =>
+    distance(...pair) < distance(...best) ? pair : best,
+  );
 }
 
 /**

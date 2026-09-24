@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { lineLength, STRAIGHT } from "./lineGeometry";
+import {
+  lineLength,
+  nearestPointsBetweenLines,
+  STRAIGHT,
+} from "./lineGeometry";
 import type { Vec2 } from "./point";
 
 function vec(x: number, z: number): Vec2 {
@@ -31,5 +35,24 @@ describe("lineLength", () => {
         via: vec(-Math.SQRT1_2, -Math.SQRT1_2),
       }),
     ).toBeCloseTo((3 * Math.PI) / 2);
+  });
+});
+
+describe("nearestPointsBetweenLines", () => {
+  // The upper half of the unit circle, and a level road 1 m above its top.
+  const arc = { kind: "arc", via: vec(0, 1) } as const;
+
+  it("gives the first line's point first, whichever is the arc", () => {
+    const [onArc, onStraight] = nearestPointsBetweenLines(
+      vec(-1, 0),
+      vec(1, 0),
+      arc,
+      vec(-2, 2),
+      vec(2, 2),
+      STRAIGHT,
+    );
+
+    expect(onArc.z).toBeCloseTo(1);
+    expect(onStraight.z).toBeCloseTo(2);
   });
 });
