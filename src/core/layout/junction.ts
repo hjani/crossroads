@@ -64,6 +64,8 @@ export class Junction {
 
   /** Worked out once, at construction; `outline` hands it out. */
   private readonly junctionOutline: JunctionOutline;
+  /** Worked out once, at construction; `boundingRadius` hands it out. */
+  private readonly radius: number;
 
   constructor(
     network: RoadNetwork,
@@ -76,6 +78,7 @@ export class Junction {
     this.gaps = gapsAround(node, this.at, this.legs, widthMeters);
     this.setbacks = longestSetbacks(this.legs, this.gaps);
     this.junctionOutline = this.buildOutline();
+    this.radius = this.buildBoundingRadius();
   }
 
   /**
@@ -111,6 +114,36 @@ export class Junction {
    */
   outline(): JunctionOutline {
     return this.junctionOutline;
+  }
+
+  /**
+   * The radius of the bounding circle around the entire junction outline.
+   */
+  boundingRadius(): number {
+    return this.radius;
+  }
+
+  /**
+   * The farthest outline point from the node. Let `N` be the node, `X` a
+   * piece's point:
+   *
+   *     R = max |NX|
+   *
+   * - straight piece: `|NX|` is convex along a segment → greatest at an end
+   * - round join: on the circle of radius `w/2` about `N` → no farther than
+   *   its ends
+   * - arc along a leg's edge: farther inside than at its ends only if it
+   *   runs past the far side of its circle → a setback over half that
+   *   circle, not accounted for
+   * - `R ≥ w/2`: each leg's cut is on the ring, its ends `√(s² + (w/2)²)`
+   *   from `N`
+   */
+  private buildBoundingRadius(): number {
+    return Math.max(
+      ...this.junctionOutline.pieces.map((piece) =>
+        distance(this.at, piece.point),
+      ),
+    );
   }
 
   /** Builds the outline of the junction. */

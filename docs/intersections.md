@@ -85,7 +85,7 @@ road.
   - conservative: refuses a layout that would just have fitted, never allows
     an overlap
 - Two roadways are clear where their centerlines stay `w` apart.
-- Exempt: parts sharing a node, and two junctions sharing a section.
+- Exempt: parts sharing a node.
   - they meet by design, and the junction rules (`docs/road-layout.md`)
     already say how
   - two roadways at a gap `ψ` end `w·cos(ψ/2)` apart → always under `w`,
@@ -93,6 +93,8 @@ road.
 - A section must be long enough for the setbacks at its two ends: its
   roadway's length ≥ 0, within 1 cm.
   - zero is allowed: the two junctions touch along one cut, with no overlap
+  - already follows from the two junctions' circles being clear, and kept
+    as the exact check: length ≥ chord ≥ `R₁ + R₂` ≥ `s₁ + s₂`
 - Any of these → the plan cannot be built.
 
 ## Tolerances
@@ -109,10 +111,8 @@ the grid pitch is fixed).
   - The new section's own ends too: within 1 cm of a road → on it, and cut it.
 - Further apart than that → two places, and Clearance measures the junctions
   they make against each other.
-- No minimum length of its own: a piece too short to carry the setbacks at
-  its ends is refused by Clearance.
-  - a short section standing on its own covers nothing twice, so nothing
-    here refuses it — a tool may.
+- No minimum length of its own, but a short piece whose junctions come too
+  close is refused by Clearance.
 
 ## Splitting
 

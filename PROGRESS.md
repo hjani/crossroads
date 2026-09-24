@@ -239,8 +239,7 @@ as a road too short for the setbacks at its two ends.
 - [x] the clearing step, measured on the speculative network. First rule:
       a section too short for the setbacks at its two ends is refused. The
       1 m minimum goes
-- [ ] a junction's bounding circle, and two junctions sharing no section may
-      not overlap. Only the changed parts are laid out speculatively — the
+- [x] a junction's bounding circle, and two junctions may not overlap. Only the changed parts are laid out speculatively — the
       plan's points, the far ends of the sections it cuts, and the roadways
       meeting them; the rest comes from the live layout
 - [ ] a roadway may not run into a junction it does not meet
@@ -284,9 +283,9 @@ Wanted, but not part of a milestone yet.
       and commit would stop agreeing
 - [ ] a refusal reason on `UnbuildableSectionPlan`, so a preview can say what
       the section conflicts with
-- [ ] clearance refuses a setback over a fixed limit. It grows without limit
-      as a gap closes, and a junction hundreds of meters long is not
-      practical.
+- [ ] add more clearance rules for real-life practical limits:
+        - max setback length to limit junction sizes (or max junction radius)
+        - min roadway length
 
 ## Deferred, probably to be dropped
 

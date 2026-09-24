@@ -325,7 +325,7 @@ export class SmartArcTool implements Tool {
       plans.push(
         tooTight
           ? { ...plan, buildable: false }
-          : verifyClearance(this.network, plan),
+          : verifyClearance(this.network, this.layout, plan),
       );
     }
     return plans;

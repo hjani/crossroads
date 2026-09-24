@@ -381,3 +381,38 @@ describe("Junction.outline", () => {
     expectPoints([vias[1]], [onCircle(vec(0, 0), 4, (5 * Math.PI) / 4)]);
   });
 });
+
+describe("Junction.boundingRadius", () => {
+  it("covers a dead end by half the width", () => {
+    const network = new RoadNetwork();
+    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+
+    const junction = new Junction(network, road.from, WIDTH_METERS);
+
+    expect(junction.boundingRadius()).toBeCloseTo(4);
+  });
+
+  it("reaches the corner point of a right-angle bend", () => {
+    // The corner point is (4, 4).
+    const network = new RoadNetwork();
+    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    network.addSection(east.from, vec(0, 20), STRAIGHT);
+
+    const junction = new Junction(network, east.from, WIDTH_METERS);
+
+    expect(junction.boundingRadius()).toBeCloseTo(4 * Math.sqrt(2));
+  });
+
+  it("reaches the farthest point of a skewed T", () => {
+    // The outline of the skewed T above: east's edge points (4·√3, ±4) and
+    // the narrow gap's corner point (0, 8) are all 8 from the node.
+    const network = new RoadNetwork();
+    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    network.addSection(east.from, vec(10, 10 * Math.sqrt(3)), STRAIGHT);
+    network.addSection(east.from, vec(-20, 0), STRAIGHT);
+
+    const junction = new Junction(network, east.from, WIDTH_METERS);
+
+    expect(junction.boundingRadius()).toBeCloseTo(8);
+  });
+});

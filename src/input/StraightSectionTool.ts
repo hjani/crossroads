@@ -216,7 +216,7 @@ export class StraightSectionTool implements Tool {
     );
     return plan.pieces.length === 0
       ? null
-      : verifyClearance(this.network, plan);
+      : verifyClearance(this.network, this.layout, plan);
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */

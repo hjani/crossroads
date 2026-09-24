@@ -261,7 +261,7 @@ export class ArcSectionTool implements Tool {
     );
     return tooTight
       ? { ...plan, buildable: false }
-      : verifyClearance(this.network, plan);
+      : verifyClearance(this.network, this.layout, plan);
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
