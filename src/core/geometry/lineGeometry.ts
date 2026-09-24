@@ -1,5 +1,6 @@
-import { arcLength } from "./arc";
-import { distance, type Vec2 } from "./point";
+import { arcFractionAt, arcLength, pointOnArc } from "./arc";
+import { distance, lerp, type Vec2 } from "./point";
+import { segmentFractionAt } from "./segment";
 
 /**
  * The shapes a line on the ground can take.
@@ -52,4 +53,21 @@ export function lineLength(
   return geometry.kind === "arc"
     ? arcLength(from, to, geometry.via)
     : distance(from, to);
+}
+
+/**
+ * The point on a line nearest `point`, whichever shape it runs in. A point
+ * past either end gives that end.
+ */
+export function nearestPointOnLine(
+  from: Vec2,
+  to: Vec2,
+  geometry: LineGeometry,
+  point: Vec2,
+): Vec2 {
+  if (geometry.kind === "arc") {
+    const t = arcFractionAt(from, to, geometry.via, point);
+    return pointOnArc(from, to, geometry.via, t);
+  }
+  return lerp(from, to, segmentFractionAt(point, from, to));
 }

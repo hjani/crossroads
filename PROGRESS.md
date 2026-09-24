@@ -242,7 +242,7 @@ as a road too short for the setbacks at its two ends.
 - [x] a junction's bounding circle, and two junctions may not overlap. Only the changed parts are laid out speculatively — the
       plan's points, the far ends of the sections it cuts, and the roadways
       meeting them; the rest comes from the live layout
-- [ ] a roadway may not run into a junction it does not meet
+- [x] a roadway may not run into a junction it does not meet
 - [ ] two straight roadways may not overlap: centerlines at least `w` apart
       (core geometry, with tests)
 - [ ] the same where an arc is involved: segment–arc and arc–arc

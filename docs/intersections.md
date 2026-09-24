@@ -84,6 +84,12 @@ road.
   its outline.
   - conservative: refuses a layout that would just have fitted, never allows
     an overlap
+- A junction and a roadway are clear where the roadway's centerline stays
+  `R + w/2` from the node, `R` the junction's circle.
+  - measured to the nearest point between the roadway's ends → its ends
+    count as round, not square: conservative again
+  - that extra half disc lies inside the end's own junction circle → it
+    refuses nothing junction ↔ junction doesn't already
 - Two roadways are clear where their centerlines stay `w` apart.
 - Exempt: parts sharing a node.
   - they meet by design, and the junction rules (`docs/road-layout.md`)

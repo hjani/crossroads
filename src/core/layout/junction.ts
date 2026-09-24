@@ -116,6 +116,11 @@ export class Junction {
     return this.junctionOutline;
   }
 
+  /** The node position, also the center of the bounding circle. */
+  center(): Vec2 {
+    return this.at;
+  }
+
   /**
    * The radius of the bounding circle around the entire junction outline.
    */

@@ -118,6 +118,38 @@ describe("verifyClearance", () => {
     expect(isRefused(network, vec(9.5, 6), vec(9.5, 0.005))).toBe(true);
   });
 
+  // A dead end is the junction in the tests below only because its circle
+  // is plain: w/2 = 4 m. With the new road's own w/2, 8 m between centers.
+
+  it("refuses a new roadway running into an existing junction", () => {
+    const network = new RoadNetwork();
+    network.addSection(vec(-20, 0), vec(0, 0), STRAIGHT);
+
+    expect(isRefused(network, vec(6, -20), vec(6, 20))).toBe(true);
+    expect(isRefused(network, vec(8, -20), vec(8, 20))).toBe(false);
+  });
+
+  it("refuses a new junction running into an existing roadway", () => {
+    const network = new RoadNetwork();
+    network.addSection(vec(-20, 0), vec(20, 0), STRAIGHT);
+
+    expect(isRefused(network, vec(0, -20), vec(0, -7))).toBe(true);
+    expect(isRefused(network, vec(0, -20), vec(0, -8))).toBe(false);
+  });
+
+  it("measures an arc roadway by its curve, not its chord", () => {
+    // The chord runs 10 m from the junction, the arc bulges to 6 m of it.
+    const network = new RoadNetwork();
+    network.addSection(vec(-20, 0), vec(0, 0), STRAIGHT);
+    const plan = planSection(network, vec(10, -20), vec(10, 20), {
+      kind: "arc",
+      via: vec(6, 0),
+    });
+    assert(plan.buildable);
+
+    expect(clear(network, plan).buildable).toBe(false);
+  });
+
   it("hands back a refused plan as it is", () => {
     const network = new RoadNetwork();
     const corner = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT).from;

@@ -1,9 +1,11 @@
+import { nearestPointOnLine } from "../geometry/lineGeometry";
 import { distance, SAME_POINT_METERS } from "../geometry/point";
 import { applySectionPlan, type SectionPlan } from "../network/edits";
 import type { RoadNetwork } from "../network/RoadNetwork";
-import type { NodeId, SectionId } from "../network/types";
+import type { NodeId, Section, SectionId } from "../network/types";
 import type { Junction } from "./junction";
 import { RoadLayout } from "./RoadLayout";
+import type { Roadway } from "./roadway";
 
 /**
  * How far two parts may overlap, in meters: room for rounding, so two
@@ -36,7 +38,8 @@ export function verifyClearance(
   const speculativeLayout = new RoadLayout(speculative);
 
   const nodes = affectedNodes(network, speculative);
-  for (const id of affectedSections(speculative, nodes)) {
+  const sections = affectedSections(speculative, nodes);
+  for (const id of sections) {
     // Negative where the setbacks at its two ends overlap.
     if (speculativeLayout.roadwayAlong(id).length < -OVERLAP_TOLERANCE_METERS) {
       return { ...plan, buildable: false };
@@ -47,6 +50,21 @@ export function verifyClearance(
       ? speculativeLayout.junctionAt(node)
       : layout.junctionAt(node);
   if (junctionsOverlap(speculative, junctionAt, nodes)) {
+    return { ...plan, buildable: false };
+  }
+  const roadwayAlong = (section: SectionId): Roadway =>
+    sections.has(section)
+      ? speculativeLayout.roadwayAlong(section)
+      : layout.roadwayAlong(section);
+  if (
+    roadwaysRunIntoJunctions(
+      speculative,
+      junctionAt,
+      roadwayAlong,
+      nodes,
+      sections,
+    )
+  ) {
     return { ...plan, buildable: false };
   }
   return plan;
@@ -80,6 +98,65 @@ function junctionsOverlap(
     }
   }
   return false;
+}
+
+/**
+ * Whether a roadway runs into a junction it doesn't meet, where either of
+ * the two is changed. Each pair is tested once:
+ *
+ * - every changed junction × every roadway not meeting it
+ * - every changed roadway × every unchanged junction not at its ends
+ */
+function roadwaysRunIntoJunctions(
+  speculative: RoadNetwork,
+  junctionAt: (node: NodeId) => Junction,
+  roadwayAlong: (section: SectionId) => Roadway,
+  changedNodes: ReadonlySet<NodeId>,
+  changedSections: ReadonlySet<SectionId>,
+): boolean {
+  const runsInto = (section: Section, node: NodeId): boolean =>
+    section.from !== node &&
+    section.to !== node &&
+    roadwayRunsInto(roadwayAlong(section.id), junctionAt(node));
+
+  for (const node of changedNodes) {
+    for (const section of speculative.allSections()) {
+      if (runsInto(section, node)) {
+        return true;
+      }
+    }
+  }
+  for (const id of changedSections) {
+    const section = speculative.getSection(id);
+    for (const node of speculative.allNodes()) {
+      if (!changedNodes.has(node.id) && runsInto(section, node.id)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Whether a roadway's band overlaps a junction's circle.
+ *
+ * Let `c` and `R` be the junction's center and bounding radius, `w` the
+ * road's width, and `q` the point of the roadway's centerline nearest `c`,
+ * between its two ends.
+ *
+ * - every point within `w/2` of the centerline is a band with round ends,
+ *   which covers the true, square-ended one → conservative
+ * - that band and the circle overlap where `c` comes closer to the
+ *   centerline than the two reaches added up:
+ *
+ *       |c − q| < R + w/2
+ */
+function roadwayRunsInto(roadway: Roadway, junction: Junction): boolean {
+  const { from, to, centerlineGeometry, widthMeters } = roadway.outline;
+  const c = junction.center();
+  const q = nearestPointOnLine(from, to, centerlineGeometry, c);
+  const reach = junction.boundingRadius() + widthMeters / 2;
+  return distance(c, q) < reach - OVERLAP_TOLERANCE_METERS;
 }
 
 /**
