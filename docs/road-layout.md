@@ -98,4 +98,4 @@
 - In `src/core/layout/`, outside `RoadNetwork`: uses only its public API.
   - The model stores; width and junction rules stay out of it.
 - `src/render/` draws it (`docs/road-surface.md`).
-- Edits are still planned as if roads had no width (`docs/intersections.md`).
+- Edits are validated against it via `clearance` (`docs/intersections.md`).

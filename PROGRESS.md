@@ -2,14 +2,6 @@
 
 Quick status for picking up where we left.
 
-## Current status
-
-M0 through M7 are done — M3 came ahead of the curves because a second tool
-needs a way to be chosen, and because nothing could be deleted. Current:
-**M8 — Inspect tool**
-Next step: outline what is selected instead of marking its centerline — a
-section's roadway, a node's junction
-
 ## Milestones
 
 ### M0 — Scaffold
@@ -239,7 +231,7 @@ as a road too short for the setbacks at its two ends.
       weld onto a roadway still lands on its centerline
 - [x] draw a planned section as a band `w` wide rather than a thin line, so
       the preview covers the ground the road will
-- [ ] `docs/intersections.md` rewritten for width: the three pairings
+- [x] `docs/intersections.md` rewritten for width: the three pairings
       (junction–junction, junction–roadway, roadway–roadway), the circle a
       junction is measured by, why parts sharing a node or a section are
       exempt, and the verdict composed in the layout layer.
@@ -248,7 +240,8 @@ as a road too short for the setbacks at its two ends.
       planner in `src/core/layout/` that applies the plan to a throwaway
       network and reads what it changed. `planSection` is untouched and the
       verdict stays on the plan. First rule: a section too short for the
-      setbacks at both ends is refused rather than clamped
+      setbacks at both ends is refused rather than clamped. The 1 m minimum
+      piece length goes with it.
 - [ ] a junction's bounding circle, and two junctions sharing no section may
       not overlap. Only the changed parts are laid out speculatively — the
       plan's points, the far ends of the sections it cuts, and the roadways
@@ -286,6 +279,14 @@ Wanted, but not part of a milestone yet.
       the web to a WPF binding. The layer knows nothing of the network,
       Three.js or the tools, so the change would be confined to `src/ui/`
       and a few lines of `main.ts`
+- [ ] the speculative network as an overlay over the real one, behind a
+      storage seam inside `RoadNetwork`: nothing copied per plan, and it
+      knows what the edit changed instead of the clearing step working it
+      out. The seam is what keeps the write rules in one place — a
+      hand-written second model could drift from `RoadNetwork`, and preview
+      and commit would stop agreeing
+- [ ] a refusal reason on `UnbuildableSectionPlan`, so a preview can say what
+      the section conflicts with
 
 ## Deferred, probably to be dropped
 
@@ -307,12 +308,6 @@ Not blocking anything; do them when they start to bite.
       `queries.ts`. The cost is that `arc.ts` would have to publish `arcRun`
       and the angular helpers it keeps private, so the question is whether
       that representation is worth being part of the module's face
-- [ ] revisit the two intersection tolerances once sections have width —
-      how close two junctions may sit follows from how wide the roads are
-      (`SAME_POINT_METERS`, `MIN_SECTION_LENGTH_METERS`). A section that
-      crosses nothing but passes close by a node needs an answer then too:
-      with width it is running into that junction, however clear of it the
-      centerlines are
 - [ ] decide how shallow a crossing is still a crossing — near-parallel
       sections currently cross like any other, and the junction they make
       moves a long way for a small change in either road

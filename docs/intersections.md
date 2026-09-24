@@ -4,12 +4,14 @@
 
 - When a section is added: find where it crosses existing sections, split
   both, join them at a shared node.
+- Whether it can be built at all: roads cover ground, so the junctions and
+  roadways the edit would leave must not overlap.
 - Out of scope: how a junction looks, how traffic moves through it. A
   junction is an ordinary node, drawn like any other.
 
 ## What a crossing is
 
-Two sections' geometry meeting at a point they don't already share.
+Two sections' centerlines meeting at a point they don't already share.
 
 - Both sections are split there. The new node is an ordinary node.
 - Several meetings (a straight across a bend, two curves) → one junction
@@ -19,16 +21,27 @@ Two sections' geometry meeting at a point they don't already share.
 - Collinear overlap → no single point → not a crossing. A road drawn on
   top of another stays a second road.
 - Grazing → a single point → a crossing. A shallow angle is never the reason
-  to refuse; pieces that come out too short are (see Tolerances).
+  to refuse; pieces that come out too short are (see Clearance).
+- Centerlines only: two roads whose bands overlap without their centerlines
+  meeting do not cross there.
+  - → width never makes a junction, it only refuses.
 
-## Plan, then apply
+## Plan, clear, then apply
 
 - Checked only when a section is added, since nothing else can create a
   crossing. No pass over the whole network.
-- Two steps:
+- Three steps:
   1. **Plan**: a standalone value saying which sections are cut, where the
-     junctions land, and whether it can be built. Doesn't touch the network.
-  2. **Apply**: carries out the plan and decides nothing new.
+     junctions land, and whether it can be built. Knows nothing of road
+     width, and doesn't touch the network.
+  2. **Clear**: measures the ground the plan would cover, and hands back the
+     same plan, refused or not. Reads a finished plan and decides nothing
+     else about it.
+  3. **Apply**: carries out the plan and decides nothing new.
+- The first two sit in different layers, since width belongs to the layout
+  (`docs/road-layout.md`) and crossings do not.
+  - → "can be built" is still one answer on the plan, not two a caller has
+    to remember to ask
 - A plan can be made without applying it → a tool can preview a section
   while it is still being dragged, and what lands is exactly what was shown.
 - A plan is valid only for the network it was made on. Applying it after
@@ -40,6 +53,47 @@ Two sections' geometry meeting at a point they don't already share.
     circle → its refusal is the straight between the ends, no junctions.
 - All or nothing: every piece and junction lands together. A refusal comes
   before anything is created → nothing to roll back.
+
+## The speculative network
+
+- The **speculative network** is the network as the plan would leave it: the
+  real one with the plan applied to a throwaway copy of it.
+- Clearance is measured on its layout, never on the network as it stands.
+- Built by applying the plan, not by working out what it would do → measured
+  by the rules that will really run, rather than by a second guess at them.
+- Belongs to the clearing step, and is discarded with it.
+  - → nothing outside that step can access it in any way
+- Only the parts the edit changes are laid out there. The rest is the same in
+  both networks, and is read from the layout already at hand.
+- What an edit changes:
+  - the junction at every point the plan runs through
+  - the junction at either end of every section it cuts
+    - a cut shortens the section → a setback there may come out differently
+  - the roadway of every section meeting a changed junction
+- A cut section is gone there, replaced by the two pieces left where it was →
+  the pieces are what the new parts are measured against.
+
+## Clearance
+
+Two parts of the layout may not overlap. `w` is the width of a
+road.
+
+- Three pairings: junction ↔ junction, junction ↔ roadway, roadway ↔
+  roadway.
+- A junction is measured by a circle about its node, wide enough to cover
+  its outline.
+  - conservative: refuses a layout that would just have fitted, never allows
+    an overlap
+- Two roadways are clear where their centerlines stay `w` apart.
+- Exempt: parts sharing a node, and two junctions sharing a section.
+  - they meet by design, and the junction rules (`docs/road-layout.md`)
+    already say how
+  - two roadways at a gap `ψ` end `w·cos(ψ/2)` apart → always under `w`,
+    approaching it as the gap closes
+- A section must be long enough for the setbacks at its two ends.
+  - the layout clamps a setback to half the section rather than let the two
+    pass each other (`docs/road-layout.md`) → clamped is refused
+- Any of these → the plan cannot be built.
 
 ## Tolerances
 
@@ -53,14 +107,12 @@ the grid pitch is fixed).
   - → a road across two roads 5 mm apart makes one junction cutting all
     three (6 sections), not two nodes side by side
   - The new section's own ends too: within 1 cm of a road → on it, and cut it.
-- **1 m: minimum road.** Any piece shorter than this is refused (it comes
-  from a click that just missed its target).
-  - Also applies to the whole section when it cuts nothing, or a stub in
-    open ground would stand.
-- **Between the two** → refused, not guessed. The edit stays in progress so
-  the user can click again.
-- Both are placeholders: once roads have width, junction spacing follows
-  from it.
+- Further apart than that → two places, and Clearance measures the junctions
+  they make against each other.
+- No minimum length of its own: a piece too short to carry the setbacks at
+  its ends is refused by Clearance.
+  - a short section standing on its own covers nothing twice, so nothing
+    here refuses it — a tool may.
 
 ## Splitting
 
@@ -75,10 +127,16 @@ the grid pitch is fixed).
 
 ## Relationship to other modules
 
-- In `src/core/network/`, above and outside `RoadNetwork`:
+- Crossings and splitting are in `src/core/network/`, above and outside
+  `RoadNetwork`:
   - a split edits several primitives (+1 node, +2 sections, −1 section)
   - the model stores, it doesn't decide
   - uses only the network's public API
+  - knows nothing of road width
+- Clearance is in `src/core/layout/`, above them: width and junctions live
+  there, and a layer imports only the ones before it.
+  - → a step of its own, between planning and applying; a tool calls the
+    three in turn
 - The geometry (`src/core/geometry/`) knows nothing about the network, just
   points and distances.
   Only the pair of shapes varies; where the result goes doesn't.
