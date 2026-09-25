@@ -249,8 +249,10 @@ as a road too short for the setbacks at its two ends.
 - [x] add more clearance rules for real-life practical limits:
         - max setback length to limit junction sizes (or max junction radius 25m)
         - min roadway length: 30m
-- [ ] preview from the speculative layout instead of the band: the junctions
+- [x] preview from the speculative layout instead of the band: the junctions
       and roadways the edit would really make
+- [ ] the parts a refusal is about: the road plan lists the node and section ids
+      taking part in a violation.
 
 ## Backlog
 

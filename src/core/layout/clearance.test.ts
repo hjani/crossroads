@@ -1,9 +1,11 @@
 import { assert, describe, expect, it } from "vitest";
 import { verifyClearance } from "./clearance";
 import { RoadLayout } from "./RoadLayout";
+import { speculateLayout } from "./speculation";
 import {
   applySectionPlan,
   planSection,
+  type BuildableSectionPlan,
   type SectionPlan,
 } from "../network/edits";
 import { RoadNetwork } from "../network/RoadNetwork";
@@ -14,21 +16,28 @@ function vec(x: number, z: number): Vec2 {
   return { x, z };
 }
 
-/** Clears a plan against the network's own layout, as a tool does. */
-function clear(network: RoadNetwork, plan: SectionPlan): SectionPlan {
-  return verifyClearance(network, new RoadLayout(network), plan);
+/** Whether a plan clears, against the network's own layout. */
+function check(network: RoadNetwork, plan: BuildableSectionPlan): boolean {
+  const speculation = speculateLayout(network, plan);
+  return verifyClearance(speculation, new RoadLayout(network));
 }
 
-/** Plans, clears and builds a straight section, as a tool does. */
+/** Whether a plan would be built: the network, then clearance. */
+function isBuildable(network: RoadNetwork, plan: SectionPlan): boolean {
+  return plan.buildable && check(network, plan);
+}
+
+/** Plans, checks and builds a straight section. */
 function build(network: RoadNetwork, from: Vec2, to: Vec2): void {
-  const plan = clear(network, planSection(network, from, to, STRAIGHT));
+  const plan = planSection(network, from, to, STRAIGHT);
   assert(plan.buildable);
+  assert(check(network, plan));
   applySectionPlan(network, plan);
 }
 
 /** Whether a straight section from `from` to `to` would be refused. */
 function isRefused(network: RoadNetwork, from: Vec2, to: Vec2): boolean {
-  return !clear(network, planSection(network, from, to, STRAIGHT)).buildable;
+  return !isBuildable(network, planSection(network, from, to, STRAIGHT));
 }
 
 /** Two parallel roads running north, `apart` meters apart. */
@@ -40,25 +49,18 @@ function twoRoads(apart: number): RoadNetwork {
 }
 
 describe("verifyClearance", () => {
-  it("passes a plan with room for every setback as it is", () => {
+  it("passes a plan with room for every setback", () => {
     const network = twoRoads(50);
     const plan = planSection(network, vec(-50, 0), vec(100, 0), STRAIGHT);
     assert(plan.buildable);
 
-    expect(clear(network, plan)).toBe(plan);
+    expect(check(network, plan)).toBe(true);
   });
 
   it("refuses a roadway shorter than the practical limit", () => {
     // Both crossings are square, so each sets the piece between them back
     // by w/2 = 4 m: 37 m apart leaves a 29 m roadway, 39 m apart 31 m.
-    const network = twoRoads(37);
-    const plan = planSection(network, vec(-50, 0), vec(87, 0), STRAIGHT);
-    assert(plan.buildable);
-
-    const cleared = clear(network, plan);
-
-    expect(cleared.buildable).toBe(false);
-    expect(cleared.pieces).toEqual(plan.pieces);
+    expect(isRefused(twoRoads(37), vec(-50, 0), vec(87, 0))).toBe(true);
     expect(isRefused(twoRoads(39), vec(-50, 0), vec(89, 0))).toBe(false);
   });
 
@@ -72,7 +74,7 @@ describe("verifyClearance", () => {
     const plan = planSection(network, short.from, vec(0, 50), STRAIGHT);
     assert(plan.buildable);
 
-    expect(clear(network, plan).buildable).toBe(false);
+    expect(check(network, plan)).toBe(false);
   });
 
   it("lets two junctions just touch", () => {
@@ -82,7 +84,7 @@ describe("verifyClearance", () => {
     const plan = planSection(network, vec(-8, 0), vec(-8, -40), STRAIGHT);
     assert(plan.buildable);
 
-    expect(clear(network, plan)).toBe(plan);
+    expect(check(network, plan)).toBe(true);
   });
 
   it("refuses two junctions whose circles overlap", () => {
@@ -148,7 +150,7 @@ describe("verifyClearance", () => {
     });
     assert(plan.buildable);
 
-    expect(clear(network, plan).buildable).toBe(false);
+    expect(check(network, plan)).toBe(false);
   });
 
   it("refuses an arc roadway bulging into a straight one", () => {
@@ -162,8 +164,8 @@ describe("verifyClearance", () => {
         via: vec(0, z),
       });
 
-    expect(clear(network, planBulgingTo(-7)).buildable).toBe(false);
-    expect(clear(network, planBulgingTo(-8.5)).buildable).toBe(true);
+    expect(isBuildable(network, planBulgingTo(-7))).toBe(false);
+    expect(isBuildable(network, planBulgingTo(-8.5))).toBe(true);
   });
 
   it("refuses two arc roadways bulging into each other", () => {
@@ -180,8 +182,8 @@ describe("verifyClearance", () => {
         via: vec(0, z),
       });
 
-    expect(clear(network, planBulgingTo(0)).buildable).toBe(false);
-    expect(clear(network, planBulgingTo(-1.5)).buildable).toBe(true);
+    expect(isBuildable(network, planBulgingTo(0))).toBe(false);
+    expect(isBuildable(network, planBulgingTo(-1.5))).toBe(true);
   });
 
   it("refuses a junction wider than the practical limit", () => {
@@ -198,22 +200,13 @@ describe("verifyClearance", () => {
     expect(isRefused(network, vec(0, 0), leavingAt(25))).toBe(false);
   });
 
-  it("hands back a refused plan as it is", () => {
-    const network = new RoadNetwork();
-    const corner = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT).from;
-    const plan = planSection(network, corner, vec(0, 0), STRAIGHT);
-    assert(!plan.buildable);
-
-    expect(clear(network, plan)).toBe(plan);
-  });
-
   it("leaves the real network as it was, and its plan still applicable", () => {
     const network = twoRoads(20);
     const version = network.version;
     const plan = planSection(network, vec(-20, 0), vec(40, 0), STRAIGHT);
     assert(plan.buildable);
 
-    clear(network, plan);
+    check(network, plan);
 
     expect(network.version).toBe(version);
     expect([...network.allSections()]).toHaveLength(2);

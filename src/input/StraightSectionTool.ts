@@ -1,10 +1,9 @@
 import * as THREE from "three";
 import {
-  applySectionPlan,
-  planSection,
-  type SectionPlan,
-} from "../core/network/edits";
-import { verifyClearance } from "../core/layout/clearance";
+  applyRoadPlan,
+  planRoad,
+  type RoadPlan,
+} from "../core/layout/roadPlan";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
@@ -92,7 +91,7 @@ export class StraightSectionTool implements Tool {
     const plan = this.planTo(ground, end);
     if (plan === null || !plan.buildable) return;
 
-    const far = applySectionPlan(this.network, plan);
+    const far = applyRoadPlan(this.network, plan);
 
     // The node at the far end is the network's now, so starting the next
     // section from it is what makes the two share it. Its position is asked
@@ -150,7 +149,7 @@ export class StraightSectionTool implements Tool {
       // The plan stands in for the placement mark: its last point is where
       // the click would land, and says more about it than "a click lands
       // here" does. Only what it would weld onto is hovered.
-      this.planView.showPlan(this.network, plan);
+      this.planView.showRoadPlan(this.network, plan);
       this.highlight.hide();
       showWeldTarget(this.hoverHighlight, placed);
       return;
@@ -180,8 +179,8 @@ export class StraightSectionTool implements Tool {
   }
 
   /**
-   * What the network makes of a section from the point in progress to
-   * `end`, or null where there is no section to ask about.
+   * What a road from the point in progress to `end` would do, or null where
+   * there is no section to ask about.
    *
    * Null three times over. Before the first click, there is nothing to
    * plan from. While the cursor has not left the start's pick radius, it
@@ -197,26 +196,24 @@ export class StraightSectionTool implements Tool {
    * wider than the pick radius, so this is the only one of the three that
    * catches a cursor still inside the cell it started in.
    *
-   * A plan that does come back may still be unbuildable, which is a
-   * different thing and the network's to say. Between them the two
-   * outcomes are the whole of what a click would do, so showing this
+   * A plan that does come back may still be unbuildable. Between them the
+   * two outcomes are the whole of what a click would do, so showing this
    * answer shows what the click does rather than an approximation of it.
    */
-  private planTo(ground: Vec2, end: Placement): SectionPlan | null {
+  private planTo(ground: Vec2, end: Placement): RoadPlan | null {
     if (this.pending === null) return null;
     if (withinPickRadius(this.viewport, ground, this.pending.position)) {
       return null;
     }
 
-    const plan = planSection(
+    const plan = planRoad(
       this.network,
+      this.layout,
       endpointFrom(this.pending),
       endpointFrom(end),
       STRAIGHT,
     );
-    return plan.pieces.length === 0
-      ? null
-      : verifyClearance(this.network, this.layout, plan);
+    return plan.sectionPlan.pieces.length === 0 ? null : plan;
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */

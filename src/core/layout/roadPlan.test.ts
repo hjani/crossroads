@@ -1,0 +1,37 @@
+import { describe, expect, it } from "vitest";
+import { planRoad, type RoadPlan } from "./roadPlan";
+import { RoadLayout } from "./RoadLayout";
+import { RoadNetwork } from "../network/RoadNetwork";
+
+/**
+ * Plans a lone arc turning ¾ of the way round a circle of radius `r` about
+ * the origin: 3πr/2 long, enough for the roadway length limit from 9 m up.
+ */
+function planArcOfRadius(r: number): RoadPlan {
+  const network = new RoadNetwork();
+  return planRoad(
+    network,
+    new RoadLayout(network),
+    { x: r, z: 0 },
+    { x: 0, z: -r },
+    { kind: "arc", via: { x: -r, z: 0 } },
+  );
+}
+
+describe("planRoad", () => {
+  it("refuses an arc too tight for any roadway before speculating", () => {
+    // w/2 = 4 m: no inner edge at all.
+    const plan = planArcOfRadius(4);
+
+    expect(plan.buildable).toBe(false);
+    expect(plan.speculation).toBeNull();
+  });
+
+  it("refuses an arc under the practical radius on its speculation", () => {
+    const plan = planArcOfRadius(9);
+
+    expect(plan.buildable).toBe(false);
+    expect(plan.speculation).not.toBeNull();
+    expect(planArcOfRadius(10).buildable).toBe(true);
+  });
+});

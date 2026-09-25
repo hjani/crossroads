@@ -1,11 +1,19 @@
 import * as THREE from "three";
-import type { PlannedPoint, SectionPlan } from "../core/network/edits";
+import type { Junction } from "../core/layout/junction";
+import type { Outline } from "../core/layout/outline";
+import type { RoadPlan } from "../core/layout/roadPlan";
+import type { Roadway } from "../core/layout/roadway";
+import type { LayoutSpeculation } from "../core/layout/speculation";
+import { pointsOf, type SectionPlan } from "../core/network/edits";
 import { positionOf } from "../core/network/queries";
 import { isNodeId, type RoadNetwork } from "../core/network/RoadNetwork";
 import { PLANNING_OPACITY, STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import { polylineBetween, tessellateRibbon } from "./tessellate";
-import type { Vec2 } from "../core/geometry/point";
+import {
+  polylineBetween,
+  tessellateOutline,
+  tessellateRibbon,
+} from "./tessellate";
 
 /** Nothing is drawn under a new node yet, so its mark is the whole of what
  * is seen there. An existing node needs a wider one, to show around it. */
@@ -80,71 +88,23 @@ export class SectionPlanView {
     this.sceneObject.visible = false;
   }
 
-  /** Draws the plan, and makes it visible if it was not. */
-  showPlan(network: RoadNetwork, plan: SectionPlan): void {
-    const surfaceCoordinates: number[] = [];
-    const centerlineCoordinates: number[] = [];
-    const newNodeCoordinates: number[] = [];
-    const existingNodeCoordinates: number[] = [];
-
-    // A point naming a node is one the network already has; one carrying a
-    // position is a node the edit would make there.
-    const mark = (point: PlannedPoint, position: Vec2): void => {
-      const marks = isNodeId(point.at)
-        ? existingNodeCoordinates
-        : newNodeCoordinates;
-      marks.push(position.x, LAYER.NODE_DECORATION, position.z);
-    };
-
-    let previous = positionOf(network, plan.start.at);
-    centerlineCoordinates.push(
-      previous.x,
-      LAYER.SECTION_DECORATION,
-      previous.z,
-    );
-    mark(plan.start, previous);
-
-    for (const piece of plan.pieces) {
-      const position = positionOf(network, piece.to.at);
-
-      // Each piece is drawn in the shape it runs in, so a planned curve is a
-      // curve. Its first position is the one already written for the point
-      // before it, and writing it twice would leave the line doubling back
-      // on nothing.
-      const along = polylineBetween(
-        previous,
-        position,
-        piece.centerlineGeometry,
-      );
-      for (const step of along.slice(1)) {
-        centerlineCoordinates.push(step.x, LAYER.SECTION_DECORATION, step.z);
-      }
-
-      // The road surface as a ribbon.
-      if (this.roadWidth > 0) {
-        for (const corner of tessellateRibbon(
-          previous,
-          position,
-          piece.centerlineGeometry,
-          this.roadWidth,
-        )) {
-          surfaceCoordinates.push(corner.x, LAYER.SURFACE_DECORATION, corner.z);
-        }
-      }
-
-      mark(piece.to, position);
-      previous = position;
+  /**
+   * Draws a road plan.
+   *
+   * Nodes and centerline are always shown. If a speculative layout is available,
+   * the real affected roadways and junctions are drawn. Otherwise, just a generic
+   * band along the centerline of the plan's linegeometry.
+   */
+  showRoadPlan(network: RoadNetwork, plan: RoadPlan): void {
+    const { sectionPlan, speculation } = plan;
+    const color = plan.buildable ? STATE_COLOR.PLANNED : STATE_COLOR.REFUSED;
+    this.showMarks(network, sectionPlan, color);
+    this.showCenterline(network, sectionPlan, color);
+    if (speculation === null) {
+      this.showPlanBand(network, sectionPlan, color);
+    } else {
+      this.showLayoutSurface(speculation, color);
     }
-
-    const verdict = plan.buildable ? STATE_COLOR.PLANNED : STATE_COLOR.REFUSED;
-    this.roadSurface.material.color.setHex(verdict);
-    this.centerline.material.color.setHex(verdict);
-    this.newNodes.material.color.setHex(verdict);
-
-    replaceGeometry(this.roadSurface, surfaceCoordinates);
-    replaceGeometry(this.centerline, centerlineCoordinates);
-    replaceGeometry(this.newNodes, newNodeCoordinates);
-    replaceGeometry(this.existingNodes, existingNodeCoordinates);
     this.sceneObject.visible = true;
   }
 
@@ -162,6 +122,129 @@ export class SectionPlanView {
     this.newNodes.material.dispose();
     this.existingNodes.geometry.dispose();
     this.existingNodes.material.dispose();
+  }
+
+  /**
+   * A mark on every node the plan would make, in `color`, and on every node
+   * already there that it would meet.
+   */
+  private showMarks(
+    network: RoadNetwork,
+    plan: SectionPlan,
+    color: number,
+  ): void {
+    const newNodeCoordinates: number[] = [];
+    const existingNodeCoordinates: number[] = [];
+    for (const point of pointsOf(plan)) {
+      const marks = isNodeId(point.at)
+        ? existingNodeCoordinates
+        : newNodeCoordinates;
+      const position = positionOf(network, point.at);
+      marks.push(position.x, LAYER.NODE_DECORATION, position.z);
+    }
+
+    this.newNodes.material.color.setHex(color);
+    replaceGeometry(this.newNodes, newNodeCoordinates);
+    replaceGeometry(this.existingNodes, existingNodeCoordinates);
+  }
+
+  /** The centerline, each piece in the shape it runs in. */
+  private showCenterline(
+    network: RoadNetwork,
+    plan: SectionPlan,
+    color: number,
+  ): void {
+    let previous = positionOf(network, plan.start.at);
+    const coordinates = [previous.x, LAYER.SECTION_DECORATION, previous.z];
+    for (const piece of plan.pieces) {
+      const position = positionOf(network, piece.to.at);
+      // Its first position is the one already written for the point before
+      // it, and writing it twice would leave the line doubling back on
+      // nothing.
+      const along = polylineBetween(
+        previous,
+        position,
+        piece.centerlineGeometry,
+      );
+      for (const step of along.slice(1)) {
+        coordinates.push(step.x, LAYER.SECTION_DECORATION, step.z);
+      }
+      previous = position;
+    }
+
+    this.centerline.material.color.setHex(color);
+    replaceGeometry(this.centerline, coordinates);
+  }
+
+  /** The road surface as a band `roadWidth` wide along the centerline. */
+  private showPlanBand(
+    network: RoadNetwork,
+    plan: SectionPlan,
+    color: number,
+  ): void {
+    const coordinates: number[] = [];
+    if (this.roadWidth > 0) {
+      let previous = positionOf(network, plan.start.at);
+      for (const piece of plan.pieces) {
+        const position = positionOf(network, piece.to.at);
+        for (const corner of tessellateRibbon(
+          previous,
+          position,
+          piece.centerlineGeometry,
+          this.roadWidth,
+        )) {
+          coordinates.push(corner.x, LAYER.SURFACE_DECORATION, corner.z);
+        }
+        previous = position;
+      }
+    }
+
+    this.roadSurface.material.color.setHex(color);
+    replaceGeometry(this.roadSurface, coordinates);
+  }
+
+  /** The road surface as the junctions and roadways the edit changes. */
+  private showLayoutSurface(
+    speculation: LayoutSpeculation,
+    color: number,
+  ): void {
+    const coordinates: number[] = [];
+    if (this.roadWidth > 0) {
+      const { speculativeLayout } = speculation;
+      for (const id of speculation.changedSections) {
+        appendRoadwaySurface(speculativeLayout.roadwayAlong(id), coordinates);
+      }
+      for (const id of speculation.changedNodes) {
+        appendJunctionSurface(speculativeLayout.junctionAt(id), coordinates);
+      }
+    }
+
+    this.roadSurface.material.color.setHex(color);
+    replaceGeometry(this.roadSurface, coordinates);
+  }
+}
+
+/**
+ * Appends the triangles filling a roadway. None where its length is
+ * negative (setbacks overlapping): nothing to fill, as in `RoadSurfaceView`.
+ */
+function appendRoadwaySurface(roadway: Roadway, coordinates: number[]): void {
+  if (roadway.length >= 0) {
+    appendOutline(roadway.outline, coordinates);
+  }
+}
+
+/** Appends the triangles filling a junction. */
+function appendJunctionSurface(
+  junction: Junction,
+  coordinates: number[],
+): void {
+  appendOutline(junction.outline(), coordinates);
+}
+
+function appendOutline(outline: Outline, coordinates: number[]): void {
+  for (const point of tessellateOutline(outline)) {
+    coordinates.push(point.x, LAYER.SURFACE_DECORATION, point.z);
   }
 }
 

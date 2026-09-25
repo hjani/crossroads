@@ -3,12 +3,13 @@ import {
   nearestPointOnLine,
 } from "../geometry/lineGeometry";
 import { distance, SAME_POINT_METERS } from "../geometry/point";
-import { applySectionPlan, type SectionPlan } from "../network/edits";
+import { sectionRadius } from "../network/queries";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, Section, SectionId } from "../network/types";
 import type { Junction } from "./junction";
-import { RoadLayout } from "./RoadLayout";
+import type { RoadLayout } from "./RoadLayout";
 import type { Roadway } from "./roadway";
+import type { LayoutSpeculation } from "./speculation";
 
 /**
  * How far two parts may overlap, in meters: room for rounding, so two
@@ -25,70 +26,70 @@ const MAX_JUNCTION_RADIUS_METERS = 25;
 /** The shortest a roadway may be, in meters: a practical limit. */
 const MIN_ROADWAY_LENGTH_METERS = 30;
 
+/** The tightest a roadway may curve, in meters: a practical limit. */
+const MIN_ROADWAY_RADIUS_METERS = 10;
+
 /**
- * The clearing step (`docs/intersections.md`): whether the ground a plan
- * would cover is clear, measured on the speculative network.
+ * The clearing step (`docs/intersections.md`): whether every changed part
+ * of a speculation keeps clear of every other, and within the practical
+ * limits.
  *
- * `layout` is `network`'s own, live layout: the parts the plan doesn't
- * change are read from it rather than worked out again.
- *
- * Hands back the same plan, refused where it isn't clear. A plan refused
- * already comes back as it is: it can't be applied, so there is nothing to
- * measure.
+ * `liveLayout` is the layout of the network the speculation was made from:
+ * the parts the plan doesn't change are read from it rather than worked out
+ * again.
  */
 export function verifyClearance(
-  network: RoadNetwork,
-  layout: RoadLayout,
-  plan: SectionPlan,
-): SectionPlan {
-  if (!plan.buildable) {
-    return plan;
-  }
+  speculation: LayoutSpeculation,
+  liveLayout: RoadLayout,
+): boolean {
+  const {
+    speculativeNetwork,
+    speculativeLayout,
+    changedNodes,
+    changedSections,
+  } = speculation;
 
-  const speculative = network.clone();
-  applySectionPlan(speculative, plan);
-  const speculativeLayout = new RoadLayout(speculative);
-
-  const nodes = affectedNodes(network, speculative);
-  const sections = affectedSections(speculative, nodes);
-  for (const id of sections) {
-    // This also rejects roadways with negative length (due to large setbacks)
-    if (speculativeLayout.roadwayAlong(id).length < MIN_ROADWAY_LENGTH_METERS) {
-      return { ...plan, buildable: false };
+  for (const id of changedSections) {
+    // Read off the section, not its roadway: a roadway runs on its
+    // section's circle.
+    const section = speculativeNetwork.getSection(id);
+    const radius = sectionRadius(speculativeNetwork, section);
+    if (radius !== null && radius < MIN_ROADWAY_RADIUS_METERS) {
+      return false;
     }
   }
-  for (const id of nodes) {
+  for (const id of changedSections) {
+    // This also rejects roadways with negative length (due to large setbacks)
+    if (speculativeLayout.roadwayAlong(id).length < MIN_ROADWAY_LENGTH_METERS) {
+      return false;
+    }
+  }
+  for (const id of changedNodes) {
     const radius = speculativeLayout.junctionAt(id).boundingRadius();
     if (radius > MAX_JUNCTION_RADIUS_METERS) {
-      return { ...plan, buildable: false };
+      return false;
     }
   }
   const junctionAt = (node: NodeId): Junction =>
-    nodes.has(node)
+    changedNodes.has(node)
       ? speculativeLayout.junctionAt(node)
-      : layout.junctionAt(node);
-  if (junctionsOverlap(speculative, junctionAt, nodes)) {
-    return { ...plan, buildable: false };
+      : liveLayout.junctionAt(node);
+  if (junctionsOverlap(speculativeNetwork, junctionAt, changedNodes)) {
+    return false;
   }
   const roadwayAlong = (section: SectionId): Roadway =>
-    sections.has(section)
+    changedSections.has(section)
       ? speculativeLayout.roadwayAlong(section)
-      : layout.roadwayAlong(section);
-  if (
-    roadwaysRunIntoJunctions(
-      speculative,
+      : liveLayout.roadwayAlong(section);
+  return (
+    !roadwaysRunIntoJunctions(
+      speculativeNetwork,
       junctionAt,
       roadwayAlong,
-      nodes,
-      sections,
-    )
-  ) {
-    return { ...plan, buildable: false };
-  }
-  if (roadwaysOverlap(speculative, roadwayAlong, sections)) {
-    return { ...plan, buildable: false };
-  }
-  return plan;
+      changedNodes,
+      changedSections,
+    ) && !roadwaysOverlap(speculativeNetwork, roadwayAlong, changedSections)
+  );
 }
 
 /**
@@ -96,16 +97,16 @@ export function verifyClearance(
  * pair is tested once, even where both are changed.
  */
 function junctionsOverlap(
-  speculative: RoadNetwork,
+  speculativeNetwork: RoadNetwork,
   junctionAt: (node: NodeId) => Junction,
   changed: ReadonlySet<NodeId>,
 ): boolean {
   const tested = new Set<NodeId>();
   for (const id of changed) {
     tested.add(id);
-    const position = speculative.getNode(id).position;
+    const position = speculativeNetwork.getNode(id).position;
     const radius = junctionAt(id).boundingRadius();
-    for (const other of speculative.allNodes()) {
+    for (const other of speculativeNetwork.allNodes()) {
       if (tested.has(other.id)) {
         continue;
       }
@@ -129,7 +130,7 @@ function junctionsOverlap(
  * - every changed roadway × every unchanged junction not at its ends
  */
 function roadwaysRunIntoJunctions(
-  speculative: RoadNetwork,
+  speculativeNetwork: RoadNetwork,
   junctionAt: (node: NodeId) => Junction,
   roadwayAlong: (section: SectionId) => Roadway,
   changedNodes: ReadonlySet<NodeId>,
@@ -141,15 +142,15 @@ function roadwaysRunIntoJunctions(
     roadwayRunsInto(roadwayAlong(section.id), junctionAt(node));
 
   for (const node of changedNodes) {
-    for (const section of speculative.allSections()) {
+    for (const section of speculativeNetwork.allSections()) {
       if (runsInto(section, node)) {
         return true;
       }
     }
   }
   for (const id of changedSections) {
-    const section = speculative.getSection(id);
-    for (const node of speculative.allNodes()) {
+    const section = speculativeNetwork.getSection(id);
+    for (const node of speculativeNetwork.allNodes()) {
       if (!changedNodes.has(node.id) && runsInto(section, node.id)) {
         return true;
       }
@@ -185,15 +186,15 @@ function roadwayRunsInto(roadway: Roadway, junction: Junction): boolean {
  * Each pair is tested once, even where both are changed.
  */
 function roadwaysOverlap(
-  speculative: RoadNetwork,
+  speculativeNetwork: RoadNetwork,
   roadwayAlong: (section: SectionId) => Roadway,
   changed: ReadonlySet<SectionId>,
 ): boolean {
   const tested = new Set<SectionId>();
   for (const id of changed) {
     tested.add(id);
-    const section = speculative.getSection(id);
-    for (const other of speculative.allSections()) {
+    const section = speculativeNetwork.getSection(id);
+    for (const other of speculativeNetwork.allSections()) {
       if (
         !tested.has(other.id) &&
         !shareNode(section, other) &&
@@ -229,41 +230,4 @@ function shareNode(a: Section, b: Section): boolean {
   return (
     a.from === b.from || a.from === b.to || a.to === b.from || a.to === b.to
   );
-}
-
-/**
- * The ends of every section the real network doesn't have: the plan's own
- * pieces and the pieces of what it cut → the plan's points and the far ends
- * of the cut sections. Their junctions are the ones the edit changed.
- */
-function affectedNodes(
-  real: RoadNetwork,
-  speculative: RoadNetwork,
-): Set<NodeId> {
-  const existing = new Set(Array.from(real.allSections(), (s) => s.id));
-  const nodes = new Set<NodeId>();
-  for (const section of speculative.allSections()) {
-    if (!existing.has(section.id)) {
-      nodes.add(section.from);
-      nodes.add(section.to);
-    }
-  }
-  return nodes;
-}
-
-/**
- * Every section meeting one of the nodes. Their roadways are the ones the
- * edit changed.
- */
-function affectedSections(
-  speculative: RoadNetwork,
-  nodes: ReadonlySet<NodeId>,
-): Set<SectionId> {
-  const sections = new Set<SectionId>();
-  for (const node of nodes) {
-    for (const section of speculative.sectionsAt(node)) {
-      sections.add(section);
-    }
-  }
-  return sections;
 }

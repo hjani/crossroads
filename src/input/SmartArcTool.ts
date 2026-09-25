@@ -7,13 +7,12 @@ import {
   nearestDirection,
   perpendicularDirectionsAt,
 } from "../core/network/directions";
-import {
-  applySectionPlan,
-  planSection,
-  type SectionPlan,
-} from "../core/network/edits";
 import { angleOf, distance, type Vec2 } from "../core/geometry/point";
-import { verifyClearance } from "../core/layout/clearance";
+import {
+  applyRoadPlan,
+  planRoad,
+  type RoadPlan,
+} from "../core/layout/roadPlan";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
@@ -27,7 +26,6 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { isTooTight } from "./curveLimits";
 import { showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
@@ -142,7 +140,7 @@ export class SmartArcTool implements Tool {
     const plan = this.plansTo(this.start, placed, [flicked]).at(0);
     if (plan === undefined || !plan.buildable) return;
 
-    const far = applySectionPlan(this.network, plan);
+    const far = applyRoadPlan(this.network, plan);
 
     // The far end starts the next arc, as in `StraightSectionTool`. Its position
     // is asked for rather than assumed: the click may have landed on a junction
@@ -293,51 +291,37 @@ export class SmartArcTool implements Tool {
    * A direction is left out where it gives no road worth drawing: one turning
    * further round than `MAX_SWEEP_RADIANS`, or one whose plan has no piece
    * because the end resolved onto the start's own place. A plan that does come
-   * back may still be unbuildable: the network's to say, or the tool's own
-   * where the arc curves too tightly.
+   * back may still be unbuildable.
    */
   private plansTo(
     start: Placement,
     end: Placement,
     directions: readonly Vec2[],
-  ): SectionPlan[] {
-    const plans: SectionPlan[] = [];
+  ): RoadPlan[] {
+    const from = endpointFrom(start);
+    const to = endpointFrom(end);
+    const plans: RoadPlan[] = [];
     for (const direction of directions) {
       if (!turnsWithinLimit(start.position, direction, end.position)) continue;
 
       const geometry = geometryLeaving(start.position, direction, end.position);
       if (geometry === null) continue;
 
-      const plan = planSection(
-        this.network,
-        endpointFrom(start),
-        endpointFrom(end),
-        geometry,
-      );
-      if (plan.pieces.length === 0) continue;
-
-      const tooTight = isTooTight(
-        start.position,
-        end.position,
-        geometry,
-        ROAD_WIDTH_METERS,
-      );
-      plans.push(
-        tooTight
-          ? { ...plan, buildable: false }
-          : verifyClearance(this.network, this.layout, plan),
-      );
+      const roadPlan = planRoad(this.network, this.layout, from, to, geometry);
+      if (roadPlan.sectionPlan.pieces.length > 0) {
+        plans.push(roadPlan);
+      }
     }
     return plans;
   }
 
   /** Draws each plan, and hides the views left over. */
   private showPlans(
-    flicked: SectionPlan | null,
-    candidates: readonly SectionPlan[],
+    flicked: RoadPlan | null,
+    candidates: readonly RoadPlan[],
   ): void {
     if (flicked !== null) {
-      this.planView.showPlan(this.network, flicked);
+      this.planView.showRoadPlan(this.network, flicked);
     } else {
       this.planView.hide();
     }
@@ -350,7 +334,7 @@ export class SmartArcTool implements Tool {
 
     this.candidateViews.forEach((view, index) => {
       if (index < candidates.length) {
-        view.showPlan(this.network, candidates[index]);
+        view.showRoadPlan(this.network, candidates[index]);
       } else {
         view.hide();
       }

@@ -1,11 +1,10 @@
 import * as THREE from "three";
-import {
-  applySectionPlan,
-  planSection,
-  type SectionPlan,
-} from "../core/network/edits";
 import { isSamePoint, type Vec2 } from "../core/geometry/point";
-import { verifyClearance } from "../core/layout/clearance";
+import {
+  applyRoadPlan,
+  planRoad,
+  type RoadPlan,
+} from "../core/layout/roadPlan";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
@@ -20,7 +19,6 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { isTooTight } from "./curveLimits";
 import { showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
@@ -114,7 +112,7 @@ export class ArcSectionTool implements Tool {
     );
     if (plan === null || !plan.buildable) return;
 
-    const far = applySectionPlan(this.network, plan);
+    const far = applyRoadPlan(this.network, plan);
 
     // The node at the far end is the network's now, so starting the next
     // arc from it is what makes the two share it. Its position is asked for
@@ -166,7 +164,7 @@ export class ArcSectionTool implements Tool {
     const useGrid = !modifiers.ctrl;
     if (this.start !== null && this.end !== null) {
       const plan = this.planThrough(placeControlPoint(ground, { useGrid }));
-      if (plan !== null) this.planView.showPlan(this.network, plan);
+      if (plan !== null) this.planView.showRoadPlan(this.network, plan);
       return;
     }
 
@@ -231,37 +229,25 @@ export class ArcSectionTool implements Tool {
   }
 
   /**
-   * What the network makes of an arc between the two ends through `via`, or
-   * null where there is no section to ask about — before both ends are
-   * placed, or where they resolved to the same place.
+   * What an arc between the two ends through `via` would do, or null where
+   * there is no section to ask about — before both ends are placed, or where
+   * they resolved to the same place.
    *
-   * A plan that does come back may still be unbuildable, which is the
-   * network's to say. Three points in a line are the common one, and are
-   * what the control point drags through crossing from side to side. It is
-   * also unbuildable where the arc curves too tightly, which is the tool's
-   * own limit.
+   * A plan that does come back may still be unbuildable. Three points in a
+   * line are the common one, and are what the control point drags through
+   * crossing from side to side.
    */
-  private planThrough(via: Vec2): SectionPlan | null {
+  private planThrough(via: Vec2): RoadPlan | null {
     if (this.start === null || this.end === null) return null;
 
-    const geometry = { kind: "arc", via } as const;
-    const plan = planSection(
+    const plan = planRoad(
       this.network,
+      this.layout,
       endpointFrom(this.start),
       endpointFrom(this.end),
-      geometry,
+      { kind: "arc", via },
     );
-    if (plan.pieces.length === 0) return null;
-
-    const tooTight = isTooTight(
-      this.start.position,
-      this.end.position,
-      geometry,
-      ROAD_WIDTH_METERS,
-    );
-    return tooTight
-      ? { ...plan, buildable: false }
-      : verifyClearance(this.network, this.layout, plan);
+    return plan.sectionPlan.pieces.length === 0 ? null : plan;
   }
 
   /** Releases the decoration's GPU buffers. The tool is unusable after. */

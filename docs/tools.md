@@ -38,9 +38,12 @@
 - The preview draws the answer the commit will act on, not where the cursor
   is. The tool asks the same question, of the same call, one move earlier,
   and draws:
-  - the road it would run
-  - every junction it would create
-  - every existing node it would meet
+  - the road it would run: the junctions and roadways the edit would make,
+    laid out on the speculative network (`docs/intersections.md`)
+    - a plan refused before speculating has none → a band `w` wide
+      along its centerline instead
+
+  - a mark on every existing node it would meet
   - whether the whole of it can be built
   - → what is shown and what a click does can't disagree, and a refused
     edit says so instead of leaving the click silent.
@@ -130,18 +133,9 @@ cross.**
 
 - Nothing is built; the edit stays in progress so the click can be made
   again somewhere it works.
-- Unlike the tool's own refusal, there is a plan behind it, describing the
-  section asked for → the preview shows what was refused, not only that
-  something was.
-
-**The tool's own: an arc tighter than `max(10 m, w/2)`.**
-
-- `w` is the road's width: under `w/2` the arc has no inner edge. 10 m is a global practical limit regardless of road width.
-- Measured on the whole section as asked for, before any cut.
-- The network builds any arc → the limit is the tools', like the smart
-  arc's ¾ turn.
-- Planned anyway and shown refused, like a refusal from the network: the
-  user aimed at it, so it is shown turned down, not hidden.
+- The preview draws the junctions and roadways that were refused, in the
+  refused color.
+  - Unlike the tool's own refusal above, there is a plan to draw.
 
 None of this reaches the model: it still receives exact positions and ids
 of existing nodes, and decides nothing about either.

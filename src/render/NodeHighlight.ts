@@ -46,6 +46,9 @@ export class NodeHighlight {
   show(position: Vec2, color: number): void {
     this.positions.setXYZ(0, position.x, LAYER.NODE_DECORATION, position.z);
     this.positions.needsUpdate = true;
+    // editing the buffer doesn't recompute the bounding sphere, so frustrum
+    // culling could cull it incorrectly:
+    this.sceneObject.geometry.computeBoundingSphere();
     this.sceneObject.material.color.setHex(color);
     this.sceneObject.visible = true;
   }

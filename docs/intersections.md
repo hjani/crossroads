@@ -27,22 +27,28 @@ Two sections' centerlines meeting at a point they don't already share.
   meeting do not cross there.
   - → width never makes a junction, it only refuses.
 
-## Plan, clear, then apply
+## Plan, speculate, clear, then apply
 
 - Checked only when a section is added, since nothing else can create a
   crossing. No pass over the whole network.
-- Three steps:
+- Four steps:
   1. **Plan**: a standalone value saying which sections are cut, where the
      junctions land, and whether it can be built. Knows nothing of road
      width, and doesn't touch the network.
-  2. **Clear**: measures the ground the plan would cover, and hands back the
-     same plan, refused or not. Reads a finished plan and decides nothing
-     else about it.
-  3. **Apply**: carries out the plan and decides nothing new.
-- The first two sit in different layers, since width belongs to the layout
-  (`docs/road-layout.md`) and crossings do not.
-  - → "can be built" is still one answer on the plan, not two a caller has
-    to remember to ask
+  2. **Speculate**: lays out the network as the plan would leave it (see
+     The speculative network).
+  3. **Clear**: decides whether the plan can be built, given the ground it
+     would cover. Leaves the plan itself as it is: which sections are cut,
+     where the junctions land.
+  4. **Apply**: carries out the plan and decides nothing new.
+- Planning sits in the network layer; speculating and clearing in the
+  layout layer, since width belongs to the layout (`docs/road-layout.md`)
+  and crossings do not.
+- The layout layer runs the first three and hands back one **road plan**:
+  the section plan, whether it can be built, and the speculation it was
+  cleared on.
+- A geometry that allows no roadway is refused before speculating.
+  - e.g. an arc of radius `≤ w/2`: its inner edge doesn't exist
 - A plan can be made without applying it → a tool can preview a section
   while it is still being dragged, and what lands is exactly what was shown.
 - A plan is valid only for the network it was made on. Applying it after
@@ -62,8 +68,8 @@ Two sections' centerlines meeting at a point they don't already share.
 - Clearance is measured on its layout, never on the network as it stands.
 - Built by applying the plan, not by working out what it would do → measured
   by the rules that will really run, rather than by a second guess at them.
-- Belongs to the clearing step, and is discarded with it.
-  - → nothing outside that step can access it in any way
+- Built once per plan, and discarded with it. Read by the clearing step and
+  by the tool's preview.
 - Only the parts the edit changes are laid out there. The rest is the same in
   both networks, and is read from the layout already at hand.
 - What an edit changes:
@@ -110,6 +116,7 @@ same step, on the same changed parts.
 
 - A junction's bounding circle: `R ≤ 25 m`.
 - A roadway: length ≥ 30 m.
+- A curved roadway: radius ≥ 10 m.
 - Parts the edit doesn't change are not measured again.
 - Any of these → the plan cannot be built.
 
@@ -148,10 +155,9 @@ the grid pitch is fixed).
   - the model stores, it doesn't decide
   - uses only the network's public API
   - knows nothing of road width
-- Clearance is in `src/core/layout/`, above them: width and junctions live
-  there, and a layer imports only the ones before it.
-  - → a step of its own, between planning and applying; a tool calls the
-    three in turn
+- Speculating and clearance are in `src/core/layout/`.
+  - → a tool asks the layout layer for a road plan, if the road plan is
+    buildable, applies the section plan of it
 - The geometry (`src/core/geometry/`) knows nothing about the network, just
   points and distances.
   Only the pair of shapes varies; where the result goes doesn't.
