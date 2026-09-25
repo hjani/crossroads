@@ -5,7 +5,8 @@
 - When a section is added: find where it crosses existing sections, split
   both, join them at a shared node.
 - Whether it can be built at all: roads cover ground, so the junctions and
-  roadways the edit would leave must not overlap.
+  roadways the edit would leave must not overlap, and must stay within
+  practical limits.
 - Out of scope: how a junction looks, how traffic moves through it. A
   junction is an ordinary node, drawn like any other.
 
@@ -100,11 +101,16 @@ road.
     already say how
   - two roadways at a gap `ψ` end `w·cos(ψ/2)` apart → always under `w`,
     approaching it as the gap closes
-- A section must be long enough for the setbacks at its two ends: its
-  roadway's length ≥ 0, within 1 cm.
-  - zero is allowed: the two junctions touch along one cut, with no overlap
-  - already follows from the two junctions' circles being clear, and kept
-    as the exact check: length ≥ chord ≥ `R₁ + R₂` ≥ `s₁ + s₂`
+- Any of these → the plan cannot be built.
+
+## Practical limits
+
+Layouts that don't overlap but no real road would have. Measured in the
+same step, on the same changed parts.
+
+- A junction's bounding circle: `R ≤ 25 m`.
+- A roadway: length ≥ 30 m.
+- Parts the edit doesn't change are not measured again.
 - Any of these → the plan cannot be built.
 
 ## Tolerances
@@ -121,8 +127,7 @@ the grid pitch is fixed).
   - The new section's own ends too: within 1 cm of a road → on it, and cut it.
 - Further apart than that → two places, and Clearance measures the junctions
   they make against each other.
-- No minimum length of its own, but a short piece whose junctions come too
-  close is refused by Clearance.
+- No minimum length here: Practical limits sets one, on the roadway.
 
 ## Splitting
 

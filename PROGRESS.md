@@ -246,6 +246,9 @@ as a road too short for the setbacks at its two ends.
 - [x] two roadways may not overlap: centerlines at least `w` apart, straight
       or curved — segment–segment, segment–arc, arc–arc (core geometry, with
       tests)
+- [x] add more clearance rules for real-life practical limits:
+        - max setback length to limit junction sizes (or max junction radius 25m)
+        - min roadway length: 30m
 - [ ] preview from the speculative layout instead of the band: the junctions
       and roadways the edit would really make
 
@@ -285,9 +288,6 @@ Wanted, but not part of a milestone yet.
       exact one, with the boxes cached per part in `RoadLayout`
 - [ ] a refusal reason on `UnbuildableSectionPlan`, so a preview can say what
       the section conflicts with
-- [ ] add more clearance rules for real-life practical limits:
-        - max setback length to limit junction sizes (or max junction radius)
-        - min roadway length
 
 ## Deferred, probably to be dropped
 

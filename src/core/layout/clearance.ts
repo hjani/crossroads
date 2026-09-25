@@ -17,6 +17,15 @@ import type { Roadway } from "./roadway";
 const OVERLAP_TOLERANCE_METERS = SAME_POINT_METERS;
 
 /**
+ * The widest a junction's bounding circle may be, in meters: a practical
+ * limit.
+ */
+const MAX_JUNCTION_RADIUS_METERS = 25;
+
+/** The shortest a roadway may be, in meters: a practical limit. */
+const MIN_ROADWAY_LENGTH_METERS = 30;
+
+/**
  * The clearing step (`docs/intersections.md`): whether the ground a plan
  * would cover is clear, measured on the speculative network.
  *
@@ -43,8 +52,14 @@ export function verifyClearance(
   const nodes = affectedNodes(network, speculative);
   const sections = affectedSections(speculative, nodes);
   for (const id of sections) {
-    // Negative where the setbacks at its two ends overlap.
-    if (speculativeLayout.roadwayAlong(id).length < -OVERLAP_TOLERANCE_METERS) {
+    // This also rejects roadways with negative length (due to large setbacks)
+    if (speculativeLayout.roadwayAlong(id).length < MIN_ROADWAY_LENGTH_METERS) {
+      return { ...plan, buildable: false };
+    }
+  }
+  for (const id of nodes) {
+    const radius = speculativeLayout.junctionAt(id).boundingRadius();
+    if (radius > MAX_JUNCTION_RADIUS_METERS) {
       return { ...plan, buildable: false };
     }
   }
