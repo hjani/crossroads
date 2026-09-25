@@ -494,6 +494,20 @@ describe("arcArcCrossings", () => {
     );
   });
 
+  it("has nothing to report for two arcs of one circle, despite rounding", () => {
+    // 0°–90° and 30°–120° of one circle, overlapping over 60°. Each arc gets
+    // its circle from its own three points, so the centers end up 1e-12
+    // apart rather than equal. Once taken for a crossing inside the overlap.
+    const a0 = vec(137.1425762529512, 58.49899303449528);
+    const a1 = vec(38.37500004590981, 89.90371284717796);
+    const a2 = vec(-53.670713192259626, 42.27098029063139);
+    const b0 = vec(73.68725473005999, 88.27617477946933);
+    const b1 = vec(-27.55033524179464, 66.08967183246435);
+    const b2 = vec(-83.44789493723376, -21.184341232259893);
+
+    expect(arcArcCrossings(a0, a2, a1, b0, b2, b1)).toEqual([]);
+  });
+
   it("crosses a via in line with the ends as a straight would", () => {
     // The first arc is really a line across the middle of the second.
     const crossings = arcArcCrossings(

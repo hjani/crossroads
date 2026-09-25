@@ -606,6 +606,13 @@ export function nearestPointsBetweenArcs(
 }
 
 /**
+ * How far apart two centers may be, as a fraction of the larger radius,
+ * and still be the same center: far above rounding noise, far below any
+ * two circles drawn apart on purpose.
+ */
+const SAME_CENTER_RATIO = 1e-9;
+
+/**
  * Where circle `a` meets circle `b`. Up to two, in no particular order.
  *
  * Let `cA, rA` and `cB, rB` be the two circles, `w = cB − cA`, `D = |w|`.
@@ -626,8 +633,18 @@ export function nearestPointsBetweenArcs(
  *       point = cA + x·w/D ± y·n         (foot ± step)
  *
  * Returns none when:
- * - `D = 0`: same center. Different radii never meet, and the same circle
- *   has no single meeting points. The zero check only guards the division.
+ * - same center: different radii never meet, and the same circle has no
+ *   single meeting points. Counted as
+ *
+ *       D ≤ ε·max(rA, rB)
+ *
+ *   - relative, not `D = 0`: two arcs of one circle each get their circle
+ *     from their own three points, so their centers end a rounding apart.
+ *     With `rA ≈ rB`, `x ≈ D/2` and `y ≈ rA`: two real points on the
+ *     circle, in a direction the rounding picked
+ *   - relative to the radii → the same answer at any scale
+ *   - never loses a real meeting: circles meet only where
+ *     `|rA − rB| ≤ D`, so centers this close meet only as one circle
  * - `rA² − x² < 0`: the circles are too far apart, or one is inside the
  *   other.
  *
@@ -641,8 +658,7 @@ export function circleCircleCrossings(a: ArcCircle, b: ArcCircle): Vec2[] {
   const betweenZ = centerB.z - centerA.z;
   const between = Math.hypot(betweenX, betweenZ);
 
-  // Same center.
-  if (between === 0) {
+  if (between <= SAME_CENTER_RATIO * Math.max(radiusA, radiusB)) {
     return [];
   }
 

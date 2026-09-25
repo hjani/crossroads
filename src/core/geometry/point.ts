@@ -48,6 +48,36 @@ export function isSamePoint(a: Vec2, b: Vec2): boolean {
   return distance(a, b) <= SAME_POINT_METERS;
 }
 
+/**
+ * The sine of the widest angle between two directions still counted as
+ * parallel: far below any angle a real crossing is drawn at, far above
+ * rounding noise.
+ */
+const PARALLEL_SINE = 1e-9;
+
+/**
+ * Whether the directions `u` and `v` are parallel, pointing the same way or
+ * opposite. Neither needs to be a unit vector.
+ *
+ * With θ the angle between them and `u × v = u.x·v.z − u.z·v.x`:
+ *
+ * - `u × v = |u|·|v|·sin θ`, so parallel is
+ *
+ *       |u × v| ≤ ε·|u|·|v|      (sin θ ≤ ε)
+ *
+ * - relative, not `u × v = 0`: two pieces cut from one straight end where
+ *   rounding put them, so their `u × v` is a little off 0
+ * - relative to the lengths → the same answer at any scale
+ * - a zero vector: `0 ≤ 0` → parallel to everything
+ */
+export function areParallel(u: Vec2, v: Vec2): boolean {
+  const cross = u.x * v.z - u.z * v.x;
+  return (
+    Math.abs(cross) <=
+    PARALLEL_SINE * Math.hypot(u.x, u.z) * Math.hypot(v.x, v.z)
+  );
+}
+
 export function clamp01(t: number): number {
   return Math.min(1, Math.max(0, t));
 }

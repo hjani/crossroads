@@ -1,5 +1,5 @@
 import type { Crossing } from "./crossing";
-import { clamp01, distance, lerp, type Vec2 } from "./point";
+import { areParallel, clamp01, distance, lerp, type Vec2 } from "./point";
 
 /**
  * Straight sections as plane geometry: where along one a position falls, and
@@ -63,9 +63,13 @@ export function nearestPointOnSegment(point: Vec2, from: Vec2, to: Vec2): Vec2 {
  *
  * `s` is `alongA` and `t` is `alongB`.
  *
- * Returns null when `A × B = 0`: parallel lines, the same line included (it
- * overlaps rather than meets at a point), or two equal points that fix no
- * line. The zero check only guards the division.
+ * Returns null for `areParallel(A, B)`: parallel lines, the same line
+ * included (it overlaps rather than meets at a point), or two equal points
+ * that fix no line.
+ *
+ * - near parallel, `A × B` and `d × B` are both rounding noise → `s`, `t`
+ *   land anywhere, 0..1 included, while `a1 + s·A` and `b1 + t·B` are
+ *   nowhere near each other
  */
 export function lineCrossing(
   a1: Vec2,
@@ -77,12 +81,12 @@ export function lineCrossing(
   const az = a2.z - a1.z;
   const bx = b2.x - b1.x;
   const bz = b2.z - b1.z;
-
-  // A × B
-  const denominator = ax * bz - az * bx;
-  if (denominator === 0) {
+  if (areParallel({ x: ax, z: az }, { x: bx, z: bz })) {
     return null;
   }
+
+  // A × B, cannot be 0 because lines are not parallel
+  const denominator = ax * bz - az * bx;
 
   const dx = b1.x - a1.x;
   const dz = b1.z - a1.z;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Vec2 } from "./point";
+import { distance, type Vec2 } from "./point";
 import { nearestPointsBetweenSegments } from "./segment";
 
 function vec(x: number, z: number): Vec2 {
@@ -65,6 +65,20 @@ describe("nearestPointsBetweenSegments", () => {
         vec(10, 12),
       ),
     ).toEqual([vec(1, 0), vec(4, 4)]);
+  });
+
+  it("measures two pieces of one straight apart, despite rounding", () => {
+    // The outer roadways of a straight cut at two crossings, as the layout
+    // placed them: on one line only up to rounding, so their cross product
+    // is a little off 0. Once taken for a crossing, at the first one's end.
+    const a1 = vec(-226.21018511450438, 116.12946834091228);
+    const a2 = vec(-54.5706486146445, 103.19027647766333);
+    const b1 = vec(59.470576152130626, 94.59318213874681);
+    const b2 = vec(257.16616865152525, 79.68973242061945);
+
+    const [onA, onB] = nearestPointsBetweenSegments(a1, a2, b1, b2);
+
+    expect(distance(onA, onB)).toBeCloseTo(distance(a2, b1));
   });
 
   it("pairs a segment of no length, as a point, with its nearest point", () => {
