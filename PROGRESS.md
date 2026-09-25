@@ -253,6 +253,9 @@ as a road too short for the setbacks at its two ends.
       and roadways the edit would really make
 - [ ] the parts a refusal is about: the road plan lists the node and section ids
       taking part in a violation.
+- [ ] the preview tints only the parts that are either part of the new road
+      (its own pieces and the junctions at its points) or in violation — not
+      every part the speculation changed
 
 ## Backlog
 

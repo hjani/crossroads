@@ -10,29 +10,38 @@ import {
 import { positionOf } from "../network/queries";
 import type { Endpoint, RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId } from "../network/types";
-import { verifyClearance } from "./clearance";
+import { verifyClearance, type ClearanceViolations } from "./clearance";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "./RoadLayout";
 import { speculateLayout, type LayoutSpeculation } from "./speculation";
 
 /**
  * What adding a road would do (`docs/intersections.md`): the network's
- * section plan, whether it can be built, and the speculation if available.
+ * section plan, whether it can be built, the speculation if available, and
+ * the parts a refusal is about.
  *
  * A buildable road plan always holds a buildable section plan and a
- * speculation.
+ * speculation, and no violations.
  */
 export type RoadPlan =
   | {
       readonly buildable: true;
       readonly sectionPlan: BuildableSectionPlan;
       readonly speculation: LayoutSpeculation;
+      readonly violations: ClearanceViolations;
     }
   | {
       readonly buildable: false;
       readonly sectionPlan: SectionPlan;
       /** Null where the plan was refused before speculating. */
       readonly speculation: LayoutSpeculation | null;
+      /** Empty where the plan was refused before speculating. */
+      readonly violations: ClearanceViolations;
     };
+
+const NO_VIOLATIONS: ClearanceViolations = {
+  violatingNodes: new Set(),
+  violatingSections: new Set(),
+};
 
 /**
  * Plans a road from `from` to `to` on the network, then verifies that the
@@ -52,13 +61,20 @@ export function planRoad(
     geometry,
   );
   if (!allowed || !sectionPlan.buildable) {
-    return { buildable: false, sectionPlan, speculation: null };
+    return {
+      buildable: false,
+      sectionPlan,
+      speculation: null,
+      violations: NO_VIOLATIONS,
+    };
   }
 
   const speculation = speculateLayout(network, sectionPlan);
-  return verifyClearance(speculation, layout)
-    ? { buildable: true, sectionPlan, speculation }
-    : { buildable: false, sectionPlan, speculation };
+  const violations = verifyClearance(speculation, layout);
+  const clear =
+    violations.violatingNodes.size === 0 &&
+    violations.violatingSections.size === 0;
+  return { buildable: clear, sectionPlan, speculation, violations };
 }
 
 /**

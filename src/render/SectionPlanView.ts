@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { ClearanceViolations } from "../core/layout/clearance";
 import type { Junction } from "../core/layout/junction";
 import type { Outline } from "../core/layout/outline";
 import type { RoadPlan } from "../core/layout/roadPlan";
@@ -42,6 +43,12 @@ export class SectionPlanView {
     THREE.BufferGeometry,
     THREE.MeshBasicMaterial
   >;
+  /** The parts a refusal is about, apart from `roadSurface` so the two
+   * see-through colors never stack. */
+  private readonly violationSurface: THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.MeshBasicMaterial
+  >;
   private readonly centerline: THREE.Line<
     THREE.BufferGeometry,
     THREE.LineBasicMaterial
@@ -59,17 +66,8 @@ export class SectionPlanView {
    * `roadWidth` the width of the road being planned. If 0, only the centerline is drawn.
    */
   constructor(private readonly roadWidth: number) {
-    this.roadSurface = new THREE.Mesh(
-      makeGeometry([]),
-      new THREE.MeshBasicMaterial({
-        color: STATE_COLOR.PLANNED,
-        transparent: true,
-        opacity: PLANNING_OPACITY,
-        depthWrite: false,
-        // Seen only from above, so which way a triangle winds doesn't matter.
-        side: THREE.DoubleSide,
-      }),
-    );
+    this.roadSurface = makeSurface(STATE_COLOR.PLANNED);
+    this.violationSurface = makeSurface(STATE_COLOR.REFUSED);
 
     this.centerline = new THREE.Line(
       makeGeometry([]),
@@ -81,6 +79,7 @@ export class SectionPlanView {
 
     this.sceneObject.add(
       this.roadSurface,
+      this.violationSurface,
       this.centerline,
       this.newNodes,
       this.existingNodes,
@@ -96,14 +95,15 @@ export class SectionPlanView {
    * band along the centerline of the plan's linegeometry.
    */
   showRoadPlan(network: RoadNetwork, plan: RoadPlan): void {
-    const { sectionPlan, speculation } = plan;
+    const { sectionPlan, speculation, violations } = plan;
     const color = plan.buildable ? STATE_COLOR.PLANNED : STATE_COLOR.REFUSED;
     this.showMarks(network, sectionPlan, color);
     this.showCenterline(network, sectionPlan, color);
     if (speculation === null) {
       this.showPlanBand(network, sectionPlan, color);
+      replaceGeometry(this.violationSurface, []);
     } else {
-      this.showLayoutSurface(speculation, color);
+      this.showLayoutSurface(speculation, violations);
     }
     this.sceneObject.visible = true;
   }
@@ -116,6 +116,8 @@ export class SectionPlanView {
   dispose(): void {
     this.roadSurface.geometry.dispose();
     this.roadSurface.material.dispose();
+    this.violationSurface.geometry.dispose();
+    this.violationSurface.material.dispose();
     this.centerline.geometry.dispose();
     this.centerline.material.dispose();
     this.newNodes.geometry.dispose();
@@ -203,24 +205,41 @@ export class SectionPlanView {
     replaceGeometry(this.roadSurface, coordinates);
   }
 
-  /** The road surface as the junctions and roadways the edit changes. */
+  /**
+   * The road surface as the junctions and roadways the edit changes, and
+   * the parts a refusal is about. Those are drawn refused, changed or not
+   * (an existing junction a new roadway runs into); the rest planned.
+   */
   private showLayoutSurface(
     speculation: LayoutSpeculation,
-    color: number,
+    violations: ClearanceViolations,
   ): void {
-    const coordinates: number[] = [];
+    const planned: number[] = [];
+    const violating: number[] = [];
     if (this.roadWidth > 0) {
       const { speculativeLayout } = speculation;
+      const { violatingNodes, violatingSections } = violations;
       for (const id of speculation.changedSections) {
-        appendRoadwaySurface(speculativeLayout.roadwayAlong(id), coordinates);
+        if (!violatingSections.has(id)) {
+          appendRoadwaySurface(speculativeLayout.roadwayAlong(id), planned);
+        }
       }
       for (const id of speculation.changedNodes) {
-        appendJunctionSurface(speculativeLayout.junctionAt(id), coordinates);
+        if (!violatingNodes.has(id)) {
+          appendJunctionSurface(speculativeLayout.junctionAt(id), planned);
+        }
+      }
+      for (const id of violatingSections) {
+        appendRoadwaySurface(speculativeLayout.roadwayAlong(id), violating);
+      }
+      for (const id of violatingNodes) {
+        appendJunctionSurface(speculativeLayout.junctionAt(id), violating);
       }
     }
 
-    this.roadSurface.material.color.setHex(color);
-    replaceGeometry(this.roadSurface, coordinates);
+    this.roadSurface.material.color.setHex(STATE_COLOR.PLANNED);
+    replaceGeometry(this.roadSurface, planned);
+    replaceGeometry(this.violationSurface, violating);
   }
 }
 
@@ -246,6 +265,22 @@ function appendOutline(outline: Outline, coordinates: number[]): void {
   for (const point of tessellateOutline(outline)) {
     coordinates.push(point.x, LAYER.SURFACE_DECORATION, point.z);
   }
+}
+
+function makeSurface(
+  color: number,
+): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
+  return new THREE.Mesh(
+    makeGeometry([]),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: PLANNING_OPACITY,
+      depthWrite: false,
+      // Seen only from above, so which way a triangle winds doesn't matter.
+      side: THREE.DoubleSide,
+    }),
+  );
 }
 
 function makeMarks(

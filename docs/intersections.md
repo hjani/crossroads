@@ -45,8 +45,9 @@ Two sections' centerlines meeting at a point they don't already share.
   layout layer, since width belongs to the layout (`docs/road-layout.md`)
   and crossings do not.
 - The layout layer runs the first three and hands back one **road plan**:
-  the section plan, whether it can be built, and the speculation it was
-  cleared on.
+  the section plan, whether it can be built, the speculation it was
+  cleared on, and the nodes and sections a refusal is about.
+  - every parts that is in violation, not just the first
 - A geometry that allows no roadway is refused before speculating.
   - e.g. an arc of radius `≤ w/2`: its inner edge doesn't exist
 - A plan can be made without applying it → a tool can preview a section

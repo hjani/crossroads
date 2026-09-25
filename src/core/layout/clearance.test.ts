@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "vitest";
-import { verifyClearance } from "./clearance";
+import { verifyClearance, type ClearanceViolations } from "./clearance";
 import { RoadLayout } from "./RoadLayout";
 import { speculateLayout } from "./speculation";
 import {
@@ -11,15 +11,25 @@ import {
 import { RoadNetwork } from "../network/RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
+import type { NodeId } from "../network/types";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
 }
 
-/** Whether a plan clears, against the network's own layout. */
-function check(network: RoadNetwork, plan: BuildableSectionPlan): boolean {
+/** The parts a plan violates, against the network's own layout. */
+function violationsOf(
+  network: RoadNetwork,
+  plan: BuildableSectionPlan,
+): ClearanceViolations {
   const speculation = speculateLayout(network, plan);
   return verifyClearance(speculation, new RoadLayout(network));
+}
+
+/** Whether a plan clears, against the network's own layout. */
+function check(network: RoadNetwork, plan: BuildableSectionPlan): boolean {
+  const { violatingNodes, violatingSections } = violationsOf(network, plan);
+  return violatingNodes.size === 0 && violatingSections.size === 0;
 }
 
 /** Whether a plan would be built: the network, then clearance. */
@@ -211,5 +221,88 @@ describe("verifyClearance", () => {
     expect(network.version).toBe(version);
     expect([...network.allSections()]).toHaveLength(2);
     expect(() => applySectionPlan(network, plan)).not.toThrow();
+  });
+});
+
+/**
+ * Where the parts a plan violates lie, to the centimeter: a node as `x,z`,
+ * a section as its two ends in sorted order. Both lists sorted.
+ */
+function violatingPlaces(
+  network: RoadNetwork,
+  plan: BuildableSectionPlan,
+): { nodes: string[]; sections: string[] } {
+  const speculation = speculateLayout(network, plan);
+  const { violatingNodes, violatingSections } = verifyClearance(
+    speculation,
+    new RoadLayout(network),
+  );
+  const { speculativeNetwork } = speculation;
+  const round = (v: number): number => Math.round(v * 100) / 100;
+  const place = (id: NodeId): string => {
+    const { x, z } = speculativeNetwork.getNode(id).position;
+    return `${round(x)},${round(z)}`;
+  };
+  const nodes = Array.from(violatingNodes, place).sort();
+  const sections = Array.from(violatingSections, (id) => {
+    const section = speculativeNetwork.getSection(id);
+    return [place(section.from), place(section.to)].sort().join(" ");
+  }).sort();
+  return { nodes, sections };
+}
+
+describe("verifyClearance's violating parts", () => {
+  it("names only the piece too short", () => {
+    const network = twoRoads(37);
+    const plan = planSection(network, vec(-50, 0), vec(87, 0), STRAIGHT);
+    assert(plan.buildable);
+
+    expect(violatingPlaces(network, plan)).toEqual({
+      nodes: [],
+      sections: ["0,0 37,0"],
+    });
+  });
+
+  it("names an existing junction a new roadway runs into", () => {
+    // 6 m from the dead end, w = 8 m: the new roadway runs into its junction,
+    // and into the existing roadway too.
+    const network = new RoadNetwork();
+    network.addSection(vec(-20, 0), vec(0, 0), STRAIGHT);
+    const plan = planSection(network, vec(6, -20), vec(6, 20), STRAIGHT);
+    assert(plan.buildable);
+
+    expect(violatingPlaces(network, plan)).toEqual({
+      nodes: ["0,0"],
+      sections: ["-20,0 0,0", "6,-20 6,20"],
+    });
+  });
+
+  it("names both roadways where an arc bulges into a straight", () => {
+    const network = new RoadNetwork();
+    network.addSection(vec(-50, 0), vec(50, 0), STRAIGHT);
+    const plan = planSection(network, vec(-30, -20), vec(30, -20), {
+      kind: "arc",
+      via: vec(0, -7),
+    });
+    assert(plan.buildable);
+
+    expect(violatingPlaces(network, plan)).toEqual({
+      nodes: [],
+      sections: ["-30,-20 30,-20", "-50,0 50,0"],
+    });
+  });
+
+  it("names the parts of every broken rule, not just the first", () => {
+    // The piece between the two roads is too short, as above, and the far
+    // end stops 6 m from a dead end: two junction circles of w/2 = 4 m.
+    const network = twoRoads(37);
+    network.addSection(vec(100, 6), vec(100, 40), STRAIGHT);
+    const plan = planSection(network, vec(-50, 0), vec(100, 0), STRAIGHT);
+    assert(plan.buildable);
+
+    const { nodes, sections } = violatingPlaces(network, plan);
+    expect(sections).toContain("0,0 37,0");
+    expect(nodes).toContain("100,0");
+    expect(nodes).toContain("100,6");
   });
 });

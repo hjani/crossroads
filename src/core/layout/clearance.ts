@@ -30,9 +30,19 @@ const MIN_ROADWAY_LENGTH_METERS = 30;
 const MIN_ROADWAY_RADIUS_METERS = 10;
 
 /**
- * The clearing step (`docs/intersections.md`): whether every changed part
- * of a speculation keeps clear of every other, and within the practical
- * limits.
+ * The parts of a speculation taking part in a broken clearance rule, by
+ * their ids in the speculative network. Both empty where the plan clears.
+ */
+export interface ClearanceViolations {
+  readonly violatingNodes: ReadonlySet<NodeId>;
+  readonly violatingSections: ReadonlySet<SectionId>;
+}
+
+/**
+ * The clearing step (`docs/intersections.md`): every changed part of a
+ * speculation that doesn't keep clear of every other, or breaks a practical
+ * limit — with the parts it runs into. Every rule is measured to the end, so
+ * no part is left out just because another one was already refused.
  *
  * `liveLayout` is the layout of the network the speculation was made from:
  * the parts the plan doesn't change are read from it rather than worked out
@@ -41,13 +51,15 @@ const MIN_ROADWAY_RADIUS_METERS = 10;
 export function verifyClearance(
   speculation: LayoutSpeculation,
   liveLayout: RoadLayout,
-): boolean {
+): ClearanceViolations {
   const {
     speculativeNetwork,
     speculativeLayout,
     changedNodes,
     changedSections,
   } = speculation;
+  const violatingNodes = new Set<NodeId>();
+  const violatingSections = new Set<SectionId>();
 
   for (const id of changedSections) {
     // Read off the section, not its roadway: a roadway runs on its
@@ -55,52 +67,64 @@ export function verifyClearance(
     const section = speculativeNetwork.getSection(id);
     const radius = sectionRadius(speculativeNetwork, section);
     if (radius !== null && radius < MIN_ROADWAY_RADIUS_METERS) {
-      return false;
+      violatingSections.add(id);
     }
   }
   for (const id of changedSections) {
     // This also rejects roadways with negative length (due to large setbacks)
     if (speculativeLayout.roadwayAlong(id).length < MIN_ROADWAY_LENGTH_METERS) {
-      return false;
+      violatingSections.add(id);
     }
   }
   for (const id of changedNodes) {
     const radius = speculativeLayout.junctionAt(id).boundingRadius();
     if (radius > MAX_JUNCTION_RADIUS_METERS) {
-      return false;
+      violatingNodes.add(id);
     }
   }
   const junctionAt = (node: NodeId): Junction =>
     changedNodes.has(node)
       ? speculativeLayout.junctionAt(node)
       : liveLayout.junctionAt(node);
-  if (junctionsOverlap(speculativeNetwork, junctionAt, changedNodes)) {
-    return false;
-  }
+  collectJunctionOverlaps(
+    speculativeNetwork,
+    junctionAt,
+    changedNodes,
+    violatingNodes,
+  );
   const roadwayAlong = (section: SectionId): Roadway =>
     changedSections.has(section)
       ? speculativeLayout.roadwayAlong(section)
       : liveLayout.roadwayAlong(section);
-  return (
-    !roadwaysRunIntoJunctions(
-      speculativeNetwork,
-      junctionAt,
-      roadwayAlong,
-      changedNodes,
-      changedSections,
-    ) && !roadwaysOverlap(speculativeNetwork, roadwayAlong, changedSections)
+  collectRoadwaysIntoJunctions(
+    speculativeNetwork,
+    junctionAt,
+    roadwayAlong,
+    changedNodes,
+    changedSections,
+    violatingNodes,
+    violatingSections,
   );
+  collectRoadwayOverlaps(
+    speculativeNetwork,
+    roadwayAlong,
+    changedSections,
+    violatingSections,
+  );
+  return { violatingNodes, violatingSections };
 }
 
 /**
- * Whether a changed junction's circle overlaps any other junction's. Each
- * pair is tested once, even where both are changed.
+ * Adds to `violatingNodes` both nodes of every pair where a changed
+ * junction's circle overlaps another junction's. Each pair is tested once,
+ * even where both are changed.
  */
-function junctionsOverlap(
+function collectJunctionOverlaps(
   speculativeNetwork: RoadNetwork,
   junctionAt: (node: NodeId) => Junction,
   changed: ReadonlySet<NodeId>,
-): boolean {
+  violatingNodes: Set<NodeId>,
+): void {
   const tested = new Set<NodeId>();
   for (const id of changed) {
     tested.add(id);
@@ -115,48 +139,54 @@ function junctionsOverlap(
         distance(position, other.position) <
         reach - OVERLAP_TOLERANCE_METERS
       ) {
-        return true;
+        violatingNodes.add(id);
+        violatingNodes.add(other.id);
       }
     }
   }
-  return false;
 }
 
 /**
- * Whether a roadway runs into a junction it doesn't meet, where either of
- * the two is changed. Each pair is tested once:
+ * Adds the junction and the roadway of every pair where a roadway runs into
+ * a junction it doesn't meet, and either of the two is changed. Each pair
+ * is tested once:
  *
  * - every changed junction × every roadway not meeting it
  * - every changed roadway × every unchanged junction not at its ends
  */
-function roadwaysRunIntoJunctions(
+function collectRoadwaysIntoJunctions(
   speculativeNetwork: RoadNetwork,
   junctionAt: (node: NodeId) => Junction,
   roadwayAlong: (section: SectionId) => Roadway,
   changedNodes: ReadonlySet<NodeId>,
   changedSections: ReadonlySet<SectionId>,
-): boolean {
-  const runsInto = (section: Section, node: NodeId): boolean =>
-    section.from !== node &&
-    section.to !== node &&
-    roadwayRunsInto(roadwayAlong(section.id), junctionAt(node));
+  violatingNodes: Set<NodeId>,
+  violatingSections: Set<SectionId>,
+): void {
+  const collect = (section: Section, node: NodeId): void => {
+    if (
+      section.from !== node &&
+      section.to !== node &&
+      roadwayRunsInto(roadwayAlong(section.id), junctionAt(node))
+    ) {
+      violatingNodes.add(node);
+      violatingSections.add(section.id);
+    }
+  };
 
   for (const node of changedNodes) {
     for (const section of speculativeNetwork.allSections()) {
-      if (runsInto(section, node)) {
-        return true;
-      }
+      collect(section, node);
     }
   }
   for (const id of changedSections) {
     const section = speculativeNetwork.getSection(id);
     for (const node of speculativeNetwork.allNodes()) {
-      if (!changedNodes.has(node.id) && runsInto(section, node.id)) {
-        return true;
+      if (!changedNodes.has(node.id)) {
+        collect(section, node.id);
       }
     }
   }
-  return false;
 }
 
 /**
@@ -182,14 +212,16 @@ function roadwayRunsInto(roadway: Roadway, junction: Junction): boolean {
 }
 
 /**
- * Whether a changed roadway overlaps another roadway it shares no node with.
- * Each pair is tested once, even where both are changed.
+ * Adds to `violatingSections` both sections of every pair where a changed
+ * roadway overlaps another roadway it shares no node with. Each pair is
+ * tested once, even where both are changed.
  */
-function roadwaysOverlap(
+function collectRoadwayOverlaps(
   speculativeNetwork: RoadNetwork,
   roadwayAlong: (section: SectionId) => Roadway,
   changed: ReadonlySet<SectionId>,
-): boolean {
+  violatingSections: Set<SectionId>,
+): void {
   const tested = new Set<SectionId>();
   for (const id of changed) {
     tested.add(id);
@@ -200,11 +232,11 @@ function roadwaysOverlap(
         !shareNode(section, other) &&
         roadwayOverlaps(roadwayAlong(id), roadwayAlong(other.id))
       ) {
-        return true;
+        violatingSections.add(id);
+        violatingSections.add(other.id);
       }
     }
   }
-  return false;
 }
 
 /**
