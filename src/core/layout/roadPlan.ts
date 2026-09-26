@@ -86,7 +86,8 @@ export function applyRoadPlan(
   network: RoadNetwork,
   plan: Extract<RoadPlan, { buildable: true }>,
 ): NodeId {
-  return applySectionPlan(network, plan.sectionPlan);
+  const built = applySectionPlan(network, plan.sectionPlan);
+  return built[built.length - 1].to;
 }
 
 /**

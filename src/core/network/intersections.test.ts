@@ -27,8 +27,7 @@ function build(
   from: Endpoint,
   to: Endpoint,
 ): NodeId | null {
-  const plan = planSection(network, from, to, STRAIGHT);
-  return plan.buildable ? applySectionPlan(network, plan) : null;
+  return buildPlan(network, planSection(network, from, to, STRAIGHT));
 }
 
 /** The same, for an arc bending through `via`. */
@@ -38,8 +37,18 @@ function buildArc(
   to: Endpoint,
   via: Vec2,
 ): NodeId | null {
-  const plan = planSection(network, from, to, { kind: "arc", via });
-  return plan.buildable ? applySectionPlan(network, plan) : null;
+  return buildPlan(
+    network,
+    planSection(network, from, to, { kind: "arc", via }),
+  );
+}
+
+function buildPlan(network: RoadNetwork, plan: SectionPlan): NodeId | null {
+  if (!plan.buildable) {
+    return null;
+  }
+  const built = applySectionPlan(network, plan);
+  return built[built.length - 1].to;
 }
 
 /** The circle three positions lie on, or a failure saying they do not. */

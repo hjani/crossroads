@@ -251,9 +251,9 @@ as a road too short for the setbacks at its two ends.
         - min roadway length: 30m
 - [x] preview from the speculative layout instead of the band: the junctions
       and roadways the edit would really make
-- [ ] the parts a refusal is about: the road plan lists the node and section ids
+- [x] the parts a refusal is about: the road plan lists the node and section ids
       taking part in a violation.
-- [ ] the preview tints only the parts that are either part of the new road
+- [x] the preview tints only the parts that are either part of the new road
       (its own pieces and the junctions at its points) or in violation — not
       every part the speculation changed
 

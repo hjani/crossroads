@@ -206,9 +206,8 @@ export class SectionPlanView {
   }
 
   /**
-   * The road surface as the junctions and roadways the edit changes, and
-   * the parts a refusal is about. Those are drawn refused, changed or not
-   * (an existing junction a new roadway runs into); the rest planned.
+   * The road surface as the planned road's junctions and roadways, and any
+   * other parts of the network that are in violation.
    */
   private showLayoutSurface(
     speculation: LayoutSpeculation,
@@ -219,12 +218,12 @@ export class SectionPlanView {
     if (this.roadWidth > 0) {
       const { speculativeLayout } = speculation;
       const { violatingNodes, violatingSections } = violations;
-      for (const id of speculation.changedSections) {
+      for (const id of speculation.plannedRoadSections) {
         if (!violatingSections.has(id)) {
           appendRoadwaySurface(speculativeLayout.roadwayAlong(id), planned);
         }
       }
-      for (const id of speculation.changedNodes) {
+      for (const id of speculation.plannedRoadNodes) {
         if (!violatingNodes.has(id)) {
           appendJunctionSurface(speculativeLayout.junctionAt(id), planned);
         }

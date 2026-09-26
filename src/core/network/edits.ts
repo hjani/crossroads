@@ -181,7 +181,9 @@ export function planSection(
  * is a point of its own chain, so by the time it is whole every junction
  * has a node standing at it.
  *
- * Returns the node at the far end, so a run of roads can carry on from it.
+ * Returns the sections built for the road, start to end — the last one's
+ * `to` is where a run of roads carries on. Cutting leaves them standing: it
+ * only cuts sections the network had before.
  * Decides nothing — a plan is buildable or it is not, and this one is.
  *
  * Throws if the network has changed since the plan was made, before
@@ -191,7 +193,7 @@ export function planSection(
 export function applySectionPlan(
   network: RoadNetwork,
   plan: BuildableSectionPlan,
-): NodeId {
+): readonly [Section, ...Section[]] {
   if (plan.networkVersion !== network.version) {
     throw new Error(
       `Plan made at network version ${plan.networkVersion}, applied at ${network.version}`,
@@ -219,21 +221,21 @@ export function applySectionPlan(
   gather(plan.start, first.from);
   gather(firstPiece.to, first.to);
 
-  let prevPoint = first.to;
+  const built: [Section, ...Section[]] = [first];
   for (const piece of restPieces) {
-    const built = network.addSection(
-      prevPoint,
+    const section = network.addSection(
+      built[built.length - 1].to,
       piece.to.at,
       piece.centerlineGeometry,
     );
-    gather(piece.to, built.to);
-    prevPoint = built.to;
+    gather(piece.to, section.to);
+    built.push(section);
   }
 
   for (const [section, at] of cuts) {
     cutSection(network, section, at);
   }
-  return prevPoint;
+  return built;
 }
 
 /**

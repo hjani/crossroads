@@ -38,8 +38,10 @@
 - The preview draws the answer the commit will act on, not where the cursor
   is. The tool asks the same question, of the same call, one move earlier,
   and draws:
-  - the road it would run: the junctions and roadways the edit would make,
-    laid out on the speculative network (`docs/intersections.md`)
+  - the road it would run: its own roadways and the junctions at its
+    points, laid out on the speculative network (`docs/intersections.md`)
+    - other parts the edit reshapes — the halves of a road it cuts — are
+      not drawn, unless in violation
     - a plan refused before speculating has none → a band `w` wide
       along its centerline instead
 

@@ -15,6 +15,10 @@ export interface LayoutSpeculation {
   readonly changedNodes: ReadonlySet<NodeId>;
   /** The sections whose roadways the edit changes. */
   readonly changedSections: ReadonlySet<SectionId>;
+  /** The planned road's own nodes: the ends of its sections. */
+  readonly plannedRoadNodes: ReadonlySet<NodeId>;
+  /** The planned road's own sections. */
+  readonly plannedRoadSections: ReadonlySet<SectionId>;
 }
 
 /** Applies the plan to a copy of `network`, and finds what it changes. */
@@ -23,16 +27,20 @@ export function speculateLayout(
   plan: BuildableSectionPlan,
 ): LayoutSpeculation {
   const speculativeNetwork = network.clone();
-  applySectionPlan(speculativeNetwork, plan);
+  const built = applySectionPlan(speculativeNetwork, plan);
 
   const speculativeLayout = new RoadLayout(speculativeNetwork);
   const changedNodes = affectedNodes(network, speculativeNetwork);
   const changedSections = affectedSections(speculativeNetwork, changedNodes);
+  const plannedRoadNodes = new Set(built.flatMap((s) => [s.from, s.to]));
+  const plannedRoadSections = new Set(built.map((s) => s.id));
   return {
     speculativeNetwork,
     speculativeLayout,
     changedNodes,
     changedSections,
+    plannedRoadNodes,
+    plannedRoadSections,
   };
 }
 
