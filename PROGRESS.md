@@ -256,6 +256,8 @@ as a road too short for the setbacks at its two ends.
 - [x] the preview tints only the parts that are either part of the new road
       (its own pieces and the junctions at its points) or in violation — not
       every part the speculation changed
+- [x] the reported number violations should be limited: one problematic part
+      should be reported only once
 
 ## Backlog
 

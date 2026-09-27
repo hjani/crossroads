@@ -121,6 +121,16 @@ same step, on the same changed parts.
 - Parts the edit doesn't change are not measured again.
 - Any of these → the plan cannot be built.
 
+## What a refusal names
+
+- Every rule is measured → the refusal names every part taking part.
+- A part is named by one rule at most: once named, it leaves the rules
+  after it.
+- Two roadways that both end at named junctions are not measured against
+  each other: their conflict is the junctions'.
+- Rule order: practical limits, junction ↔ junction, junction ↔ roadway,
+  roadway ↔ roadway.
+
 ## Tolerances
 
 In meters, never pixels: the result must not depend on zoom (same reason

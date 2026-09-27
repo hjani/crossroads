@@ -82,6 +82,10 @@ export function verifyClearance(
       violatingNodes.add(id);
     }
   }
+
+  // The pair rules, in this order. Each leaves out what the ones before it
+  // named — taken before the rule rather than updated during it, so its
+  // answer doesn't depend on the order it measures its pairs in.
   const junctionAt = (node: NodeId): Junction =>
     changedNodes.has(node)
       ? speculativeLayout.junctionAt(node)
@@ -90,6 +94,7 @@ export function verifyClearance(
     speculativeNetwork,
     junctionAt,
     changedNodes,
+    excludedParts(violatingNodes, violatingSections),
     violatingNodes,
   );
   const roadwayAlong = (section: SectionId): Roadway =>
@@ -102,6 +107,7 @@ export function verifyClearance(
     roadwayAlong,
     changedNodes,
     changedSections,
+    excludedParts(violatingNodes, violatingSections),
     violatingNodes,
     violatingSections,
   );
@@ -109,9 +115,33 @@ export function verifyClearance(
     speculativeNetwork,
     roadwayAlong,
     changedSections,
+    excludedParts(violatingNodes, violatingSections),
     violatingSections,
   );
   return { violatingNodes, violatingSections };
+}
+
+/**
+ * Parts a pair rule leaves out: a pair with one of them in it is not
+ * measured.
+ */
+interface ExcludedParts {
+  readonly nodes: ReadonlySet<NodeId>;
+  readonly sections: ReadonlySet<SectionId>;
+}
+
+/**
+ * The parts violating so far: a part is named by one rule at most
+ * (`docs/intersections.md`).
+ */
+function excludedParts(
+  violatingNodes: ReadonlySet<NodeId>,
+  violatingSections: ReadonlySet<SectionId>,
+): ExcludedParts {
+  return {
+    nodes: new Set(violatingNodes),
+    sections: new Set(violatingSections),
+  };
 }
 
 /**
@@ -123,15 +153,19 @@ function collectJunctionOverlaps(
   speculativeNetwork: RoadNetwork,
   junctionAt: (node: NodeId) => Junction,
   changed: ReadonlySet<NodeId>,
+  excluded: ExcludedParts,
   violatingNodes: Set<NodeId>,
 ): void {
   const tested = new Set<NodeId>();
   for (const id of changed) {
     tested.add(id);
+    if (excluded.nodes.has(id)) {
+      continue;
+    }
     const position = speculativeNetwork.getNode(id).position;
     const radius = junctionAt(id).boundingRadius();
     for (const other of speculativeNetwork.allNodes()) {
-      if (tested.has(other.id)) {
+      if (tested.has(other.id) || excluded.nodes.has(other.id)) {
         continue;
       }
       const reach = radius + junctionAt(other.id).boundingRadius();
@@ -160,11 +194,14 @@ function collectRoadwaysIntoJunctions(
   roadwayAlong: (section: SectionId) => Roadway,
   changedNodes: ReadonlySet<NodeId>,
   changedSections: ReadonlySet<SectionId>,
+  excluded: ExcludedParts,
   violatingNodes: Set<NodeId>,
   violatingSections: Set<SectionId>,
 ): void {
   const collect = (section: Section, node: NodeId): void => {
     if (
+      !excluded.sections.has(section.id) &&
+      !excluded.nodes.has(node) &&
       section.from !== node &&
       section.to !== node &&
       roadwayRunsInto(roadwayAlong(section.id), junctionAt(node))
@@ -215,20 +252,32 @@ function roadwayRunsInto(roadway: Roadway, junction: Junction): boolean {
  * Adds to `violatingSections` both sections of every pair where a changed
  * roadway overlaps another roadway it shares no node with. Each pair is
  * tested once, even where both are changed.
+ *
+ * A pair where both end at excluded junctions is left out too: the
+ * junctions' conflict is where theirs comes from.
  */
 function collectRoadwayOverlaps(
   speculativeNetwork: RoadNetwork,
   roadwayAlong: (section: SectionId) => Roadway,
   changed: ReadonlySet<SectionId>,
+  excluded: ExcludedParts,
   violatingSections: Set<SectionId>,
 ): void {
+  const endsExcluded = (section: Section): boolean =>
+    excluded.nodes.has(section.from) || excluded.nodes.has(section.to);
+
   const tested = new Set<SectionId>();
   for (const id of changed) {
     tested.add(id);
+    if (excluded.sections.has(id)) {
+      continue;
+    }
     const section = speculativeNetwork.getSection(id);
     for (const other of speculativeNetwork.allSections()) {
       if (
         !tested.has(other.id) &&
+        !excluded.sections.has(other.id) &&
+        !(endsExcluded(section) && endsExcluded(other)) &&
         !shareNode(section, other) &&
         roadwayOverlaps(roadwayAlong(id), roadwayAlong(other.id))
       ) {

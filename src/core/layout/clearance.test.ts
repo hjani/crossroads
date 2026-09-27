@@ -265,7 +265,8 @@ describe("verifyClearance's violating parts", () => {
 
   it("names an existing junction a new roadway runs into", () => {
     // 6 m from the dead end, w = 8 m: the new roadway runs into its junction,
-    // and into the existing roadway too.
+    // and into the existing roadway too — but once named, the new roadway
+    // leaves the roadway ↔ roadway rule, so the existing one isn't.
     const network = new RoadNetwork();
     network.addSection(vec(-20, 0), vec(0, 0), STRAIGHT);
     const plan = planSection(network, vec(6, -20), vec(6, 20), STRAIGHT);
@@ -273,7 +274,24 @@ describe("verifyClearance's violating parts", () => {
 
     expect(violatingPlaces(network, plan)).toEqual({
       nodes: ["0,0"],
-      sections: ["-20,0 0,0", "6,-20 6,20"],
+      sections: ["6,-20 6,20"],
+    });
+  });
+
+  it("doesn't name the legs of a junction the road crosses beside", () => {
+    // A narrow V with its corner at 0,0, and a road cutting both legs 5 m
+    // out: the new junctions overlap the corner's. Cut, the outer pieces of
+    // the legs no longer share a node, and run within w of each other past
+    // the new junctions — but that is the junctions' doing.
+    const network = new RoadNetwork();
+    const left = network.addSection(vec(-20, 80), vec(0, 0), STRAIGHT);
+    network.addSection(left.to, vec(20, 80), STRAIGHT);
+    const plan = planSection(network, vec(-60, 5), vec(60, 5), STRAIGHT);
+    assert(plan.buildable);
+
+    expect(violatingPlaces(network, plan)).toEqual({
+      nodes: ["-1.25,5", "0,0", "1.25,5"],
+      sections: ["-1.25,5 0,0", "-1.25,5 1.25,5", "0,0 1.25,5"],
     });
   });
 
