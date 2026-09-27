@@ -259,6 +259,36 @@ as a road too short for the setbacks at its two ends.
 - [x] the reported number violations should be limited: one problematic part
       should be reported only once
 
+### M10 — Road markings
+
+Solid 10 cm lines along both edges of the road, set in from the edge by
+their own width, and a dashed centerline: 1 m dash, 1 m gap.
+
+- [ ] `docs/road-markings.md` design note: what is marked, the values each
+      vertex carries (`u` across the road, `t` along it), and why the lines
+      follow the chords rather than the true arc
+- [ ] swap `RoadSurfaceView`'s `MeshBasicMaterial` for a `ShaderMaterial`
+      that paints the same flat color. Nothing changes on screen; the point
+      is a vertex and a fragment shader of our own, and a color passed in as
+      a uniform
+- [ ] `u`, the signed distance from the centerline, as a vertex attribute:
+      `±w/2` at every roadway vertex. Shown for now as a color gradient
+      across the road, to see the interpolation at work
+- [ ] solid edge lines on roadways: `0.1 < w/2 − |u| < 0.2`, a 10 cm gap
+      and then the 10 cm line. Junctions stay unmarked, so the lines stop at
+      the roadway ends
+- [ ] smooth line edges over `fwidth(u)`, and fade a line out once it is
+      thinner than a pixel, so zooming out doesn't make it shimmer
+- [ ] core: dashes per roadway, with tests. A whole number of periods,
+      `n = round(L / 2 m)`, stretched to fit exactly, with half a gap at
+      each end so two roadways meeting at a 180° join continue the pattern.
+      No dashes on a roadway too short for one
+- [ ] the dashed centerline: `t = s / P'` as a vertex attribute, computed on
+      the CPU, and the shader draws the middle half of each period
+- [ ] edge lines around junctions: an outline piece says whether it is curb
+      or the opening a roadway attaches to, and each fan triangle carries
+      `e`, its distance to its own curb chord. Same inset: `0.1 < e < 0.2`
+
 ## Backlog
 
 Wanted, but not part of a milestone yet.
