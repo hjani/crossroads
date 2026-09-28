@@ -5,7 +5,7 @@ varying float vHalfWidth;
 varying float t;
 
 // Edge line, in meters: a gap in from the curb, then the line.
-const float EDGE_INSET = 0.1;
+const float EDGE_INSET = 0.2;
 const float LINE_WIDTH = 0.1;
 // Half a centerline dash, in periods: 1.5 m of dash to 3 m of gap.
 const float DASH_HALF = 1.0 / 6.0;
