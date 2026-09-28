@@ -16,7 +16,7 @@ import {
   setbackThrough,
   type Leg,
 } from "./junctionLeg";
-import type { JunctionOutline, OutlinePiece } from "./outline";
+import type { JunctionOutline, OutlineEdgeKind, OutlinePiece } from "./outline";
 
 /**
  * The gap after a leg, between it and the next leg counterclockwise, as the
@@ -155,44 +155,55 @@ export class Junction {
   private buildOutline(): JunctionOutline {
     const pieces: OutlinePiece[] = [];
     let previous = this.edgePointOf(this.legs[0], -1);
-    const add = (point: Vec2, incomingGeometry: LineGeometry): void => {
+    const add = (
+      point: Vec2,
+      incomingGeometry: LineGeometry,
+      edge: OutlineEdgeKind,
+    ): void => {
       if (isSamePoint(previous, point)) {
         return;
       }
-      pieces.push({ point, incomingGeometry });
+      pieces.push({ point, incomingGeometry, edge });
       previous = point;
     };
 
     this.legs.forEach((leg, index) => {
-      add(this.edgePointOf(leg, 1), STRAIGHT);
+      add(this.edgePointOf(leg, 1), STRAIGHT, "roadwayEnd");
 
       const nextLeg = this.legs[(index + 1) % this.legs.length];
       const nextEdgePoint = this.edgePointOf(nextLeg, -1);
       const { join } = this.gaps[index];
       switch (join.kind) {
         case "straight":
-          add(nextEdgePoint, STRAIGHT);
+          add(nextEdgePoint, STRAIGHT, "curb");
           break;
 
         case "corner":
           add(
             join.point,
             alongEdge(leg, 1, this.halfWidth, previous, join.point),
+            "curb",
           );
           add(
             nextEdgePoint,
             alongEdge(nextLeg, -1, this.halfWidth, join.point, nextEdgePoint),
+            "curb",
           );
           break;
 
         case "round": {
           const leaving = this.touchPointOf(leg, 1);
           const entering = this.touchPointOf(nextLeg, -1);
-          add(leaving, alongEdge(leg, 1, this.halfWidth, previous, leaving));
-          add(entering, { kind: "arc", via: join.via });
+          add(
+            leaving,
+            alongEdge(leg, 1, this.halfWidth, previous, leaving),
+            "curb",
+          );
+          add(entering, { kind: "arc", via: join.via }, "curb");
           add(
             nextEdgePoint,
             alongEdge(nextLeg, -1, this.halfWidth, entering, nextEdgePoint),
+            "curb",
           );
           break;
         }

@@ -320,6 +320,27 @@ describe("Junction.outline", () => {
     expect(viasOf(junction)).toEqual([]);
   });
 
+  it("says which pieces border a curb and which a roadway's end", () => {
+    // The skewed T again, with the same six corners. Each road's cut across
+    // it borders its roadway; the rest is curb: the branch's edge back to the
+    // corner point, and the straight edge through the half-turn gap.
+    const network = new RoadNetwork();
+    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    network.addSection(east.from, vec(10, 10 * Math.sqrt(3)), STRAIGHT);
+    network.addSection(east.from, vec(-20, 0), STRAIGHT);
+
+    const junction = new Junction(network, east.from, WIDTH_METERS);
+
+    expect(junction.outline().pieces.map((piece) => piece.edge)).toEqual([
+      "roadwayEnd", // east's cut, arriving at (near, 4)
+      "roadwayEnd", // the branch's cut, arriving at (0, 8)
+      "curb", // down the branch's edge to the corner point (−far, 4)
+      "roadwayEnd", // west's cut, arriving at (−far, −4)
+      "curb", // along the straight edge to the touching point (0, −4)
+      "curb", // on along east's edge to (near, −4)
+    ]);
+  });
+
   it("follows an arc leg's edge round rather than cutting across it", () => {
     // East, an arc leaving north and curving west, and west. The arc's two
     // gaps ask for different setbacks, since one reads its outer edge and the

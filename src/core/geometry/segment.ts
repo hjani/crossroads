@@ -47,6 +47,36 @@ export function nearestPointOnSegment(point: Vec2, from: Vec2, to: Vec2): Vec2 {
 }
 
 /**
+ * How far `point` is from the line through `a` and `b`, in meters. The line
+ * runs on past both points, so unlike `nearestPointOnSegment` nothing is
+ * clamped.
+ *
+ * Let `d = b − a`, `p = point − a`, `θ` the angle between them, and `u × v`
+ * the 2D cross product `u.x·v.z − u.z·v.x`.
+ *
+ * - The distance is the height of `p` above `d`: `|p|·|sin θ|`.
+ * - `d × p = |d|·|p|·sin θ`, so
+ *
+ *       distance = |d × p| / |d|
+ *
+ * - → the same whichever side of the line `point` is on.
+ * - `|d × p| ≤ |d|·|p|` → the result stays in `0..|p|` however short `d` is.
+ *   Unlike `lineCrossing`, a near-zero divisor never blows up: it only makes
+ *   the line's direction rounding noise.
+ *
+ * `a` and `b` the same point fix no line → the distance to `a`.
+ */
+export function distanceToLine(point: Vec2, a: Vec2, b: Vec2): number {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const length = Math.hypot(dx, dz);
+  if (length === 0) {
+    return distance(point, a);
+  }
+  return Math.abs(dx * (point.z - a.z) - dz * (point.x - a.x)) / length;
+}
+
+/**
  * Where the line through `a1`, `a2` meets the line through `b1`, `b2`, or null
  * if they don't. The lines run on past the points, so `alongA` and `alongB`
  * can be anywhere, negative included.

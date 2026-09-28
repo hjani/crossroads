@@ -6,9 +6,12 @@ import type { NodeId, SectionId } from "../network/types";
  * The ground a part that different items of the layout cover.
  */
 
+/** What a stretch of a junction's outline borders: a curb, or the end of a roadway. */
+export type OutlineEdgeKind = "curb" | "roadwayEnd";
+
 /**
- * One piece of a junction's outline: a point on it, and how the outline
- * arrives there from the point before.
+ * One piece of a junction's outline: a point on it, how the outline arrives
+ * there from the point before, and what that stretch borders.
  *
  * A piece carries no start of its own. The ring is closed, so the first piece
  * starts where the last one ends.
@@ -16,6 +19,7 @@ import type { NodeId, SectionId } from "../network/types";
 export interface OutlinePiece {
   readonly point: Vec2;
   readonly incomingGeometry: LineGeometry;
+  readonly edge: OutlineEdgeKind;
 }
 
 /**

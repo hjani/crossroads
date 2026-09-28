@@ -12,7 +12,7 @@ In meters. `w` is the road width.
 
 - Edge line: 0.1 wide, 0.1 in from the curb.
   - The gap keeps the line off the mesh edge.
-- Along both sides of every roadway.
+- Along every curb: both sides of every roadway, and on through junctions.
 - Centerline: dashed, 0.1 wide, 1.5 dash, 3 gap. Roadways only → it stops at
   junctions.
 - One color for every marking: white.
@@ -52,7 +52,7 @@ each triangle.
 
 - A pixel is marked where:
 
-      edge line, roadway:    0.1 < w/2 − |u| < 0.2
+      edge line:             0.1 < halfWidth − |u| < 0.2
       centerline dash:       |u| < 0.05  and  |fract(t) − 0.5| < 1/6
 
 - `t` already includes the roadway's own `P'` → nothing per roadway is left
@@ -73,6 +73,33 @@ each triangle.
     lines are thinner by `cos(α/2)`
   - a dash end inside a quad is cut slightly slanted
 
+## Through junctions
+
+- A junction is drawn as a fan from its node `N`: one triangle `N, a, b` per
+  outline piece `ab` (`docs/road-surface.md`).
+- Each triangle is drawn as a slice of a road: its vertices carry `side` and
+  `halfWidth` like a roadway's → the same edge line rule.
+- By what `ab` borders:
+  - a roadway's end → that roadway, carried on to `N`:
+
+        halfWidth = w/2,              side = ±1 at a, b,  0 at N
+
+  - curb → a road with its centerline through `N`, parallel to `ab`:
+
+        halfWidth = dist(N, line ab), side =  1 at a, b,  0 at N
+
+    - straight edge → `dist = w/2` → the real road's values
+    - round join → one triangle per chord → follows the chords, as a roadway
+      does
+- `halfWidth` is the same at all three vertices → `u` is a distance in
+  meters → `fwidth(u)` still measures a pixel.
+- Two neighboring triangles' lines meet on the line from `N` to their shared
+  corner.
+  - At `P`: `N` is `w/2` from both edges, `P` is 0 from both → that line is
+    the bisector → the lines meet in a clean miter.
+  - On an arc road only nearly.
+- No centerline dashes in junctions.
+
 ## Zoom
 
 - A line's edge is smoothed over one pixel.
@@ -81,7 +108,8 @@ each triangle.
 ## Relationship to other modules
 
 - Drawn by the road surface view, in the surface's own meshes, in
-  `src/render/`: one for the roadways, one for the junctions.
+  `src/render/`: one for the roadways, one for the junctions, both with the
+  same shader.
   - → rebuilt with the surface, on an edit and on nothing else.
 - The dash pattern is worked out in `src/core/layout/`, from the roadway's
   length.

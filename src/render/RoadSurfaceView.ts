@@ -4,11 +4,9 @@ import type { RoadLayout } from "../core/layout/RoadLayout";
 import { dashPeriodOf } from "../core/layout/markings";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
-import { tessellateOutline, tessellateRoadway } from "./tessellate";
-import roadwayVertexShader from "./shaders/roadwaySurface.vert.glsl?raw";
-import roadwayFragmentShader from "./shaders/roadwaySurface.frag.glsl?raw";
-import junctionVertexShader from "./shaders/junctionSurface.vert.glsl?raw";
-import junctionFragmentShader from "./shaders/junctionSurface.frag.glsl?raw";
+import { tessellateJunction, tessellateRoadway } from "./tessellate";
+import surfaceVertexShader from "./shaders/roadSurface.vert.glsl?raw";
+import surfaceFragmentShader from "./shaders/roadSurface.frag.glsl?raw";
 
 type SurfaceMesh = THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
 
@@ -33,12 +31,12 @@ export class RoadSurfaceView {
     private readonly layout: RoadLayout,
   ) {
     this.roadwayMesh = new THREE.Mesh(
-      makeRoadwayGeometry([], [], [], []),
-      makeMaterial(roadwayVertexShader, roadwayFragmentShader),
+      makeSurfaceGeometry([], [], [], []),
+      makeMaterial(),
     );
     this.junctionMesh = new THREE.Mesh(
-      makeGeometry([]),
-      makeMaterial(junctionVertexShader, junctionFragmentShader),
+      makeSurfaceGeometry([], [], [], []),
+      makeMaterial(),
     );
     this.sceneObject.add(this.roadwayMesh, this.junctionMesh);
   }
@@ -94,31 +92,38 @@ export class RoadSurfaceView {
 
     replaceGeometry(
       this.roadwayMesh,
-      makeRoadwayGeometry(coordinates, sides, halfWidths, periodsAlong),
+      makeSurfaceGeometry(coordinates, sides, halfWidths, periodsAlong),
     );
   }
 
   private rebuildJunctions(): void {
     const coordinates: number[] = [];
+    const sides: number[] = [];
+    const halfWidths: number[] = [];
+    const periodsAlong: number[] = [];
     for (const node of this.network.allNodes()) {
       const outline = this.layout.junctionAt(node.id).outline();
-      for (const point of tessellateOutline(outline)) {
+      for (const { point, side, halfWidth } of tessellateJunction(outline)) {
         coordinates.push(point.x, LAYER.ROAD_SURFACE, point.z);
+        sides.push(side);
+        halfWidths.push(halfWidth);
+        // No dashes in a junction: 0 everywhere is in a period's gap.
+        periodsAlong.push(0);
       }
     }
 
-    replaceGeometry(this.junctionMesh, makeGeometry(coordinates));
+    replaceGeometry(
+      this.junctionMesh,
+      makeSurfaceGeometry(coordinates, sides, halfWidths, periodsAlong),
+    );
   }
 }
 
-/** Unlit. */
-function makeMaterial(
-  vertexShader: string,
-  fragmentShader: string,
-): THREE.ShaderMaterial {
+/** Unlit asphalt, with the markings drawn on it. */
+function makeMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-    vertexShader,
-    fragmentShader,
+    vertexShader: surfaceVertexShader,
+    fragmentShader: surfaceFragmentShader,
     uniforms: {
       color: { value: new THREE.Color(STATE_COLOR.EXISTING) },
     },
@@ -136,16 +141,20 @@ function replaceGeometry(
 }
 
 /**
- * Roadway triangles, with each vertex's side, half width and distance along
- * its roadway in dash periods beside it.
+ * Surface triangles, roadway or junction, with each vertex's side, half width
+ * and distance along its roadway in dash periods beside it.
  */
-function makeRoadwayGeometry(
+function makeSurfaceGeometry(
   points: readonly number[],
   sides: readonly number[],
   halfWidths: readonly number[],
   periodsAlong: readonly number[],
 ): THREE.BufferGeometry {
-  const geometry = makeGeometry(points);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(points, 3),
+  );
   geometry.setAttribute("side", new THREE.Float32BufferAttribute(sides, 1));
   geometry.setAttribute(
     "halfWidth",
@@ -154,15 +163,6 @@ function makeRoadwayGeometry(
   geometry.setAttribute(
     "periodsAlong",
     new THREE.Float32BufferAttribute(periodsAlong, 1),
-  );
-  return geometry;
-}
-
-function makeGeometry(points: readonly number[]): THREE.BufferGeometry {
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(points, 3),
   );
   return geometry;
 }

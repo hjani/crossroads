@@ -1,10 +1,37 @@
 import { describe, expect, it } from "vitest";
 import { distance, type Vec2 } from "./point";
-import { nearestPointsBetweenSegments } from "./segment";
+import { distanceToLine, nearestPointsBetweenSegments } from "./segment";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
 }
+
+describe("distanceToLine", () => {
+  it("measures square to the line, on either side", () => {
+    // The line z = x, through (0, 0) and (1, 1). (0, 2) and (2, 0) are
+    // mirror images across it, each √2 away.
+    expect(distanceToLine(vec(0, 2), vec(0, 0), vec(1, 1))).toBeCloseTo(
+      Math.SQRT2,
+    );
+    expect(distanceToLine(vec(2, 0), vec(0, 0), vec(1, 1))).toBeCloseTo(
+      Math.SQRT2,
+    );
+  });
+
+  it("runs the line on past its two points", () => {
+    // The foot of the perpendicular, (10, 0), is far past b = (1, 0); a
+    // segment would measure to b instead.
+    expect(distanceToLine(vec(10, 3), vec(0, 0), vec(1, 0))).toBeCloseTo(3);
+  });
+
+  it("gives 0 for a point on the line", () => {
+    expect(distanceToLine(vec(-5, -5), vec(0, 0), vec(1, 1))).toBeCloseTo(0);
+  });
+
+  it("measures to the point when the two points are the same", () => {
+    expect(distanceToLine(vec(3, 4), vec(0, 0), vec(0, 0))).toBe(5);
+  });
+});
 
 describe("nearestPointsBetweenSegments", () => {
   it("gives the crossing twice where the segments cross", () => {

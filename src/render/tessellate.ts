@@ -1,11 +1,18 @@
 import { arcCircle, arcPolyline } from "../core/geometry/arc";
-import { isSamePoint, unitDirection, type Vec2 } from "../core/geometry/point";
+import {
+  distance,
+  isSamePoint,
+  unitDirection,
+  type Vec2,
+} from "../core/geometry/point";
+import { distanceToLine } from "../core/geometry/segment";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { LineGeometry } from "../core/geometry/lineGeometry";
 import type { Section } from "../core/network/types";
 import type {
   JunctionOutline,
   Outline,
+  OutlineEdgeKind,
   OutlinePiece,
   RoadwayOutline,
 } from "../core/layout/outline";
@@ -85,27 +92,80 @@ export function polylineBetween(
  */
 export function tessellateOutline(outline: Outline): Vec2[] {
   return outline.kind === "junction"
-    ? tessellateJunctionOutline(outline)
+    ? tessellateJunction(outline).map((vertex) => vertex.point)
     : tessellateRoadway(outline).map((vertex) => vertex.point);
 }
 
 /**
- * A junction as a fan: a triangle from the center out to each pair of
- * neighboring corners, the last pair wrapping back to the first.
+ * A point of a junction's fan, placed across the road its triangle is drawn
+ * as a slice of (`docs/road-markings.md`, Through junctions).
+ *
+ * `side` and `halfWidth` mean what they do on a roadway: `side · halfWidth`
+ * is the signed distance from that road's centerline, and `halfWidth` runs
+ * from the centerline to the curb.
+ */
+export interface JunctionVertex {
+  readonly point: Vec2;
+  readonly side: number;
+  readonly halfWidth: number;
+}
+
+/**
+ * A junction as a fan: a triangle `N, a, b` from the center `N` out to each
+ * pair of neighboring corners, the last pair wrapping back to the first.
+ *
+ * Each triangle is a slice of a road, by what the stretch `ab` borders:
+ *
+ * - roadway end → that roadway, carried on to `N`. The end is cut square
+ *   across it, so `|ab|` is its width:
+ *
+ *       halfWidth = |ab| / 2,          side = +1 at a, −1 at b, 0 at N
+ *
+ *   - which end gets +1 doesn't matter: only `|side · halfWidth|` is read
+ * - curb → a road with its centerline through `N`, parallel to `ab`:
+ *
+ *       halfWidth = dist(N, line ab),  side = 1 at a and b, 0 at N
+ *
+ * - `halfWidth` is the same at all three → `side · halfWidth` is a distance
+ *   in meters across the whole triangle
+ * - `N` on the line `ab` → `halfWidth = 0` → nothing marked
  *
  * The fan is how a junction is drawn, not what it is: on a tight arc beside a
  * sharp gap a triangle can flip over and pave a sliver of grass
  * (`docs/road-surface.md`, Limits). The surface is double-sided, so a flipped
  * triangle still draws.
  */
-function tessellateJunctionOutline(outline: JunctionOutline): Vec2[] {
+export function tessellateJunction(outline: JunctionOutline): JunctionVertex[] {
   const { center } = outline;
-  const corners = outlineCorners(outline.pieces);
-  return corners.flatMap((corner, i) => [
-    center,
-    corner,
-    corners[(i + 1) % corners.length],
-  ]);
+  const corners = junctionOutlineCorners(outline.pieces);
+  return corners.flatMap((corner, i) => {
+    const next = corners[(i + 1) % corners.length];
+    const a = corner.point;
+    const b = next.point;
+    if (next.edge === "roadwayEnd") {
+      const halfWidth = distance(a, b) / 2;
+      return [
+        { point: center, side: 0, halfWidth },
+        { point: a, side: 1, halfWidth },
+        { point: b, side: -1, halfWidth },
+      ];
+    }
+    const halfWidth = distanceToLine(center, a, b);
+    return [
+      { point: center, side: 0, halfWidth },
+      { point: a, side: 1, halfWidth },
+      { point: b, side: 1, halfWidth },
+    ];
+  });
+}
+
+/**
+ * A corner of a junction's drawn outline, and what the stretch arriving at it
+ * borders.
+ */
+interface JunctionOutlineCorner {
+  readonly point: Vec2;
+  readonly edge: OutlineEdgeKind;
 }
 
 /**
@@ -114,16 +174,17 @@ function tessellateJunctionOutline(outline: JunctionOutline): Vec2[] {
  *
  * A piece runs from the piece before it — the last one for the first piece,
  * the outline being closed — and each drawn piece gives back both of its ends,
- * so every piece contributes all but its first point.
+ * so every piece contributes all but its first point. Each chord borders
+ * what its piece does.
  */
-function outlineCorners(pieces: readonly OutlinePiece[]): Vec2[] {
+function junctionOutlineCorners(
+  pieces: readonly OutlinePiece[],
+): JunctionOutlineCorner[] {
   return pieces.flatMap((piece, index) => {
     const before = index === 0 ? pieces[pieces.length - 1] : pieces[index - 1];
-    return polylineBetween(
-      before.point,
-      piece.point,
-      piece.incomingGeometry,
-    ).slice(1);
+    return polylineBetween(before.point, piece.point, piece.incomingGeometry)
+      .slice(1)
+      .map((point) => ({ point, edge: piece.edge }));
   });
 }
 

@@ -60,9 +60,11 @@
 
 - Every part says what ground it covers, as an outline. Each kind says it the
   way that kind is shaped:
-  - junction → as described above in the Junction chanpter
+  - junction → as described above in the Junction chapter
   - roadway → a band defined by its centerline and the width of the road
 - An outline names the network part it belongs to.
+- Each piece of a junction's outline says what it borders: a curb or a
+  roadway's end.
 - Says what ground the part covers, not how to tesselate or render it.
 
 ## Derivation
