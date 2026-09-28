@@ -277,7 +277,7 @@ their own width, and a dashed centerline: 1 m dash, 1 m gap.
 - [x] solid edge lines on roadways: `0.1 < w/2 − |u| < 0.2`, a 10 cm gap
       and then the 10 cm line. Junctions stay unmarked, so the lines stop at
       the roadway ends
-- [ ] smooth line edges over `fwidth(u)`, and fade a line out once it is
+- [x] smooth line edges over `fwidth(u)`, and fade a line out once it is
       thinner than a pixel, so zooming out doesn't make it shimmer
 - [ ] core: dashes per roadway, with tests. A whole number of periods,
       `n = round(L / 2 m)`, stretched to fit exactly, with half a gap at
