@@ -13,26 +13,26 @@ In meters. `w` is the road width.
 - Edge line: 0.1 wide, 0.1 in from the curb.
   - The gap keeps the line off the mesh edge.
 - Along both sides of every roadway.
-- Centerline: dashed, 0.1 wide, 1 dash, 1 gap. Roadways only → it stops at
+- Centerline: dashed, 0.1 wide, 1.5 dash, 3 gap. Roadways only → it stops at
   junctions.
 - One color for every marking: white.
 
 ## Dash pattern
 
-Per roadway. `L` its length, `P = 2` the period (dash + gap).
+Per roadway. `L` its length, `P = 4.5` the period (dash + gap).
 
 - A whole number of periods, stretched to fit exactly:
 
       n  = round(L / P)
       P' = L / n
 
-- Half a gap at each end: a dash is the middle half of each period.
+- Half a gap at each end: a dash is the middle third of each period.
   - → two roadways meeting at a 180° join: the two half gaps make one gap →
     the pattern carries on across the node.
-  - → at a junction: about 0.5 of gap before it.
+  - → at a junction: about 1.5 of gap before it.
 - `n = 0` → no dashes.
-- Built roadways are at least 30 m (`docs/intersections.md`) → `n ≥ 15`,
-  and `P'` is within `P / 2L ≈ 3%` of `P`.
+- Built roadways are at least 30 m (`docs/intersections.md`) → `n ≥ 7`,
+  and `P'` is within `1 / 2n ≈ 7%` of `P`.
 
 ## Drawn in the shader
 
@@ -53,7 +53,7 @@ each triangle.
 - A pixel is marked where:
 
       edge line, roadway:    0.1 < w/2 − |u| < 0.2
-      centerline dash:       |u| < 0.05  and  |fract(t) − 0.5| < 0.25
+      centerline dash:       |u| < 0.05  and  |fract(t) − 0.5| < 1/6
 
 - `t` already includes the roadway's own `P'` → nothing per roadway is left
   for the shader → every roadway shares one mesh.

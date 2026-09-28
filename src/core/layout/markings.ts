@@ -1,5 +1,5 @@
 /** Dash + gap along the centerline, in meters. See `docs/road-markings.md`. */
-export const DASH_PERIOD_METERS = 2;
+export const DASH_PERIOD_METERS = 4.5;
 
 /**
  * The period a roadway's dashes are stretched to, so a whole number of them
@@ -13,7 +13,7 @@ export const DASH_PERIOD_METERS = 2;
  *       P' = L / n
  *
  * - `L / P' = n` → the pattern ends on a period boundary at both ends; a
- *   dash is the middle half of a period → half a gap at each end
+ *   dash is the middle third of a period → half a gap at each end
  * - `n ≤ 0` → null: `L < P/2`, and the negative lengths of a refused plan
  */
 export function dashPeriodOf(lengthMeters: number): number | null {

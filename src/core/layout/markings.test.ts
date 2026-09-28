@@ -3,25 +3,25 @@ import { dashPeriodOf } from "./markings";
 
 describe("dashPeriodOf", () => {
   it("keeps the period when it fits exactly", () => {
-    expect(dashPeriodOf(30)).toBe(2);
+    expect(dashPeriodOf(27)).toBe(4.5);
   });
 
   it("squeezes the period when rounding adds one", () => {
-    // 31 / 2 = 15.5 → 16 periods
-    expect(dashPeriodOf(31)).toBeCloseTo(1.9375);
+    // 29.5 / 4.5 ≈ 6.56 → 7 periods
+    expect(dashPeriodOf(29.5)).toBeCloseTo(29.5 / 7);
   });
 
   it("stretches the period when rounding drops one", () => {
-    // 30.9 / 2 = 15.45 → 15 periods
-    expect(dashPeriodOf(30.9)).toBeCloseTo(2.06);
+    // 29 / 4.5 ≈ 6.44 → 6 periods
+    expect(dashPeriodOf(29)).toBeCloseTo(29 / 6);
   });
 
   it("gives the shortest roadway with a dash one period", () => {
-    expect(dashPeriodOf(1)).toBe(1);
+    expect(dashPeriodOf(2.25)).toBe(2.25);
   });
 
   it("gives no dashes to a roadway too short for one", () => {
-    expect(dashPeriodOf(0.99)).toBeNull();
+    expect(dashPeriodOf(2.2)).toBeNull();
     expect(dashPeriodOf(0)).toBeNull();
     expect(dashPeriodOf(-5)).toBeNull();
   });
