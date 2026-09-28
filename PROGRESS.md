@@ -264,10 +264,10 @@ as a road too short for the setbacks at its two ends.
 Solid 10 cm lines along both edges of the road, set in from the edge by
 their own width, and a dashed centerline: 1 m dash, 1 m gap.
 
-- [ ] `docs/road-markings.md` design note: what is marked, the values each
+- [x] `docs/road-markings.md` design note: what is marked, the values each
       vertex carries (`u` across the road, `t` along it), and why the lines
       follow the chords rather than the true arc
-- [ ] swap `RoadSurfaceView`'s `MeshBasicMaterial` for a `ShaderMaterial`
+- [x] swap `RoadSurfaceView`'s `MeshBasicMaterial` for a `ShaderMaterial`
       that paints the same flat color. Nothing changes on screen; the point
       is a vertex and a fragment shader of our own, and a color passed in as
       a uniform

@@ -5,6 +5,8 @@ import type { RoadLayout } from "../core/layout/RoadLayout";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { tessellateOutline } from "./tessellate";
+import vertexShader from "./shaders/roadSurface.vert.glsl?raw";
+import fragmentShader from "./shaders/roadSurface.frag.glsl?raw";
 
 /**
  * Draws a road network as asphalt, filling the ground every roadway and
@@ -18,7 +20,7 @@ export class RoadSurfaceView {
 
   private readonly surface: THREE.Mesh<
     THREE.BufferGeometry,
-    THREE.MeshBasicMaterial
+    THREE.ShaderMaterial
   >;
   private drawnVersion = -1;
 
@@ -29,8 +31,12 @@ export class RoadSurfaceView {
     this.surface = new THREE.Mesh(
       makeGeometry([]),
       // Unlit: the surface is one flat color, whatever the scene's lights.
-      new THREE.MeshBasicMaterial({
-        color: STATE_COLOR.EXISTING,
+      new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms: {
+          color: { value: new THREE.Color(STATE_COLOR.EXISTING) },
+        },
         // Seen only from above, so which way a triangle winds doesn't matter.
         side: THREE.DoubleSide,
       }),
