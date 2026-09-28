@@ -271,10 +271,10 @@ their own width, and a dashed centerline: 1 m dash, 1 m gap.
       that paints the same flat color. Nothing changes on screen; the point
       is a vertex and a fragment shader of our own, and a color passed in as
       a uniform
-- [ ] `u`, the signed distance from the centerline, as a vertex attribute:
+- [x] `u`, the signed distance from the centerline, as a vertex attribute:
       `±w/2` at every roadway vertex. Shown for now as a color gradient
       across the road, to see the interpolation at work
-- [ ] solid edge lines on roadways: `0.1 < w/2 − |u| < 0.2`, a 10 cm gap
+- [x] solid edge lines on roadways: `0.1 < w/2 − |u| < 0.2`, a 10 cm gap
       and then the 10 cm line. Junctions stay unmarked, so the lines stop at
       the roadway ends
 - [ ] smooth line edges over `fwidth(u)`, and fade a line out once it is

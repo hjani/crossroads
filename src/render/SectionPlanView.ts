@@ -189,13 +189,13 @@ export class SectionPlanView {
       let previous = positionOf(network, plan.start.at);
       for (const piece of plan.pieces) {
         const position = positionOf(network, piece.to.at);
-        for (const corner of tessellateRibbon(
+        for (const { point } of tessellateRibbon(
           previous,
           position,
           piece.centerlineGeometry,
           this.roadWidth,
         )) {
-          coordinates.push(corner.x, LAYER.SURFACE_DECORATION, corner.z);
+          coordinates.push(point.x, LAYER.SURFACE_DECORATION, point.z);
         }
         previous = position;
       }

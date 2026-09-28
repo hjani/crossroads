@@ -41,8 +41,12 @@ pixel of the surface from values its vertices carry, interpolated across
 each triangle.
 
 - Every vertex carries where it is on its road:
-  - `u`: signed distance from the centerline. `±w/2` at a roadway's
-    vertices.
+  - `side`: `±1`, which edge of the roadway it is on.
+  - `halfWidth`: `w/2`, the same at every vertex of a roadway.
+  - → `u = side · halfWidth`, worked out in the vertex shader: signed
+    distance from the centerline, interpolated for each pixel.
+    - Width only in `halfWidth` → a width that varies by road needs no
+      change.
   - `t = s / P'`: distance along the roadway, in periods. `s` is measured
     from the roadway's start.
 
@@ -76,8 +80,8 @@ each triangle.
 
 ## Relationship to other modules
 
-- Drawn by the road surface view, in the surface's own mesh, in
-  `src/render/`.
+- Drawn by the road surface view, in the surface's own meshes, in
+  `src/render/`: one for the roadways, one for the junctions.
   - → rebuilt with the surface, on an edit and on nothing else.
 - The dash pattern is worked out in `src/core/layout/`, from the roadway's
   length.

@@ -86,7 +86,7 @@ export function polylineBetween(
 export function tessellateOutline(outline: Outline): Vec2[] {
   return outline.kind === "junction"
     ? tessellateJunctionOutline(outline)
-    : tessellateRoadwayOutline(outline);
+    : tessellateRoadway(outline).map((vertex) => vertex.point);
 }
 
 /**
@@ -128,10 +128,20 @@ function outlineCorners(pieces: readonly OutlinePiece[]): Vec2[] {
 }
 
 /**
+ * A point on one of a ribbon's two edges.
+ *
+ * `side` is `+1` on one edge and `−1` on the other.
+ */
+export interface RibbonVertex {
+  readonly point: Vec2;
+  readonly side: number;
+}
+
+/**
  * A roadway as a strip: two triangles between each pair of neighboring
  * slices.
  */
-function tessellateRoadwayOutline(outline: RoadwayOutline): Vec2[] {
+export function tessellateRoadway(outline: RoadwayOutline): RibbonVertex[] {
   return tessellateRibbon(
     outline.from,
     outline.to,
@@ -148,14 +158,16 @@ export function tessellateRibbon(
   to: Vec2,
   lineGeometry: LineGeometry,
   widthMeters: number,
-): Vec2[] {
+): RibbonVertex[] {
   const slices = ribbonSlicesBetween(from, to, lineGeometry, widthMeters);
-  const triangles: Vec2[] = [];
+  const triangles: RibbonVertex[] = [];
   for (let i = 1; i < slices.length; i++) {
-    const back = slices[i - 1];
-    const front = slices[i];
-    triangles.push(back.edgeB, front.edgeB, front.edgeA);
-    triangles.push(back.edgeB, front.edgeA, back.edgeA);
+    const backA = { point: slices[i - 1].edgeA, side: 1 };
+    const backB = { point: slices[i - 1].edgeB, side: -1 };
+    const frontA = { point: slices[i].edgeA, side: 1 };
+    const frontB = { point: slices[i].edgeB, side: -1 };
+    triangles.push(backB, frontB, frontA);
+    triangles.push(backB, frontA, backA);
   }
   return triangles;
 }
