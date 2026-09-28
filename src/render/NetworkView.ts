@@ -33,6 +33,9 @@ export class NetworkView {
       makeGeometry([]),
       new THREE.LineBasicMaterial({ color: STATE_COLOR.EXISTING }),
     );
+    // Hidden: drawn over the road surface, they cover its dashed centerline.
+    // Back as the zoomed-out drawing once the network has levels of detail.
+    this.sections.visible = false;
     this.nodes = new THREE.Points(
       makeGeometry([]),
       new THREE.PointsMaterial({

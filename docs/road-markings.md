@@ -53,7 +53,7 @@ each triangle.
 - A pixel is marked where:
 
       edge line, roadway:    0.1 < w/2 − |u| < 0.2
-      centerline dash:       |u| < 0.05  and  |fract(t) − 0.5| < 0.5
+      centerline dash:       |u| < 0.05  and  |fract(t) − 0.5| < 0.25
 
 - `t` already includes the roadway's own `P'` → nothing per roadway is left
   for the shader → every roadway shares one mesh.

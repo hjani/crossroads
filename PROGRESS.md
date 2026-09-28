@@ -279,11 +279,11 @@ their own width, and a dashed centerline: 1 m dash, 1 m gap.
       the roadway ends
 - [x] smooth line edges over `fwidth(u)`, and fade a line out once it is
       thinner than a pixel, so zooming out doesn't make it shimmer
-- [ ] core: dashes per roadway, with tests. A whole number of periods,
+- [x] core: dashes per roadway, with tests. A whole number of periods,
       `n = round(L / 2 m)`, stretched to fit exactly, with half a gap at
       each end so two roadways meeting at a 180° join continue the pattern.
       No dashes on a roadway too short for one
-- [ ] the dashed centerline: `t = s / P'` as a vertex attribute, computed on
+- [x] the dashed centerline: `t = s / P'` as a vertex attribute, computed on
       the CPU, and the shader draws the middle half of each period
 - [ ] edge lines around junctions: an outline piece says whether it is curb
       or the opening a roadway attaches to, and each fan triangle carries

@@ -2,6 +2,7 @@ uniform vec3 color;
 
 varying float u;
 varying float vHalfWidth;
+varying float t;
 
 // Edge line, in meters: a gap in from the curb, then the line.
 const float EDGE_INSET = 0.1;
@@ -23,7 +24,13 @@ void main() {
   // → never reaches 1 → the line fades instead of flickering.
   float edgeLine =
     ramp(d - EDGE_INSET, px) - ramp(d - (EDGE_INSET + LINE_WIDTH), px);
-  gl_FragColor = vec4(mix(color, MARKING, edgeLine), 1.0);
+  // Centerline dash: the middle half of each period. `fract` jumps at a
+  // period's start, always in the gap, so the jump never shows.
+  float across =
+    ramp(u + LINE_WIDTH / 2.0, px) - ramp(u - LINE_WIDTH / 2.0, px);
+  float along = ramp(0.25 - abs(fract(t) - 0.5), fwidth(t));
+  float dash = across * along;
+  gl_FragColor = vec4(mix(color, MARKING, max(edgeLine, dash)), 1.0);
   // THREE.Color holds linear values; this converts them for the screen, as
   // every built-in material does last.
   #include <colorspace_fragment>

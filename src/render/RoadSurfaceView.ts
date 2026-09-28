@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { RoadLayout } from "../core/layout/RoadLayout";
+import { dashPeriodOf } from "../core/layout/markings";
 import { STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { tessellateOutline, tessellateRoadway } from "./tessellate";
@@ -32,7 +33,7 @@ export class RoadSurfaceView {
     private readonly layout: RoadLayout,
   ) {
     this.roadwayMesh = new THREE.Mesh(
-      makeRoadwayGeometry([], [], []),
+      makeRoadwayGeometry([], [], [], []),
       makeMaterial(roadwayVertexShader, roadwayFragmentShader),
     );
     this.junctionMesh = new THREE.Mesh(
@@ -70,23 +71,30 @@ export class RoadSurfaceView {
     const coordinates: number[] = [];
     const sides: number[] = [];
     const halfWidths: number[] = [];
+    const periodsAlong: number[] = [];
     for (const section of this.network.allSections()) {
       const roadway = this.layout.roadwayAlong(section.id);
       // Negative may happen when junction setbacks overlap:
       // it shouldn't have been built, but just skip rendering for it
       if (roadway.length >= 0) {
         const halfWidth = roadway.outline.widthMeters / 2;
-        for (const { point, side } of tessellateRoadway(roadway.outline)) {
+        // No dashes: 0 everywhere is the start of a period, in its gap.
+        const period = dashPeriodOf(roadway.length);
+        const periods = period === null ? 0 : roadway.length / period;
+        for (const { point, side, along } of tessellateRoadway(
+          roadway.outline,
+        )) {
           coordinates.push(point.x, LAYER.ROAD_SURFACE, point.z);
           sides.push(side);
           halfWidths.push(halfWidth);
+          periodsAlong.push(along * periods);
         }
       }
     }
 
     replaceGeometry(
       this.roadwayMesh,
-      makeRoadwayGeometry(coordinates, sides, halfWidths),
+      makeRoadwayGeometry(coordinates, sides, halfWidths, periodsAlong),
     );
   }
 
@@ -127,17 +135,25 @@ function replaceGeometry(
   mesh.geometry = geometry;
 }
 
-/** Roadway triangles, with each vertex's side and half width beside it. */
+/**
+ * Roadway triangles, with each vertex's side, half width and distance along
+ * its roadway in dash periods beside it.
+ */
 function makeRoadwayGeometry(
   points: readonly number[],
   sides: readonly number[],
   halfWidths: readonly number[],
+  periodsAlong: readonly number[],
 ): THREE.BufferGeometry {
   const geometry = makeGeometry(points);
   geometry.setAttribute("side", new THREE.Float32BufferAttribute(sides, 1));
   geometry.setAttribute(
     "halfWidth",
     new THREE.Float32BufferAttribute(halfWidths, 1),
+  );
+  geometry.setAttribute(
+    "periodsAlong",
+    new THREE.Float32BufferAttribute(periodsAlong, 1),
   );
   return geometry;
 }

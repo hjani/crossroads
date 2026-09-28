@@ -130,11 +130,14 @@ function outlineCorners(pieces: readonly OutlinePiece[]): Vec2[] {
 /**
  * A point on one of a ribbon's two edges.
  *
- * `side` is `+1` on one edge and `−1` on the other.
+ * `side` is `+1` on one edge and `−1` on the other. `along` is how far down
+ * the ribbon its slice is, as a fraction of the length: `0` at `from`, `1`
+ * at `to`.
  */
 export interface RibbonVertex {
   readonly point: Vec2;
   readonly side: number;
+  readonly along: number;
 }
 
 /**
@@ -162,10 +165,12 @@ export function tessellateRibbon(
   const slices = ribbonSlicesBetween(from, to, lineGeometry, widthMeters);
   const triangles: RibbonVertex[] = [];
   for (let i = 1; i < slices.length; i++) {
-    const backA = { point: slices[i - 1].edgeA, side: 1 };
-    const backB = { point: slices[i - 1].edgeB, side: -1 };
-    const frontA = { point: slices[i].edgeA, side: 1 };
-    const frontB = { point: slices[i].edgeB, side: -1 };
+    const back = slices[i - 1];
+    const front = slices[i];
+    const backA = { point: back.edgeA, side: 1, along: back.along };
+    const backB = { point: back.edgeB, side: -1, along: back.along };
+    const frontA = { point: front.edgeA, side: 1, along: front.along };
+    const frontB = { point: front.edgeB, side: -1, along: front.along };
     triangles.push(backB, frontB, frontA);
     triangles.push(backB, frontA, backA);
   }
@@ -176,11 +181,12 @@ export function tessellateRibbon(
  * A cut straight across a ribbon, from one edge to the other.
  *
  * `edgeA` is on the same edge in every slice of a section, so the ribbon
- * between two slices doesn't twist.
+ * between two slices doesn't twist. `along` is as on `RibbonVertex`.
  */
 interface RibbonSlice {
   readonly edgeA: Vec2;
   readonly edgeB: Vec2;
+  readonly along: number;
 }
 
 /**
@@ -208,8 +214,13 @@ interface RibbonSlice {
  *       n = unitDirection(c, p)
  *
  * - → always outward, so `edgeA` is always the outer edge
+ * - `arcPolyline` steps the angle evenly, and arc length is `r · angle` →
+ *   equal steps of length too → slice `i` of `k` chords is exactly at:
  *
- * A `via` in line with the ends has no circle → sliced as a straight.
+ *       along = i / k
+ *
+ * A `via` in line with the ends has no circle → sliced as a straight, at
+ * `along = 0` and `1`.
  *
  * Ends at the same place → no slices, and an error logged.
  */
@@ -230,22 +241,25 @@ function ribbonSlicesBetween(
     if (circle !== null) {
       const sagMeters =
         (ARC_SAG_METERS * circle.radius) / (circle.radius + widthMeters / 2);
-      return arcPolyline(from, to, centerlineGeometry.via, sagMeters).map((p) =>
-        sliceAt(p, unitDirection(circle.center, p), widthMeters),
+      const points = arcPolyline(from, to, centerlineGeometry.via, sagMeters);
+      const k = points.length - 1;
+      return points.map((p, i) =>
+        sliceAt(p, unitDirection(circle.center, p), widthMeters, i / k),
       );
     }
   }
 
   const d = unitDirection(from, to);
   const n = { x: d.z, z: -d.x };
-  return [sliceAt(from, n, widthMeters), sliceAt(to, n, widthMeters)];
+  return [sliceAt(from, n, widthMeters, 0), sliceAt(to, n, widthMeters, 1)];
 }
 
 /** The slice through `p` along the unit normal `n`: `p ± (w/2)·n`. */
-function sliceAt(p: Vec2, n: Vec2, w: number): RibbonSlice {
+function sliceAt(p: Vec2, n: Vec2, w: number, along: number): RibbonSlice {
   const h = w / 2;
   return {
     edgeA: { x: p.x + h * n.x, z: p.z + h * n.z },
     edgeB: { x: p.x - h * n.x, z: p.z - h * n.z },
+    along,
   };
 }
