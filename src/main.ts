@@ -7,7 +7,7 @@ import { PanZoomControls } from "./input/PanZoomControls";
 import { SmartArcTool } from "./input/SmartArcTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
-import { NetworkView } from "./render/NetworkView";
+//import { NetworkView } from "./render/NetworkView";
 import { RoadSurfaceView } from "./render/RoadSurfaceView";
 import { Viewport } from "./render/Viewport";
 import { InspectPanel } from "./ui/InspectPanel";
@@ -38,8 +38,8 @@ const layout = new RoadLayout(network);
 const roadSurfaceView = new RoadSurfaceView(network, layout);
 scene.add(roadSurfaceView.sceneObject);
 
-const networkView = new NetworkView(network);
-scene.add(networkView.sceneObject);
+// const networkView = new NetworkView(network);
+// scene.add(networkView.sceneObject);
 
 const tools = new ToolManager(renderer.domElement, window, viewport);
 scene.add(tools.sceneObject);
@@ -90,7 +90,7 @@ function renderLoop(timestamp: number) {
   timer.update(timestamp);
   controls.update(timer.getDelta());
   roadSurfaceView.update();
-  networkView.update();
+  //networkView.update();
   renderer.render(scene, viewport.camera);
   requestAnimationFrame(renderLoop);
 }
