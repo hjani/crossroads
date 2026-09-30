@@ -285,9 +285,26 @@ their own width, and a dashed centerline: 1 m dash, 1 m gap.
       No dashes on a roadway too short for one
 - [x] the dashed centerline: `t = s / P'` as a vertex attribute, computed on
       the CPU, and the shader draws the middle half of each period
-- [ ] edge lines around junctions: an outline piece says whether it is curb
+- [x] edge lines around junctions: an outline piece says whether it is curb
       or the opening a roadway attaches to, and each fan triangle carries
       `e`, its distance to its own curb chord. Same inset: `0.1 < e < 0.2`
+
+### M11 — Part states
+
+One state per part (aimed, selected, planned, refused), painted by the
+surface itself instead of stacked overlays, and a plan shown as the road
+after the click.
+
+- [x] `docs/part-states.md` design note: one state per part, painted by the
+      surface shader, and a plan's changed region swapped in for the live one
+- [ ] the surface shows part states: hover, selection and weld target tint
+      the live surface instead of overlays, the plan outranks them → no more
+      lime where a hovered junction is also planned
+- [ ] the plan swaps its changed region in: the speculative parts drawn in
+      place of the live ones (`removedSections` in core, with tests), no
+      overlap between the two surfaces
+- [ ] one overlay for dots and lines: `NodeHighlight` merged into
+      `RoadNetworkHighlight`, with a mark for a place that has no node
 
 ## Backlog
 
