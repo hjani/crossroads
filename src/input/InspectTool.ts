@@ -9,6 +9,11 @@ import {
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
 import { STATE_COLOR } from "../render/colors";
+import {
+  PART_STATE,
+  type PartStates,
+  type SetPartState,
+} from "../render/PartStates";
 import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { InspectPanel } from "../ui/InspectPanel";
@@ -32,6 +37,16 @@ const PICK_RADIUS_PIXELS = 12;
 type Selection =
   | { readonly kind: "node"; readonly id: NodeId }
   | { readonly kind: "section"; readonly id: SectionId };
+
+/** The junction a selection picks as its area: a node's own. */
+function junctionsOf(selection: Selection | null): NodeId[] {
+  return selection?.kind === "node" ? [selection.id] : [];
+}
+
+/** The roadway a selection picks as its area: a section's own. */
+function roadwaysOf(selection: Selection | null): SectionId[] {
+  return selection?.kind === "section" ? [selection.id] : [];
+}
 
 /** A length as the panel shows it. */
 function displayMeters(length: number): string {
@@ -76,18 +91,12 @@ export class InspectTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
+    private readonly partStates: PartStates,
     private readonly panel: InspectPanel,
   ) {
-    this.aimedMark = new RoadNetworkHighlight(
-      network,
-      layout,
-      STATE_COLOR.AIMED,
-    );
-    this.selectedMark = new RoadNetworkHighlight(
-      network,
-      layout,
-      STATE_COLOR.SELECTED,
-    );
+    partStates.reset();
+    this.aimedMark = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
+    this.selectedMark = new RoadNetworkHighlight(network, STATE_COLOR.SELECTED);
     this.decoration.add(
       this.aimedMark.sceneObject,
       this.selectedMark.sceneObject,
@@ -203,15 +212,19 @@ export class InspectTool implements Tool {
    */
   private showAimed(ground: Vec2 | null): void {
     const aimed = ground === null ? null : this.selectionAt(ground);
+
+    // The area needs no rule for the selection: selected outranks aimed.
+    this.setSelectionState(aimed, PART_STATE.AIMED);
+
     if (aimed === null || sameSelection(aimed, this.selected)) {
       this.aimedMark.hide();
       return;
     }
 
     if (aimed.kind === "node") {
-      this.aimedMark.show({ nodes: [aimed.id], junctions: [aimed.id] });
+      this.aimedMark.show({ nodes: [aimed.id] });
     } else {
-      this.aimedMark.show({ sections: [aimed.id], roadways: [aimed.id] });
+      this.aimedMark.show({ sections: [aimed.id] });
     }
   }
 
@@ -220,6 +233,7 @@ export class InspectTool implements Tool {
    */
   private showSelected(): void {
     const selected = this.selected;
+    this.setSelectionState(selected, PART_STATE.SELECTED);
     if (selected === null) {
       this.selectedMark.hide();
       this.panel.show("No selection", []);
@@ -228,11 +242,7 @@ export class InspectTool implements Tool {
 
     if (selected.kind === "node") {
       const sections = this.network.sectionsAt(selected.id);
-      this.selectedMark.show({
-        sections,
-        nodes: [selected.id],
-        junctions: [selected.id],
-      });
+      this.selectedMark.show({ sections, nodes: [selected.id] });
       this.panel.show(`Node ${selected.id}`, [
         ["Sections", String(sections.length)],
       ]);
@@ -241,7 +251,6 @@ export class InspectTool implements Tool {
       this.selectedMark.show({
         sections: [selected.id],
         nodes: [section.from, section.to],
-        roadways: [selected.id],
       });
       const radius = sectionRadius(this.network, section);
       this.panel.show(`Section ${section.id}`, [
@@ -251,6 +260,14 @@ export class InspectTool implements Tool {
         ["Radius", radius === null ? "n/a" : displayMeters(radius)],
       ]);
     }
+  }
+
+  private setSelectionState(
+    selection: Selection | null,
+    state: SetPartState,
+  ): void {
+    this.partStates.setJunctionsInState(state, junctionsOf(selection));
+    this.partStates.setRoadwaysInState(state, roadwaysOf(selection));
   }
 
   /**

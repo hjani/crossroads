@@ -9,6 +9,7 @@ import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
+import type { PartStates } from "../render/PartStates";
 import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
@@ -19,7 +20,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { showWeldTarget } from "./toolHelpers";
+import { showPlanStates, showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -54,12 +55,10 @@ export class ArcSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
+    private readonly partStates: PartStates,
   ) {
-    this.hoverHighlight = new RoadNetworkHighlight(
-      network,
-      layout,
-      STATE_COLOR.AIMED,
-    );
+    partStates.reset();
+    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planView.sceneObject,
       this.startHighlight.sceneObject,
@@ -135,7 +134,7 @@ export class ArcSectionTool implements Tool {
 
   /**
    * Draws what a click would do. One of the three says it, and how far the
-   * gesture has got picks which: everything comes off the screen first, so
+   * gesture has got picks which: the marks come off the screen first, so
    * each branch only has to put its own back. Which is also what leaves
    * nothing behind when there is no answer to draw at all.
    *
@@ -152,11 +151,13 @@ export class ArcSectionTool implements Tool {
     this.planView.hide();
     this.startHighlight.hide();
     this.endHighlight.hide();
-    this.hoverHighlight.hide();
 
     const ground =
       cursor === null ? null : this.viewport.screenToGround(cursor);
-    if (ground === null) return;
+    if (ground === null) {
+      this.showStates(null, null);
+      return;
+    }
 
     // Both ends down: the arc bending through where the cursor is, which is
     // the whole of what the next click would build. That click places the
@@ -165,6 +166,7 @@ export class ArcSectionTool implements Tool {
     if (this.start !== null && this.end !== null) {
       const plan = this.planThrough(placeControlPoint(ground, { useGrid }));
       if (plan !== null) this.planView.showRoadPlan(this.network, plan);
+      this.showStates(null, plan);
       return;
     }
 
@@ -191,7 +193,10 @@ export class ArcSectionTool implements Tool {
       this.start.position,
       this.start.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
     );
-    if (!this.reachesBeyondStart(ground, placed)) return;
+    if (!this.reachesBeyondStart(ground, placed)) {
+      this.showStates(null, null);
+      return;
+    }
 
     this.markWhereClickLands(this.endHighlight, placed);
   }
@@ -201,13 +206,19 @@ export class ArcSectionTool implements Tool {
    * would make.
    */
   private markWhereClickLands(mark: NodeHighlight, placed: Placement): void {
-    showWeldTarget(this.hoverHighlight, placed);
+    this.showStates(placed, null);
     if (placed.kind !== "free") {
       mark.show(
         placed.position,
         placed.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
       );
     }
+  }
+
+  /** What an end would weld onto, and what the plan meets. */
+  private showStates(weld: Placement | null, plan: RoadPlan | null): void {
+    showWeldTarget(this.partStates, this.hoverHighlight, weld);
+    showPlanStates(this.partStates, plan);
   }
 
   /**

@@ -1,8 +1,12 @@
 uniform vec3 color;
+// How much of a state's tint is mixed over the surface.
+uniform float tintAmount;
 
 varying float u;
 varying float vHalfWidth;
 varying float t;
+varying float vState;
+varying vec3 vTint;
 
 // Edge line, in meters: a gap in from the curb, then the line.
 const float EDGE_INSET = 0.2;
@@ -18,6 +22,10 @@ float ramp(float x, float px) {
 }
 
 void main() {
+  // State is The same at all three vertices, but interpolation can still land
+  // a hair off → compared half a step away.
+  if (vState > float(PART_STATE_HIDDEN) - 0.5) discard;
+
   // Meters per pixel. Taken of `u`, not `d`: `abs` kinks at the centerline.
   float px = fwidth(u);
   // Distance in from the nearer curb.
@@ -32,7 +40,10 @@ void main() {
     ramp(u + LINE_WIDTH / 2.0, px) - ramp(u - LINE_WIDTH / 2.0, px);
   float along = ramp(DASH_HALF - abs(fract(t) - 0.5), fwidth(t));
   float dash = across * along;
-  gl_FragColor = vec4(mix(color, MARKING, max(edgeLine, dash)), 1.0);
+  vec3 surface = mix(color, MARKING, max(edgeLine, dash));
+  // No state → no tint.
+  float tint = vState < float(PART_STATE_NONE) + 0.5 ? 0.0 : tintAmount;
+  gl_FragColor = vec4(mix(surface, vTint, tint), 1.0);
   // THREE.Color holds linear values; this converts them for the screen, as
   // every built-in material does last.
   #include <colorspace_fragment>

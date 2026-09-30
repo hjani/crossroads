@@ -8,6 +8,7 @@ import { SmartArcTool } from "./input/SmartArcTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
 //import { NetworkView } from "./render/NetworkView";
+import { PartStates } from "./render/PartStates";
 import { RoadSurfaceView } from "./render/RoadSurfaceView";
 import { Viewport } from "./render/Viewport";
 import { InspectPanel } from "./ui/InspectPanel";
@@ -35,7 +36,10 @@ const network = new RoadNetwork();
 
 const layout = new RoadLayout(network);
 
-const roadSurfaceView = new RoadSurfaceView(network, layout);
+// What the tools say about the parts of the layout, and the surface shows.
+const partStates = new PartStates();
+
+const roadSurfaceView = new RoadSurfaceView(network, layout, partStates);
 scene.add(roadSurfaceView.sceneObject);
 
 // const networkView = new NetworkView(network);
@@ -57,6 +61,7 @@ const palette = new ToolPalette(document.body, [
           network,
           layout,
           viewport,
+          partStates,
           new InspectPanel(document.body),
         ),
       ),
@@ -65,19 +70,25 @@ const palette = new ToolPalette(document.body, [
     id: "straight",
     label: "Straight",
     activate: () =>
-      tools.setActiveTool(new StraightSectionTool(network, layout, viewport)),
+      tools.setActiveTool(
+        new StraightSectionTool(network, layout, viewport, partStates),
+      ),
   },
   {
     id: "arc",
     label: "Arc",
     activate: () =>
-      tools.setActiveTool(new ArcSectionTool(network, layout, viewport)),
+      tools.setActiveTool(
+        new ArcSectionTool(network, layout, viewport, partStates),
+      ),
   },
   {
     id: "smart-arc",
     label: "Smart Arc",
     activate: () =>
-      tools.setActiveTool(new SmartArcTool(network, layout, viewport)),
+      tools.setActiveTool(
+        new SmartArcTool(network, layout, viewport, partStates),
+      ),
   },
 ]);
 palette.select("straight");

@@ -297,7 +297,7 @@ after the click.
 
 - [x] `docs/part-states.md` design note: one state per part, painted by the
       surface shader, and a plan's changed region swapped in for the live one
-- [ ] the surface shows part states: hover, selection and weld target tint
+- [x] the surface shows part states: hover, selection and weld target tint
       the live surface instead of overlays, the plan outranks them → no more
       lime where a hovered junction is also planned
 - [ ] the plan swaps its changed region in: the speculative parts drawn in

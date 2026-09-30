@@ -7,7 +7,6 @@
 - Visuals only. Edits are still planned as if roads had no width
   (`docs/intersections.md`) → a network the planner accepts can still draw
   wrong (see Limits).
-- Out of scope: marks and previews. Tools draw them over the surface.
 
 ## Ribbons
 

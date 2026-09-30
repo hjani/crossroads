@@ -17,6 +17,7 @@ import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
+import type { PartStates } from "../render/PartStates";
 import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
@@ -26,7 +27,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { showWeldTarget } from "./toolHelpers";
+import { showPlanStates, showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -103,12 +104,10 @@ export class SmartArcTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
+    private readonly partStates: PartStates,
   ) {
-    this.hoverHighlight = new RoadNetworkHighlight(
-      network,
-      layout,
-      STATE_COLOR.AIMED,
-    );
+    partStates.reset();
+    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.planLayer.add(this.planView.sceneObject);
     this.decoration.add(
       this.planLayer,
@@ -215,11 +214,13 @@ export class SmartArcTool implements Tool {
       this.startMark.hide();
       this.showPlans(null, []);
       this.aimedMark.hide();
-      this.hoverHighlight.hide();
-      if (ground === null) return;
+      if (ground === null) {
+        this.showStates(null, null);
+        return;
+      }
 
       const aimed = this.startAt(ground, modifiers);
-      showWeldTarget(this.hoverHighlight, aimed);
+      this.showStates(aimed, null);
       if (aimed.kind !== "free") {
         this.aimedMark.show(
           aimed.position,
@@ -245,12 +246,9 @@ export class SmartArcTool implements Tool {
         ? []
         : this.plansTo(this.start, end, this.directionsAt(this.start));
     this.showPlans(flicked, candidates);
-
-    if (flicked !== null && end !== null) {
-      showWeldTarget(this.hoverHighlight, end);
-    } else {
-      this.hoverHighlight.hide();
-    }
+    // Only the flicked plan says what a click does; the candidates are a
+    // debug view, and claim nothing.
+    this.showStates(flicked !== null ? end : null, flicked);
 
     // The start is marked on its own only until the plan marks it, as in
     // `StraightSectionTool`: a node already there, or one to be made.
@@ -262,6 +260,12 @@ export class SmartArcTool implements Tool {
         this.start.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
       );
     }
+  }
+
+  /** What an end would weld onto, and what the plan meets. */
+  private showStates(weld: Placement | null, plan: RoadPlan | null): void {
+    showWeldTarget(this.partStates, this.hoverHighlight, weld);
+    showPlanStates(this.partStates, plan);
   }
 
   /** The directions a road could leave the start by. None on open ground. */

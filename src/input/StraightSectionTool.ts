@@ -9,6 +9,7 @@ import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
 import { STATE_COLOR } from "../render/colors";
 import { NodeHighlight } from "../render/NodeHighlight";
+import type { PartStates } from "../render/PartStates";
 import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
@@ -18,7 +19,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { showWeldTarget } from "./toolHelpers";
+import { showPlanStates, showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 import type { Vec2 } from "../core/geometry/point";
 
@@ -50,12 +51,10 @@ export class StraightSectionTool implements Tool {
     private readonly network: RoadNetwork,
     private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
+    private readonly partStates: PartStates,
   ) {
-    this.hoverHighlight = new RoadNetworkHighlight(
-      network,
-      layout,
-      STATE_COLOR.AIMED,
-    );
+    partStates.reset();
+    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planView.sceneObject,
       this.highlight.sceneObject,
@@ -130,7 +129,8 @@ export class StraightSectionTool implements Tool {
     if (ground === null) {
       this.planView.hide();
       this.highlight.hide();
-      this.hoverHighlight.hide();
+      showWeldTarget(this.partStates, this.hoverHighlight, null);
+      showPlanStates(this.partStates, null);
       return;
     }
 
@@ -144,6 +144,7 @@ export class StraightSectionTool implements Tool {
       },
     );
     const plan = this.planTo(ground, placed);
+    showPlanStates(this.partStates, plan);
 
     if (plan !== null) {
       // The plan stands in for the placement mark: its last point is where
@@ -151,7 +152,7 @@ export class StraightSectionTool implements Tool {
       // here" does. Only what it would weld onto is hovered.
       this.planView.showRoadPlan(this.network, plan);
       this.highlight.hide();
-      showWeldTarget(this.hoverHighlight, placed);
+      showWeldTarget(this.partStates, this.hoverHighlight, placed);
       return;
     }
 
@@ -161,11 +162,11 @@ export class StraightSectionTool implements Tool {
     // start, what the start would weld onto is hovered. Nothing to mark when
     // the point is the cursor's own position.
     this.planView.hide();
-    if (this.pending === null) {
-      showWeldTarget(this.hoverHighlight, placed);
-    } else {
-      this.hoverHighlight.hide();
-    }
+    showWeldTarget(
+      this.partStates,
+      this.hoverHighlight,
+      this.pending === null ? placed : null,
+    );
 
     const marked = this.pending ?? placed;
     if (marked.kind === "free") {

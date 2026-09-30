@@ -33,15 +33,16 @@
 
 - A tool may draw a preview of the edit it is building: a rubber-band
   section, a highlighted node.
-  - Scene decoration only: discarded on commit or cancel, nothing of it
-    reaches the model.
+  - Scene decoration and part states (`docs/part-states.md`) only:
+    discarded on commit or cancel, nothing of it reaches the model.
 - The preview draws the answer the commit will act on, not where the cursor
   is. The tool asks the same question, of the same call, one move earlier,
   and draws:
-  - the road it would run: its own roadways and the junctions at its
-    points, laid out on the speculative network (`docs/intersections.md`)
-    - other parts the edit reshapes — the halves of a road it cuts — are
-      not drawn, unless in violation
+  - the region the edit changes, laid out on the speculative network
+    (`docs/intersections.md`), in place of the live one
+    - tinted: the road it would run — its own roadways and the junctions at
+      its points — and every part in violation
+    - the rest of the region — the halves of a road it cuts — plain
     - a plan refused before speculating has none → a band `w` wide
       along its centerline instead
 
@@ -270,5 +271,3 @@ First to answer wins:
   special access. Edits are ordinary calls → the model stays gridless.
 - Previews are Three.js objects, built by `src/render/` and owned by the
   tool showing them.
-- `main.ts` gives this layer the camera, the canvas and a place in the
-  scene. Nothing else connects the two.
