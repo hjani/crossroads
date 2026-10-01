@@ -107,9 +107,7 @@ each triangle.
 
 ## Relationship to other modules
 
-- Drawn by the road surface view, in the surface's own meshes, in
-  `src/render/`: one for the roadways, one for the junctions, both with the
-  same shader.
-  - → rebuilt with the surface, on an edit and on nothing else.
+- Drawn by the road surface, in its own meshes, in `src/render/`: one for
+  the roadways, one for the junctions, both with the same shader.
 - The dash pattern is worked out in `src/core/layout/`, from the roadway's
   length.

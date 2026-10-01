@@ -27,7 +27,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { showPlanStates, showWeldTarget } from "./toolHelpers";
+import { hideSpeculatedParts, showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -265,7 +265,7 @@ export class SmartArcTool implements Tool {
   /** What an end would weld onto, and what the plan meets. */
   private showStates(weld: Placement | null, plan: RoadPlan | null): void {
     showWeldTarget(this.partStates, this.hoverHighlight, weld);
-    showPlanStates(this.partStates, plan);
+    hideSpeculatedParts(this.partStates, plan);
   }
 
   /** The directions a road could leave the start by. None on open ground. */

@@ -1,6 +1,7 @@
-import type { RoadPlan } from "../core/layout/roadPlan";
-import { pointsOf } from "../core/network/edits";
-import { isNodeId } from "../core/network/RoadNetwork";
+import {
+  changedOrViolatingParts,
+  type RoadPlan,
+} from "../core/layout/roadPlan";
 import { PART_STATE, type PartStates } from "../render/PartStates";
 import type { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import type { Placement } from "./sectionPointPlacement";
@@ -31,25 +32,25 @@ export function showWeldTarget(
 }
 
 /**
- * Marks the existing junctions a plan meets: planned where it can be built,
- * refused where not. Nothing for `null`, where there is no plan.
+ * Hides the live parts a plan's speculation is drawn in place of: the changed
+ * or violating ones, and the sections the edit removes. Nothing for a plan
+ * without a speculation, or for `null`, where there is no plan.
  */
-export function showPlanStates(
+export function hideSpeculatedParts(
   partStates: PartStates,
   plan: RoadPlan | null,
 ): void {
-  const met =
-    plan === null
-      ? []
-      : pointsOf(plan.sectionPlan)
-          .map((point) => point.at)
-          .filter(isNodeId);
-  partStates.setJunctionsInState(
-    PART_STATE.PLANNED,
-    plan?.buildable === true ? met : [],
-  );
-  partStates.setJunctionsInState(
-    PART_STATE.REFUSED,
-    plan?.buildable === false ? met : [],
-  );
+  const speculation = plan?.speculation ?? null;
+  if (plan === null || speculation === null) {
+    partStates.setJunctionsInState(PART_STATE.HIDDEN, []);
+    partStates.setRoadwaysInState(PART_STATE.HIDDEN, []);
+    return;
+  }
+
+  const speculated = changedOrViolatingParts(plan);
+  partStates.setJunctionsInState(PART_STATE.HIDDEN, speculated.nodes);
+  partStates.setRoadwaysInState(PART_STATE.HIDDEN, [
+    ...speculated.sections,
+    ...speculation.removedSections,
+  ]);
 }

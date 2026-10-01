@@ -19,7 +19,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { showPlanStates, showWeldTarget } from "./toolHelpers";
+import { hideSpeculatedParts, showWeldTarget } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 import type { Vec2 } from "../core/geometry/point";
 
@@ -130,7 +130,7 @@ export class StraightSectionTool implements Tool {
       this.planView.hide();
       this.highlight.hide();
       showWeldTarget(this.partStates, this.hoverHighlight, null);
-      showPlanStates(this.partStates, null);
+      hideSpeculatedParts(this.partStates, null);
       return;
     }
 
@@ -144,7 +144,7 @@ export class StraightSectionTool implements Tool {
       },
     );
     const plan = this.planTo(ground, placed);
-    showPlanStates(this.partStates, plan);
+    hideSpeculatedParts(this.partStates, plan);
 
     if (plan !== null) {
       // The plan stands in for the placement mark: its last point is where

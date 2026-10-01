@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import type { RoadNetwork } from "../core/network/RoadNetwork";
-import type { NodeId, SectionId } from "../core/network/types";
-import type { RoadLayout } from "../core/layout/RoadLayout";
+import type { Junction } from "../core/layout/junction";
 import { dashPeriodOf } from "../core/layout/markings";
+import type { Roadway } from "../core/layout/roadway";
+import type { NodeId, SectionId } from "../core/network/types";
 import { HIGHLIGHT_OPACITY, STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { PART_STATE, type PartState, type PartStates } from "./PartStates";
@@ -19,30 +19,23 @@ interface VertexRange {
 }
 
 /**
- * Draws a road network as asphalt, filling the ground every roadway and
- * junction covers.
+ * Draws roadways and junctions as asphalt, with their markings tinted
+ * according to the state each part is in (`docs/part-states.md`).
  *
- * Roadways and junctions are separate meshes.
- *
- * Rebuilt as a whole when the network's version says the drawing is stale.
+ * Draws exactly the parts it is given: which ones, and from which layout, is
+ * its owner's to decide. Roadways and junctions are separate meshes.
  */
-export class RoadSurfaceView {
-  /** Add this to the scene once; the view keeps its contents up to date. */
+export class RoadSurface {
   readonly sceneObject = new THREE.Group();
 
   private readonly roadwayMesh: SurfaceMesh;
   private readonly junctionMesh: SurfaceMesh;
-  /** Where each part's vertices are in its mesh, from the last rebuild. */
+  /** Where each part's vertices are in its mesh, from the last `setParts`. */
   private roadwayRanges = new Map<SectionId, VertexRange>();
   private junctionRanges = new Map<NodeId, VertexRange>();
-  private drawnVersion = -1;
   private drawnStatesVersion = -1;
 
-  constructor(
-    private readonly network: RoadNetwork,
-    private readonly layout: RoadLayout,
-    private readonly partStates: PartStates,
-  ) {
+  constructor(private readonly partStates: PartStates) {
     this.roadwayMesh = new THREE.Mesh(
       makeSurfaceGeometry([], [], [], []),
       makeMaterial(),
@@ -54,31 +47,35 @@ export class RoadSurfaceView {
     this.sceneObject.add(this.roadwayMesh, this.junctionMesh);
   }
 
-  /** Call once per frame. Cheap unless the network or the states changed. */
-  update(): void {
-    if (this.network.version !== this.drawnVersion) {
-      this.rebuild();
-      this.drawnVersion = this.network.version;
-      // The new buffers carry no states yet.
-      this.drawnStatesVersion = -1;
-    }
-
-    if (this.partStates.version !== this.drawnStatesVersion) {
-      writeStates(
-        this.roadwayMesh,
-        this.roadwayRanges,
-        this.partStates.roadways(),
-      );
-      writeStates(
-        this.junctionMesh,
-        this.junctionRanges,
-        this.partStates.junctions(),
-      );
-      this.drawnStatesVersion = this.partStates.version;
-    }
+  /** Discards the geometry and builds it again from exactly these parts. */
+  setParts(
+    junctions: Iterable<[NodeId, Junction]>,
+    roadways: Iterable<[SectionId, Roadway]>,
+  ): void {
+    this.buildRoadways(roadways);
+    this.buildJunctions(junctions);
+    // The new buffers carry no states yet.
+    this.drawnStatesVersion = -1;
   }
 
-  /** Releases the GPU buffers behind the view. The view is unusable after. */
+  /** Call once per frame. Cheap unless the states changed. */
+  update(): void {
+    if (this.partStates.version === this.drawnStatesVersion) return;
+
+    writeStates(
+      this.roadwayMesh,
+      this.roadwayRanges,
+      this.partStates.roadways(),
+    );
+    writeStates(
+      this.junctionMesh,
+      this.junctionRanges,
+      this.partStates.junctions(),
+    );
+    this.drawnStatesVersion = this.partStates.version;
+  }
+
+  /** Releases the GPU buffers behind the surface. Unusable after. */
   dispose(): void {
     for (const mesh of [this.roadwayMesh, this.junctionMesh]) {
       mesh.geometry.dispose();
@@ -86,20 +83,13 @@ export class RoadSurfaceView {
     }
   }
 
-  /** Discards the geometry and builds it again from the network. */
-  private rebuild(): void {
-    this.rebuildRoadways();
-    this.rebuildJunctions();
-  }
-
-  private rebuildRoadways(): void {
+  private buildRoadways(roadways: Iterable<[SectionId, Roadway]>): void {
     const coordinates: number[] = [];
     const sides: number[] = [];
     const halfWidths: number[] = [];
     const periodsAlong: number[] = [];
     const ranges = new Map<SectionId, VertexRange>();
-    for (const section of this.network.allSections()) {
-      const roadway = this.layout.roadwayAlong(section.id);
+    for (const [id, roadway] of roadways) {
       // Negative may happen when junction setbacks overlap:
       // it shouldn't have been built, but just skip rendering for it
       if (roadway.length >= 0) {
@@ -116,7 +106,7 @@ export class RoadSurfaceView {
           halfWidths.push(halfWidth);
           periodsAlong.push(along * periods);
         }
-        ranges.set(section.id, { start, count: sides.length - start });
+        ranges.set(id, { start, count: sides.length - start });
       }
     }
 
@@ -127,23 +117,24 @@ export class RoadSurfaceView {
     this.roadwayRanges = ranges;
   }
 
-  private rebuildJunctions(): void {
+  private buildJunctions(junctions: Iterable<[NodeId, Junction]>): void {
     const coordinates: number[] = [];
     const sides: number[] = [];
     const halfWidths: number[] = [];
     const periodsAlong: number[] = [];
     const ranges = new Map<NodeId, VertexRange>();
-    for (const node of this.network.allNodes()) {
+    for (const [id, junction] of junctions) {
       const start = sides.length;
-      const outline = this.layout.junctionAt(node.id).outline();
-      for (const { point, side, halfWidth } of tessellateJunction(outline)) {
+      for (const { point, side, halfWidth } of tessellateJunction(
+        junction.outline(),
+      )) {
         coordinates.push(point.x, LAYER.ROAD_SURFACE, point.z);
         sides.push(side);
         halfWidths.push(halfWidth);
         // No dashes in a junction: 0 everywhere is in a period's gap.
         periodsAlong.push(0);
       }
-      ranges.set(node.id, { start, count: sides.length - start });
+      ranges.set(id, { start, count: sides.length - start });
     }
 
     replaceGeometry(
@@ -194,8 +185,8 @@ function makeMaterial(): THREE.ShaderMaterial {
  * Writes every part's state into the mesh's `state` attribute: all of it,
  * `NONE` first and then each part in a state over its own range.
  *
- * A part the mesh has no range for isn't drawn — gone from the network, or
- * a roadway too short to draw — so there is nothing to mark.
+ * A part the mesh has no range for isn't drawn — not among its parts, or a
+ * roadway too short to draw — so there is nothing to mark.
  */
 function writeStates<Id>(
   mesh: SurfaceMesh,

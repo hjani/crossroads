@@ -9,7 +9,7 @@ import {
 } from "../network/edits";
 import { positionOf } from "../network/queries";
 import type { Endpoint, RoadNetwork } from "../network/RoadNetwork";
-import type { NodeId } from "../network/types";
+import type { NodeId, SectionId } from "../network/types";
 import { verifyClearance, type ClearanceViolations } from "./clearance";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "./RoadLayout";
 import { speculateLayout, type LayoutSpeculation } from "./speculation";
@@ -88,6 +88,28 @@ export function applyRoadPlan(
 ): NodeId {
   const built = applySectionPlan(network, plan.sectionPlan);
   return built[built.length - 1].to;
+}
+
+/**
+ * The parts a plan's speculation changes, and the parts in violation.
+ *
+ * Violations can name parts the edit doesn't change.
+ */
+export function changedOrViolatingParts(plan: RoadPlan): {
+  readonly nodes: ReadonlySet<NodeId>;
+  readonly sections: ReadonlySet<SectionId>;
+} {
+  const { speculation, violations } = plan;
+  if (speculation === null) {
+    return { nodes: new Set(), sections: new Set() };
+  }
+  return {
+    nodes: new Set([...speculation.changedNodes, ...violations.violatingNodes]),
+    sections: new Set([
+      ...speculation.changedSections,
+      ...violations.violatingSections,
+    ]),
+  };
 }
 
 /**

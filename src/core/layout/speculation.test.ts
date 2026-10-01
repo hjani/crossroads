@@ -40,4 +40,37 @@ describe("speculateLayout", () => {
       "50,0",
     ]);
   });
+
+  it("removes the section a road crosses", () => {
+    const network = new RoadNetwork();
+    const crossed = network.addSection(vec(0, -50), vec(0, 50), STRAIGHT);
+    const plan = planSection(network, vec(-50, 0), vec(50, 0), STRAIGHT);
+    assert(plan.buildable);
+
+    const { removedSections } = speculateLayout(network, plan);
+
+    expect([...removedSections]).toEqual([crossed.id]);
+  });
+
+  it("removes nothing where a road starts at another's end", () => {
+    const network = new RoadNetwork();
+    const existing = network.addSection(vec(0, -50), vec(0, 50), STRAIGHT);
+    const plan = planSection(network, existing.to, vec(50, 50), STRAIGHT);
+    assert(plan.buildable);
+
+    const { removedSections } = speculateLayout(network, plan);
+
+    expect(removedSections.size).toBe(0);
+  });
+
+  it("removes nothing where a road meets no other", () => {
+    const network = new RoadNetwork();
+    network.addSection(vec(0, -50), vec(0, 50), STRAIGHT);
+    const plan = planSection(network, vec(100, 0), vec(200, 0), STRAIGHT);
+    assert(plan.buildable);
+
+    const { removedSections } = speculateLayout(network, plan);
+
+    expect(removedSections.size).toBe(0);
+  });
 });

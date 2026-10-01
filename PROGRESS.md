@@ -300,7 +300,7 @@ after the click.
 - [x] the surface shows part states: hover, selection and weld target tint
       the live surface instead of overlays, the plan outranks them → no more
       lime where a hovered junction is also planned
-- [ ] the plan swaps its changed region in: the speculative parts drawn in
+- [x] the plan swaps its changed region in: the speculative parts drawn in
       place of the live ones (`removedSections` in core, with tests), no
       overlap between the two surfaces
 - [ ] one overlay for dots and lines: `NodeHighlight` merged into

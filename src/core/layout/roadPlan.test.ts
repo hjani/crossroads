@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { planRoad, type RoadPlan } from "./roadPlan";
+import { assert, describe, expect, it } from "vitest";
+import { changedOrViolatingParts, planRoad, type RoadPlan } from "./roadPlan";
 import { RoadLayout } from "./RoadLayout";
+import { STRAIGHT } from "../geometry/lineGeometry";
 import { RoadNetwork } from "../network/RoadNetwork";
 
 /**
@@ -33,5 +34,37 @@ describe("planRoad", () => {
     expect(plan.buildable).toBe(false);
     expect(plan.speculation).not.toBeNull();
     expect(planArcOfRadius(10).buildable).toBe(true);
+  });
+});
+
+describe("changedOrViolatingParts", () => {
+  it("includes an unchanged junction the plan violates", () => {
+    // A dead end at the origin, and a new road starting 7.9 m west of it:
+    // two junction circles of w/2 = 4 m that overlap.
+    const network = new RoadNetwork();
+    const existing = network.addSection(
+      { x: 0, z: 0 },
+      { x: 40, z: 0 },
+      STRAIGHT,
+    );
+    const plan = planRoad(
+      network,
+      new RoadLayout(network),
+      { x: -7.9, z: 0 },
+      { x: -7.9, z: -40 },
+      STRAIGHT,
+    );
+    assert(plan.speculation !== null);
+
+    // Not changed by the edit, only in violation.
+    expect(plan.speculation.changedNodes.has(existing.from)).toBe(false);
+    expect(changedOrViolatingParts(plan).nodes.has(existing.from)).toBe(true);
+  });
+
+  it("has nothing without a speculation", () => {
+    const parts = changedOrViolatingParts(planArcOfRadius(4));
+
+    expect(parts.nodes.size).toBe(0);
+    expect(parts.sections.size).toBe(0);
   });
 });

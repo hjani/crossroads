@@ -7,9 +7,9 @@ import { PanZoomControls } from "./input/PanZoomControls";
 import { SmartArcTool } from "./input/SmartArcTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
+import { LiveRoadLayoutView } from "./render/LiveRoadLayoutView";
 //import { NetworkView } from "./render/NetworkView";
 import { PartStates } from "./render/PartStates";
-import { RoadSurfaceView } from "./render/RoadSurfaceView";
 import { Viewport } from "./render/Viewport";
 import { InspectPanel } from "./ui/InspectPanel";
 import { ToolPalette } from "./ui/ToolPalette";
@@ -39,8 +39,8 @@ const layout = new RoadLayout(network);
 // What the tools say about the parts of the layout, and the surface shows.
 const partStates = new PartStates();
 
-const roadSurfaceView = new RoadSurfaceView(network, layout, partStates);
-scene.add(roadSurfaceView.sceneObject);
+const liveRoadLayoutView = new LiveRoadLayoutView(network, layout, partStates);
+scene.add(liveRoadLayoutView.sceneObject);
 
 // const networkView = new NetworkView(network);
 // scene.add(networkView.sceneObject);
@@ -100,7 +100,7 @@ timer.connect(document);
 function renderLoop(timestamp: number) {
   timer.update(timestamp);
   controls.update(timer.getDelta());
-  roadSurfaceView.update();
+  liveRoadLayoutView.update();
   //networkView.update();
   renderer.render(scene, viewport.camera);
   requestAnimationFrame(renderLoop);

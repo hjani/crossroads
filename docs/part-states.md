@@ -42,9 +42,10 @@
 
 ## A plan in place of the live layout
 
-- With a speculation (`docs/intersections.md`): the region the edit changes
-  is drawn from the speculative layout, the rest from the live one.
-  - plan surface: the speculative `changedNodes ∪ changedSections`
+- With a speculation (`docs/intersections.md`): the parts the edit changes
+  or that are in violation are drawn from the speculative layout, the rest
+  from the live one.
+  - plan surface: the speculative changed and violating nodes and sections
   - live surface: the same ids hidden, plus `removedSections`
 - A layout tiles the ground → the two surfaces share edges and never
   overlap.
@@ -72,8 +73,6 @@ The live sections the edit takes away: the ones it cuts.
 
 - Always a refusal made before speculating → no layout to swap in.
 - A translucent band along the centerline, over the live surface.
-- The existing nodes it meets → `refused` on the live surface → the band
-  lies over its own color only.
 
 ## Relationship to other modules
 

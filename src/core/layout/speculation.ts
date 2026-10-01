@@ -15,6 +15,8 @@ export interface LayoutSpeculation {
   readonly changedNodes: ReadonlySet<NodeId>;
   /** The sections whose roadways the edit changes. */
   readonly changedSections: ReadonlySet<SectionId>;
+  /** The real network's sections the edit takes away: the ones it cuts. */
+  readonly removedSections: ReadonlySet<SectionId>;
   /** The planned road's own nodes: the ends of its sections. */
   readonly plannedRoadNodes: ReadonlySet<NodeId>;
   /** The planned road's own sections. */
@@ -32,6 +34,11 @@ export function speculateLayout(
   const speculativeLayout = new RoadLayout(speculativeNetwork);
   const changedNodes = affectedNodes(network, speculativeNetwork);
   const changedSections = affectedSections(speculativeNetwork, changedNodes);
+  const removedSections = sectionsRemoved(
+    network,
+    speculativeNetwork,
+    changedNodes,
+  );
   const plannedRoadNodes = new Set(built.flatMap((s) => [s.from, s.to]));
   const plannedRoadSections = new Set(built.map((s) => s.id));
   return {
@@ -39,6 +46,7 @@ export function speculateLayout(
     speculativeLayout,
     changedNodes,
     changedSections,
+    removedSections,
     plannedRoadNodes,
     plannedRoadSections,
   };
@@ -79,4 +87,33 @@ function affectedSections(
     }
   }
   return sections;
+}
+
+/**
+ * The real sections the speculative network no longer has, found around the
+ * changed nodes alone:
+ *
+ *     removed = { s ∈ real.sectionsAt(n) : s ∉ speculative.sectionsAt(n) },  n ∈ changed
+ *
+ * - complete: a cut section is replaced end to end by new pieces → both its
+ *   ends get a new section → both are changed nodes
+ * - a node the plan makes isn't in the real network → `sectionsAt` is empty
+ * - an edit never removes a node: a cut adds its pieces before removing the
+ *   section → no removed nodes to look for
+ */
+function sectionsRemoved(
+  real: RoadNetwork,
+  speculative: RoadNetwork,
+  changed: ReadonlySet<NodeId>,
+): Set<SectionId> {
+  const removed = new Set<SectionId>();
+  for (const node of changed) {
+    const kept = new Set(speculative.sectionsAt(node));
+    for (const section of real.sectionsAt(node)) {
+      if (!kept.has(section)) {
+        removed.add(section);
+      }
+    }
+  }
+  return removed;
 }
