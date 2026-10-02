@@ -2,8 +2,9 @@ import {
   changedOrViolatingParts,
   type RoadPlan,
 } from "../core/layout/roadPlan";
+import { STATE_COLOR } from "../render/colors";
+import type { JunctionHighlight } from "../render/JunctionHighlight";
 import { PART_STATE, type PartStates } from "../render/PartStates";
-import type { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import type { Placement } from "./sectionPointPlacement";
 
 /**
@@ -11,24 +12,46 @@ import type { Placement } from "./sectionPointPlacement";
  */
 
 /**
- * Marks what an end placed here would weld onto: a junction or a roadway.
- * Nothing where there's nothing nearby, or for `null`, where no end is being
- * placed.
+ * Marks where an end would land: aimed where it welds onto a junction or a
+ * roadway, in the plan's color where it makes a node of its own. Nothing for
+ * `null`, where no end would land.
+ *
+ * Sized as a new node, whatever is there: an existing junction may grow or
+ * shrink once the plan is built.
  */
-export function showWeldTarget(
-  partStates: PartStates,
-  highlight: RoadNetworkHighlight,
+export function showLanding(
+  mark: JunctionHighlight,
   placed: Placement | null,
+  plan: RoadPlan | null,
 ): void {
-  const nodes = placed?.kind === "node" ? [placed.node] : [];
-  const sections = placed?.kind === "section" ? [placed.section] : [];
-  partStates.setJunctionsInState(PART_STATE.AIMED, nodes);
-  partStates.setRoadwaysInState(PART_STATE.AIMED, sections);
-  if (sections.length > 0) {
-    highlight.show({ sections });
-  } else {
-    highlight.hide();
+  if (placed === null) {
+    mark.hide();
+    return;
   }
+  const welds = placed.kind === "node" || placed.kind === "section";
+  mark.show([placed.position], welds ? STATE_COLOR.AIMED : planColor(plan));
+}
+
+/**
+ * Marks an end already placed, in the plan's color: what it welds onto was
+ * shown while it was being placed. Sized as in `showLanding`. Nothing for
+ * `null`, where none is.
+ */
+export function showPlacedEnd(
+  mark: JunctionHighlight,
+  placed: Placement | null,
+  plan: RoadPlan | null,
+): void {
+  if (placed === null) {
+    mark.hide();
+  } else {
+    mark.show([placed.position], planColor(plan));
+  }
+}
+
+/** Planned, or refused where it can't be built. Planned with no plan yet. */
+function planColor(plan: RoadPlan | null): number {
+  return plan?.buildable === false ? STATE_COLOR.REFUSED : STATE_COLOR.PLANNED;
 }
 
 /**

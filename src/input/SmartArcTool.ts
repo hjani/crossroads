@@ -15,10 +15,8 @@ import {
 } from "../core/layout/roadPlan";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
-import { STATE_COLOR } from "../render/colors";
-import { NodeHighlight } from "../render/NodeHighlight";
+import { JunctionHighlight } from "../render/JunctionHighlight";
 import type { PartStates } from "../render/PartStates";
-import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -27,7 +25,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { hideSpeculatedParts, showWeldTarget } from "./toolHelpers";
+import { hideSpeculatedParts, showLanding, showPlacedEnd } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -72,9 +70,10 @@ const HEADING_STEP_RADIANS = Math.PI / 12;
  * place a click would catch is marked before the click.
  */
 export class SmartArcTool implements Tool {
-  private readonly aimedMark = new NodeHighlight();
-  private readonly startMark = new NodeHighlight();
-  private readonly hoverHighlight: RoadNetworkHighlight;
+  /** Where the next click would land. */
+  private readonly landingMark = new JunctionHighlight(ROAD_WIDTH_METERS);
+  /** The start, once placed. */
+  private readonly startMark = new JunctionHighlight(ROAD_WIDTH_METERS);
   private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
   /**
    * One view per candidate plan on screen. Grown as needed and never shrunk: the ones
@@ -107,13 +106,11 @@ export class SmartArcTool implements Tool {
     private readonly partStates: PartStates,
   ) {
     partStates.reset();
-    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.planLayer.add(this.planView.sceneObject);
     this.decoration.add(
       this.planLayer,
-      this.aimedMark.sceneObject,
+      this.landingMark.sceneObject,
       this.startMark.sceneObject,
-      this.hoverHighlight.sceneObject,
     );
   }
 
@@ -200,8 +197,8 @@ export class SmartArcTool implements Tool {
   /**
    * Draws what a click would do:
    * - before a start: a mark on where it would start from
-   * - after: a mark on the start, the flicked plan, and if enabled, also the
-   *   candidate plans to the far end
+   * - after: a mark on the start, the flicked plan with a mark on where its
+   *   far end lands, and if enabled, also the candidate plans to the far end
    */
   afterInputOrViewChange(
     cursor: ScreenPoint | null,
@@ -213,26 +210,14 @@ export class SmartArcTool implements Tool {
     if (this.start === null) {
       this.startMark.hide();
       this.showPlans(null, []);
-      this.aimedMark.hide();
-      if (ground === null) {
-        this.showStates(null, null);
-        return;
-      }
-
-      const aimed = this.startAt(ground, modifiers);
-      this.showStates(aimed, null);
-      if (aimed.kind !== "free") {
-        this.aimedMark.show(
-          aimed.position,
-          aimed.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
-        );
-      }
+      hideSpeculatedParts(this.partStates, null);
+      showLanding(
+        this.landingMark,
+        ground === null ? null : this.startAt(ground, modifiers),
+        null,
+      );
       return;
     }
-
-    // A click no longer picks a start, and the plans' last point already marks
-    // where the far end lands.
-    this.aimedMark.hide();
 
     const end =
       ground === null ? null : this.endAt(this.start, ground, modifiers);
@@ -247,25 +232,11 @@ export class SmartArcTool implements Tool {
         : this.plansTo(this.start, end, this.directionsAt(this.start));
     this.showPlans(flicked, candidates);
     // Only the flicked plan says what a click does; the candidates are a
-    // debug view, and claim nothing.
-    this.showStates(flicked !== null ? end : null, flicked);
-
-    // The start is marked on its own only until the plan marks it, as in
-    // `StraightSectionTool`: a node already there, or one to be made.
-    if (flicked !== null) {
-      this.startMark.hide();
-    } else {
-      this.startMark.show(
-        this.start.position,
-        this.start.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
-      );
-    }
-  }
-
-  /** What an end would weld onto, and what the plan meets. */
-  private showStates(weld: Placement | null, plan: RoadPlan | null): void {
-    showWeldTarget(this.partStates, this.hoverHighlight, weld);
-    hideSpeculatedParts(this.partStates, plan);
+    // debug view, and claim nothing. Without it a click builds nothing, so it
+    // lands nowhere.
+    hideSpeculatedParts(this.partStates, flicked);
+    showPlacedEnd(this.startMark, this.start, flicked);
+    showLanding(this.landingMark, flicked !== null ? end : null, flicked);
   }
 
   /** The directions a road could leave the start by. None on open ground. */
@@ -372,9 +343,8 @@ export class SmartArcTool implements Tool {
 
   /** Releases the marks' and plans' GPU buffers. The tool is unusable after. */
   dispose(): void {
-    this.aimedMark.dispose();
+    this.landingMark.dispose();
     this.startMark.dispose();
-    this.hoverHighlight.dispose();
     this.planView.dispose();
     for (const view of this.candidateViews) {
       view.dispose();

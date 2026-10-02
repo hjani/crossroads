@@ -24,17 +24,19 @@ describe("speculateLayout", () => {
       return `${x},${z}`;
     };
 
-    // Both halves of the new road, and neither half of the road it cuts.
+    // Both halves of the new road, start to end, and neither half of the
+    // road it cuts.
     expect(speculation.changedSections.size).toBe(4);
-    const roadEnds = Array.from(speculation.plannedRoadSections, (id) => {
+    const roadEnds = speculation.plannedRoadSections.map((id) => {
       const section = speculativeNetwork.getSection(id);
-      return [place(section.from), place(section.to)].sort().join(" ");
-    }).sort();
+      return `${place(section.from)} ${place(section.to)}`;
+    });
     expect(roadEnds).toEqual(["-50,0 0,0", "0,0 50,0"]);
 
-    // Its three points; the far ends of the cut road are changed, not planned.
+    // Its three points, start to end; the far ends of the cut road are
+    // changed, not planned.
     expect(speculation.changedNodes.size).toBe(5);
-    expect(Array.from(speculation.plannedRoadNodes, place).sort()).toEqual([
+    expect(speculation.plannedRoadNodes.map(place)).toEqual([
       "-50,0",
       "0,0",
       "50,0",

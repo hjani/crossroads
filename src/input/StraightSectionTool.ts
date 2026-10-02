@@ -7,10 +7,8 @@ import {
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
-import { STATE_COLOR } from "../render/colors";
-import { NodeHighlight } from "../render/NodeHighlight";
+import { JunctionHighlight } from "../render/JunctionHighlight";
 import type { PartStates } from "../render/PartStates";
-import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -19,7 +17,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { hideSpeculatedParts, showWeldTarget } from "./toolHelpers";
+import { hideSpeculatedParts, showLanding, showPlacedEnd } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 import type { Vec2 } from "../core/geometry/point";
 
@@ -41,8 +39,10 @@ import type { Vec2 } from "../core/geometry/point";
  */
 export class StraightSectionTool implements Tool {
   private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
-  private readonly highlight = new NodeHighlight();
-  private readonly hoverHighlight: RoadNetworkHighlight;
+  /** The start, once placed. */
+  private readonly startMark = new JunctionHighlight(ROAD_WIDTH_METERS);
+  /** Where the next click would land. */
+  private readonly landingMark = new JunctionHighlight(ROAD_WIDTH_METERS);
   private readonly decoration = new THREE.Group();
 
   private pending: Placement | null = null;
@@ -54,11 +54,10 @@ export class StraightSectionTool implements Tool {
     private readonly partStates: PartStates,
   ) {
     partStates.reset();
-    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planView.sceneObject,
-      this.highlight.sceneObject,
-      this.hoverHighlight.sceneObject,
+      this.startMark.sceneObject,
+      this.landingMark.sceneObject,
     );
   }
 
@@ -103,7 +102,7 @@ export class StraightSectionTool implements Tool {
     };
   }
 
-  /** The node highlight comes back: it answers where the cursor is, not
+  /** The landing mark comes back: it answers where the cursor is, not
    * what was being drawn. */
   cancel(): void {
     this.pending = null;
@@ -111,14 +110,14 @@ export class StraightSectionTool implements Tool {
 
   /**
    * Draws what a click would do: the section it would build where there is
-   * one to plan, and otherwise a mark on where the click would land.
+   * one to plan, the start once placed, and where the click would land.
    *
    * Drawn from scratch after every input and change of view, so it answers
    * for whatever changed — the cursor, Ctrl, the camera, or the network once
    * a click has built a section.
    *
-   * The mark shows before the first click too, or there is no way to see
-   * that a click would join rather than start something new.
+   * Where the click lands shows before the first click too, or there is no
+   * way to see that it would join rather than start something new.
    */
   afterInputOrViewChange(
     cursor: ScreenPoint | null,
@@ -126,57 +125,30 @@ export class StraightSectionTool implements Tool {
   ): void {
     const ground =
       cursor === null ? null : this.viewport.screenToGround(cursor);
-    if (ground === null) {
-      this.planView.hide();
-      this.highlight.hide();
-      showWeldTarget(this.partStates, this.hoverHighlight, null);
-      hideSpeculatedParts(this.partStates, null);
-      return;
-    }
+    const placed =
+      ground === null
+        ? null
+        : placeSectionEnd(this.network, this.layout, this.viewport, ground, {
+            useGrid: !modifiers.ctrl,
+          });
+    const plan =
+      ground === null || placed === null ? null : this.planTo(ground, placed);
 
-    const placed = placeSectionEnd(
-      this.network,
-      this.layout,
-      this.viewport,
-      ground,
-      {
-        useGrid: !modifiers.ctrl,
-      },
-    );
-    const plan = this.planTo(ground, placed);
     hideSpeculatedParts(this.partStates, plan);
-
     if (plan !== null) {
-      // The plan stands in for the placement mark: its last point is where
-      // the click would land, and says more about it than "a click lands
-      // here" does. Only what it would weld onto is hovered.
       this.planView.showRoadPlan(this.network, plan);
-      this.highlight.hide();
-      showWeldTarget(this.partStates, this.hoverHighlight, placed);
-      return;
-    }
-
-    // No plan with a start down means the cursor is still on that start, so
-    // the start is what gets marked: already clicked, not only hovered — and
-    // a click there does nothing, so nothing is hovered either. Before a
-    // start, what the start would weld onto is hovered. Nothing to mark when
-    // the point is the cursor's own position.
-    this.planView.hide();
-    showWeldTarget(
-      this.partStates,
-      this.hoverHighlight,
-      this.pending === null ? placed : null,
-    );
-
-    const marked = this.pending ?? placed;
-    if (marked.kind === "free") {
-      this.highlight.hide();
     } else {
-      this.highlight.show(
-        marked.position,
-        marked.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
-      );
+      this.planView.hide();
     }
+
+    // No plan with a start down means the cursor is still on that start: a
+    // click there does nothing, so it lands nowhere.
+    showPlacedEnd(this.startMark, this.pending, plan);
+    showLanding(
+      this.landingMark,
+      this.pending !== null && plan === null ? null : placed,
+      plan,
+    );
   }
 
   /**
@@ -220,7 +192,7 @@ export class StraightSectionTool implements Tool {
   /** Releases the decoration's GPU buffers. The tool is unusable after. */
   dispose(): void {
     this.planView.dispose();
-    this.highlight.dispose();
-    this.hoverHighlight.dispose();
+    this.startMark.dispose();
+    this.landingMark.dispose();
   }
 }

@@ -17,10 +17,10 @@ export interface LayoutSpeculation {
   readonly changedSections: ReadonlySet<SectionId>;
   /** The real network's sections the edit takes away: the ones it cuts. */
   readonly removedSections: ReadonlySet<SectionId>;
-  /** The planned road's own nodes: the ends of its sections. */
-  readonly plannedRoadNodes: ReadonlySet<NodeId>;
-  /** The planned road's own sections. */
-  readonly plannedRoadSections: ReadonlySet<SectionId>;
+  /** The planned road's own nodes, tart to end. */
+  readonly plannedRoadNodes: readonly NodeId[];
+  /** The planned road's own sections, start to end. */
+  readonly plannedRoadSections: readonly SectionId[];
 }
 
 /** Applies the plan to a copy of `network`, and finds what it changes. */
@@ -39,8 +39,9 @@ export function speculateLayout(
     speculativeNetwork,
     changedNodes,
   );
-  const plannedRoadNodes = new Set(built.flatMap((s) => [s.from, s.to]));
-  const plannedRoadSections = new Set(built.map((s) => s.id));
+  // `built` runs start to end, each section starting where the last ended.
+  const plannedRoadNodes = [built[0].from, ...built.map((s) => s.to)];
+  const plannedRoadSections = built.map((s) => s.id);
   return {
     speculativeNetwork,
     speculativeLayout,

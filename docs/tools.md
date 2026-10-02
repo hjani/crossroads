@@ -46,12 +46,20 @@
     - a plan refused before speculating has none → a band `w` wide
       along its centerline instead
 
-  - a mark on every existing node it would meet
   - whether the whole of it can be built
   - → what is shown and what a click does can't disagree, and a refused
     edit says so instead of leaving the click silent.
 - A refusal is a color, not a disappearance: the section being aimed is
   still shown, as one that won't be built.
+
+### Marking a junction
+
+- A junction can be small, or enclose no ground at all → its tint alone may
+  show nothing.
+- → a tool marking a junction, or a place one would be made, draws a mark
+  around it, in the mark's color.
+- Just outside `r`: the junction's bounding circle, about its node.
+  - no junction to measure — a place not yet built → `r = w/2`
 
 ### Keeping up with the view
 
@@ -105,13 +113,20 @@ Units:
 - Grid pitch: meters, fixed → a grid that changed with zoom would place the
   same click differently depending on the view.
 
-Landing mark:
+End marks:
 
-- Where a click would land is marked whenever that isn't just the cursor
-  position → a snap is visible before it is committed.
-- Unsnapped → nothing to mark: the cursor is already the answer.
-- Only while there is no edit to draw. Once there is, the preview covers it:
-  where the click lands is the last point of what it would build.
+- Where a click would land is marked, as a junction ("Marking a junction")
+  → a snap or a weld is visible before it is committed.
+  - aimed: it welds onto a junction or a roadway
+  - otherwise the plan's color: planned, or refused
+- A placed end stays marked, in the plan's color → aimed only while it is
+  still a choice.
+- No plan yet → planned.
+- Sized as a new node, also on an existing junction → the same size
+  throughout, and the junction may change once the plan is built.
+- A click that would do nothing lands nowhere → not marked (see "Refusals").
+- Drawn by the tool, not the preview: the plan doesn't know which of its
+  ends were welded.
 
 ### Refusals
 
@@ -219,13 +234,9 @@ First to answer wins:
 
 - The thing is marked by its area, tinted: a node its junction, a section
   its roadway → what is tinted is what a click there picks.
-  - Over the lines, not instead of them: zoomed out only the lines show.
-- A selection reaches past it, in lines and node marks:
-  - section → the nodes at both ends
-  - node → every section meeting it, not their far ends
-- Aimed → the thing alone.
-- → selected and aimed differ twice over: by color, and by reach.
-- A line on a section follows the shape it is drawn in.
+  - A node also gets a junction mark ("Marking a junction") → one enclosing
+    no ground still shows.
+- Aimed and selected alike mark the thing alone → they differ by color only.
 - The aimed mark is dropped while it is exactly the selection.
   - a section meeting the selected node is still marked: clicking it would
     change the selection
@@ -243,8 +254,6 @@ First to answer wins:
 - Removes the selection, and whatever the model held only for its sake:
   - section → itself, plus an end node only where this was its last section
   - node → every section meeting it, plus each far end under the same rule
-- → deleted = exactly what the selection marked + the nodes that were only
-  there because of it.
 - Nothing else is touched: a node left with two sections and a kink where a
   junction used to be is a node like any other.
 - Afterwards the selection is empty, and what the cursor aims at is asked

@@ -21,5 +21,8 @@ export const STATE_COLOR = {
 /** The opacity of an overlay on a part, to highlight it. */
 export const HIGHLIGHT_OPACITY = 0.35;
 
+/** The opacity of a junction's highlight mark. */
+export const JUNCTION_HIGHLIGHT_OPACITY = 0.85;
+
 /** The opacity used on parts that are being planned. */
 export const PLANNING_OPACITY = 0.35;

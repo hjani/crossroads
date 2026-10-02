@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { pick } from "../core/layout/pick";
-import type { RoadLayout } from "../core/layout/RoadLayout";
+import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import {
   nearestNode,
   nearestSection,
@@ -9,12 +9,12 @@ import {
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
 import { STATE_COLOR } from "../render/colors";
+import { JunctionHighlight } from "../render/JunctionHighlight";
 import {
   PART_STATE,
   type PartStates,
   type SetPartState,
 } from "../render/PartStates";
-import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { InspectPanel } from "../ui/InspectPanel";
 import type { Tool } from "./Tool";
@@ -53,19 +53,6 @@ function displayMeters(length: number): string {
   return `${length.toFixed(2)} m`;
 }
 
-/** Whether two selections name the same thing. */
-function sameSelection(
-  one: Selection | null,
-  other: Selection | null,
-): boolean {
-  return (
-    one !== null &&
-    other !== null &&
-    one.kind === other.kind &&
-    one.id === other.id
-  );
-}
-
 /**
  * Selects a node or a section. Hovered (aimed) items are marked. Clicking
  * them assigns the selection, which is also marked. Clicking clear of
@@ -81,8 +68,8 @@ function sameSelection(
  * disposes a tool it switches away from.
  */
 export class InspectTool implements Tool {
-  private readonly aimedMark: RoadNetworkHighlight;
-  private readonly selectedMark: RoadNetworkHighlight;
+  private readonly aimedJunction = new JunctionHighlight(ROAD_WIDTH_METERS);
+  private readonly selectedJunction = new JunctionHighlight(ROAD_WIDTH_METERS);
   private readonly decoration = new THREE.Group();
 
   private selected: Selection | null = null;
@@ -95,11 +82,9 @@ export class InspectTool implements Tool {
     private readonly panel: InspectPanel,
   ) {
     partStates.reset();
-    this.aimedMark = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
-    this.selectedMark = new RoadNetworkHighlight(network, STATE_COLOR.SELECTED);
     this.decoration.add(
-      this.aimedMark.sceneObject,
-      this.selectedMark.sceneObject,
+      this.aimedJunction.sceneObject,
+      this.selectedJunction.sceneObject,
     );
 
     // The panel opens saying nothing is selected, rather than blank.
@@ -201,31 +186,20 @@ export class InspectTool implements Tool {
 
   /**
    * Marks what the cursor at `ground` is aimed at — that thing alone: a
-   * section is its line and its roadway, a node the one mark and its
-   * junction. Marking what hangs off it as well would be a lot of movement
-   * for a question the thing itself has already answered.
-   *
-   * Nothing is drawn over what is already selected, there being nothing
-   * worth painting over the selection to say. Over that exact thing only,
-   * though: a section meeting the selected node is still marked, since
-   * clicking it would change the selection.
+   * section its roadway, a node its junction. The tint needs no rule for the
+   * selection: selected outranks aimed.
    */
   private showAimed(ground: Vec2 | null): void {
     const aimed = ground === null ? null : this.selectionAt(ground);
-
-    // The area needs no rule for the selection: selected outranks aimed.
     this.setSelectionState(aimed, PART_STATE.AIMED);
 
-    if (aimed === null || sameSelection(aimed, this.selected)) {
-      this.aimedMark.hide();
-      return;
-    }
-
-    if (aimed.kind === "node") {
-      this.aimedMark.show({ nodes: [aimed.id] });
-    } else {
-      this.aimedMark.show({ sections: [aimed.id] });
-    }
+    const isSelected =
+      aimed?.kind === this.selected?.kind && aimed?.id === this.selected?.id;
+    this.showJunction(
+      this.aimedJunction,
+      isSelected ? null : aimed,
+      STATE_COLOR.AIMED,
+    );
   }
 
   /**
@@ -234,24 +208,19 @@ export class InspectTool implements Tool {
   private showSelected(): void {
     const selected = this.selected;
     this.setSelectionState(selected, PART_STATE.SELECTED);
+    this.showJunction(this.selectedJunction, selected, STATE_COLOR.SELECTED);
     if (selected === null) {
-      this.selectedMark.hide();
       this.panel.show("No selection", []);
       return;
     }
 
     if (selected.kind === "node") {
       const sections = this.network.sectionsAt(selected.id);
-      this.selectedMark.show({ sections, nodes: [selected.id] });
       this.panel.show(`Node ${selected.id}`, [
         ["Sections", String(sections.length)],
       ]);
     } else {
       const section = this.network.getSection(selected.id);
-      this.selectedMark.show({
-        sections: [selected.id],
-        nodes: [section.from, section.to],
-      });
       const radius = sectionRadius(this.network, section);
       this.panel.show(`Section ${section.id}`, [
         ["Length", displayMeters(section.length)],
@@ -270,13 +239,25 @@ export class InspectTool implements Tool {
     this.partStates.setRoadwaysInState(state, roadwaysOf(selection));
   }
 
+  /** Marks the junction of a node `selection` with `mark`, or nothing. */
+  private showJunction(
+    mark: JunctionHighlight,
+    selection: Selection | null,
+    color: number,
+  ): void {
+    const junctions = junctionsOf(selection).map((node) =>
+      this.layout.junctionAt(node),
+    );
+    mark.show(junctions, color);
+  }
+
   /**
    * Releases the marks' GPU buffers and takes the panel off the page. The
    * tool is unusable after.
    */
   dispose(): void {
-    this.aimedMark.dispose();
-    this.selectedMark.dispose();
+    this.aimedJunction.dispose();
+    this.selectedJunction.dispose();
     this.panel.dispose();
   }
 }

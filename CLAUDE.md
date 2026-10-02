@@ -12,12 +12,9 @@ TypeScript 7 + Three.js + Vite, running in the browser.
 ## Conventions
 
 - TypeScript strict mode (see `tsconfig.json`). Avoid `any`.
-- Pass a class's collaborators in as constructor parameters — all of them
-  the same way, including ambient globals like `window`
-  (`PanZoomControls(viewport, domElement, window)`). Don't reach for a
-  global from inside a class, and don't have a class fetch one dependency
-  out of another when both could be arguments. Wiring belongs at the call
-  site, where it's visible.
+- use of globals like `window`
+  (`PanZoomControls(viewport, domElement, window)`): Don't reach for a
+  global from inside a class.
 - US English throughout — identifiers, comments and docs (`center`, not
   `centre`).
 - Namespace-import Three.js as `THREE` (`import * as THREE from "three"`),

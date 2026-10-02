@@ -7,10 +7,8 @@ import {
 } from "../core/layout/roadPlan";
 import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
-import { STATE_COLOR } from "../render/colors";
-import { NodeHighlight } from "../render/NodeHighlight";
+import { JunctionHighlight } from "../render/JunctionHighlight";
 import type { PartStates } from "../render/PartStates";
-import { RoadNetworkHighlight } from "../render/RoadNetworkHighlight";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import {
@@ -20,7 +18,7 @@ import {
   withinPickRadius,
   type Placement,
 } from "./sectionPointPlacement";
-import { hideSpeculatedParts, showWeldTarget } from "./toolHelpers";
+import { hideSpeculatedParts, showLanding, showPlacedEnd } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 
 /**
@@ -36,13 +34,12 @@ import type { Modifiers, Tool } from "./Tool";
  * of curves is drawn without re-clicking the joins, as with straights.
  */
 export class ArcSectionTool implements Tool {
-  /** The start: a point the first click would make, and after the click the
-   * start it placed, until both ends are down and the plan marks it. */
-  private readonly startHighlight = new NodeHighlight();
-  /** A point the second click would make. */
-  private readonly endHighlight = new NodeHighlight();
-  /** The highlight of the item under the cursor. */
-  private readonly hoverHighlight: RoadNetworkHighlight;
+  /** The start: where the first click would land, and after it the start it
+   * placed. */
+  private readonly startHighlight = new JunctionHighlight(ROAD_WIDTH_METERS);
+  /** The end: where the second click would land, and after it the end it
+   * placed. */
+  private readonly endHighlight = new JunctionHighlight(ROAD_WIDTH_METERS);
   /** The full plan to build the arc. */
   private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
   private readonly decoration = new THREE.Group();
@@ -58,12 +55,10 @@ export class ArcSectionTool implements Tool {
     private readonly partStates: PartStates,
   ) {
     partStates.reset();
-    this.hoverHighlight = new RoadNetworkHighlight(network, STATE_COLOR.AIMED);
     this.decoration.add(
       this.planView.sceneObject,
       this.startHighlight.sceneObject,
       this.endHighlight.sceneObject,
-      this.hoverHighlight.sceneObject,
     );
   }
 
@@ -155,18 +150,22 @@ export class ArcSectionTool implements Tool {
     const ground =
       cursor === null ? null : this.viewport.screenToGround(cursor);
     if (ground === null) {
-      this.showStates(null, null);
+      hideSpeculatedParts(this.partStates, null);
+      showPlacedEnd(this.startHighlight, this.start, null);
+      showPlacedEnd(this.endHighlight, this.end, null);
       return;
     }
 
     // Both ends down: the arc bending through where the cursor is, which is
     // the whole of what the next click would build. That click places the
-    // control point, which welds onto nothing, so nothing is hovered.
+    // control point, which welds onto nothing, so it lands on nothing to mark.
     const useGrid = !modifiers.ctrl;
     if (this.start !== null && this.end !== null) {
       const plan = this.planThrough(placeControlPoint(ground, { useGrid }));
       if (plan !== null) this.planView.showRoadPlan(this.network, plan);
-      this.showStates(null, plan);
+      hideSpeculatedParts(this.partStates, plan);
+      showPlacedEnd(this.startHighlight, this.start, plan);
+      showPlacedEnd(this.endHighlight, this.end, plan);
       return;
     }
 
@@ -180,45 +179,22 @@ export class ArcSectionTool implements Tool {
       },
     );
 
+    // No plan before both ends are down.
+    hideSpeculatedParts(this.partStates, null);
+
     // Nothing placed: only where the first click would land.
     if (this.start === null) {
-      this.markWhereClickLands(this.startHighlight, placed);
+      showLanding(this.startHighlight, placed, null);
       return;
     }
 
     // One end down: the start, and where the second end would land. Nothing
     // where the click would land back on the start, which is a click with no
     // length to it and is refused.
-    this.startHighlight.show(
-      this.start.position,
-      this.start.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
-    );
-    if (!this.reachesBeyondStart(ground, placed)) {
-      this.showStates(null, null);
-      return;
+    showPlacedEnd(this.startHighlight, this.start, null);
+    if (this.reachesBeyondStart(ground, placed)) {
+      showLanding(this.endHighlight, placed, null);
     }
-
-    this.markWhereClickLands(this.endHighlight, placed);
-  }
-
-  /**
-   * Marks where an end click would land: a node already there, or one it
-   * would make.
-   */
-  private markWhereClickLands(mark: NodeHighlight, placed: Placement): void {
-    this.showStates(placed, null);
-    if (placed.kind !== "free") {
-      mark.show(
-        placed.position,
-        placed.kind === "node" ? STATE_COLOR.SELECTED : STATE_COLOR.PLANNED,
-      );
-    }
-  }
-
-  /** What an end would weld onto, and what the plan meets. */
-  private showStates(weld: Placement | null, plan: RoadPlan | null): void {
-    showWeldTarget(this.partStates, this.hoverHighlight, weld);
-    hideSpeculatedParts(this.partStates, plan);
   }
 
   /**
@@ -266,6 +242,5 @@ export class ArcSectionTool implements Tool {
     this.planView.dispose();
     this.startHighlight.dispose();
     this.endHighlight.dispose();
-    this.hoverHighlight.dispose();
   }
 }
