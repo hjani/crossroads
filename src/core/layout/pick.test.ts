@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 import { pick } from "./pick";
 import { RoadLayout } from "./RoadLayout";
 import { RoadNetwork } from "../network/RoadNetwork";
-import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 const HALF_WIDTH_METERS = TEST_ROAD_WIDTH_METERS / 2;
 
@@ -27,12 +26,7 @@ describe("pick", () => {
 
   it("picks a straight roadway across its whole width, and no further", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const road = addStraight(network, vec(0, 0), vec(20, 0));
     const layout = new RoadLayout(network);
 
     expect(pick(layout, vec(10, 3.9))).toMatchObject({
@@ -68,12 +62,7 @@ describe("pick", () => {
   it("picks a dead end's node inside its round cap", () => {
     // The cap is the half disc of radius w/2 west of the node.
     const network = new RoadNetwork();
-    const road = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const road = addStraight(network, vec(0, 0), vec(20, 0));
     const layout = new RoadLayout(network);
 
     expect(pick(layout, vec(-3, 0))).toMatchObject({
@@ -89,13 +78,8 @@ describe("pick", () => {
     // cross, and the far corner rounded off by the quarter circle of radius 4
     // about the node, between (−4, 0) and (0, −4).
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(east.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    addStraight(network, east.from, vec(0, 20));
     const layout = new RoadLayout(network);
 
     const junction = { kind: "junction", node: east.from };
@@ -114,12 +98,7 @@ describe("pick", () => {
     const R = 20;
     const center = vec(-R, 0);
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(40, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(40, 0));
     const arc = network.addSection(
       east.from,
       onCircle(center, R, Math.PI / 2),
@@ -147,18 +126,8 @@ describe("pick", () => {
     // Two roads in line: nothing is set back, and the junction between them
     // covers no ground at all.
     const network = new RoadNetwork();
-    const west = network.addSection(
-      vec(-20, 0),
-      vec(0, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const east = network.addSection(
-      west.to,
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const west = addStraight(network, vec(-20, 0), vec(0, 0));
+    const east = addStraight(network, west.to, vec(20, 0));
     const layout = new RoadLayout(network);
 
     expect(pick(layout, vec(0.5, 1))).toMatchObject({

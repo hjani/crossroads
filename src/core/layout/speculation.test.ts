@@ -5,7 +5,7 @@ import { RoadNetwork } from "../network/RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 import type { NodeId } from "../network/types";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -14,12 +14,7 @@ function vec(x: number, z: number): Vec2 {
 describe("speculateLayout", () => {
   it("tells the planned road apart from the pieces of what it cuts", () => {
     const network = new RoadNetwork();
-    network.addSection(
-      vec(0, -50),
-      vec(0, 50),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(0, -50), vec(0, 50));
     const plan = planSection(
       network,
       vec(-50, 0),
@@ -57,12 +52,7 @@ describe("speculateLayout", () => {
 
   it("removes the section a road crosses", () => {
     const network = new RoadNetwork();
-    const crossed = network.addSection(
-      vec(0, -50),
-      vec(0, 50),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const crossed = addStraight(network, vec(0, -50), vec(0, 50));
     const plan = planSection(
       network,
       vec(-50, 0),
@@ -79,12 +69,7 @@ describe("speculateLayout", () => {
 
   it("removes nothing where a road starts at another's end", () => {
     const network = new RoadNetwork();
-    const existing = network.addSection(
-      vec(0, -50),
-      vec(0, 50),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const existing = addStraight(network, vec(0, -50), vec(0, 50));
     const plan = planSection(
       network,
       existing.to,
@@ -101,12 +86,7 @@ describe("speculateLayout", () => {
 
   it("removes nothing where a road meets no other", () => {
     const network = new RoadNetwork();
-    network.addSection(
-      vec(0, -50),
-      vec(0, 50),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(0, -50), vec(0, 50));
     const plan = planSection(
       network,
       vec(100, 0),

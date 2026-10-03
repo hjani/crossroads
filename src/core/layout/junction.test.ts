@@ -4,7 +4,7 @@ import { RoadNetwork } from "../network/RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { type SectionId } from "../network/types";
 import { distance, type Vec2 } from "../geometry/point";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -21,12 +21,7 @@ function onCircle(center: Vec2, radius: number, angle: number): Vec2 {
 describe("Junction", () => {
   it("sets a dead end back by nothing", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const road = addStraight(network, vec(0, 0), vec(20, 0));
 
     const junction = new Junction(network, road.to);
 
@@ -35,18 +30,8 @@ describe("Junction", () => {
 
   it("sets a straight join back by nothing", () => {
     const network = new RoadNetwork();
-    const west = network.addSection(
-      vec(-20, 0),
-      vec(0, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const east = network.addSection(
-      west.to,
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const west = addStraight(network, vec(-20, 0), vec(0, 0));
+    const east = addStraight(network, west.to, vec(20, 0));
 
     const junction = new Junction(network, west.to);
 
@@ -56,18 +41,8 @@ describe("Junction", () => {
 
   it("sets both roads of a right-angle bend back by half the width", () => {
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const north = network.addSection(
-      east.from,
-      vec(0, 20),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    const north = addStraight(network, east.from, vec(0, 20));
 
     const junction = new Junction(network, east.from);
 
@@ -78,24 +53,9 @@ describe("Junction", () => {
   it("sets each road of a skewed T back by the longer of its two gaps", () => {
     // East and west are one straight road; the branch leaves at 60°.
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const branch = network.addSection(
-      east.from,
-      vec(10, 10 * Math.sqrt(3)),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const west = network.addSection(
-      east.from,
-      vec(-20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    const branch = addStraight(network, east.from, vec(10, 10 * Math.sqrt(3)));
+    const west = addStraight(network, east.from, vec(-20, 0));
 
     const junction = new Junction(network, east.from);
 
@@ -113,18 +73,8 @@ describe("Junction", () => {
 
   it("sets a road back regardless of its length", () => {
     const network = new RoadNetwork();
-    const short = network.addSection(
-      vec(0, 0),
-      vec(6, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const long = network.addSection(
-      short.from,
-      vec(0, 20),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const short = addStraight(network, vec(0, 0), vec(6, 0));
+    const long = addStraight(network, short.from, vec(0, 20));
 
     const junction = new Junction(network, short.from);
 
@@ -134,18 +84,8 @@ describe("Junction", () => {
 
   it("doesn't set back two roads leaving the same way", () => {
     const network = new RoadNetwork();
-    const short = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const long = network.addSection(
-      short.from,
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const short = addStraight(network, vec(0, 0), vec(10, 0));
+    const long = addStraight(network, short.from, vec(20, 0));
 
     const junction = new Junction(network, short.from);
 
@@ -158,12 +98,7 @@ describe("Junction", () => {
     const R = 20;
     const center = vec(-R, 0);
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(40, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(40, 0));
     const arc = network.addSection(
       east.from,
       onCircle(center, R, Math.PI / 2),
@@ -225,12 +160,7 @@ describe("Junction", () => {
     const R = 20;
     const center = vec(0, -R);
     const network = new RoadNetwork();
-    const west = network.addSection(
-      vec(0, 0),
-      vec(-20, -0.02),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const west = addStraight(network, vec(0, 0), vec(-20, -0.02));
     const arc = network.addSection(
       west.from,
       onCircle(center, R, 0),
@@ -254,12 +184,7 @@ describe("Junction", () => {
     const R = 3;
     const center = vec(R, 0);
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
     const arc = network.addSection(
       east.from,
       onCircle(center, R, Math.PI / 2),
@@ -284,12 +209,7 @@ describe("Junction", () => {
       const R = 20;
       const center = vec(0, side * R);
       const network = new RoadNetwork();
-      const east = network.addSection(
-        vec(0, 0),
-        vec(40, 0),
-        STRAIGHT,
-        TEST_ROAD_WIDTH_METERS,
-      );
+      const east = addStraight(network, vec(0, 0), vec(40, 0));
       const arc = network.addSection(
         east.from,
         vec(0, 2 * side * R),
@@ -364,12 +284,7 @@ describe("Junction", () => {
 
   it("throws for a section not meeting the node", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const road = addStraight(network, vec(0, 0), vec(20, 0));
 
     const junction = new Junction(network, road.from);
 
@@ -407,12 +322,7 @@ describe("Junction.outline", () => {
     // One gap of a full turn: nothing set back, and the ring is the road's
     // end cut and the cap round it, through the point right behind the node.
     const network = new RoadNetwork();
-    const road = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const road = addStraight(network, vec(0, 0), vec(20, 0));
 
     const junction = new Junction(network, road.from);
 
@@ -425,13 +335,8 @@ describe("Junction.outline", () => {
     // on the one corner point (4, 4). The 270° gap is joined round the node,
     // from (−4, 0) to (0, −4) through the bisector at 225°.
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(east.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    addStraight(network, east.from, vec(0, 20));
 
     const junction = new Junction(network, east.from);
 
@@ -480,24 +385,9 @@ describe("Junction.outline", () => {
     // touching point it runs through, (0, −4), lies on the straight the
     // outline would take anyway.
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(
-      east.from,
-      vec(10, 10 * Math.sqrt(3)),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(
-      east.from,
-      vec(-20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    addStraight(network, east.from, vec(10, 10 * Math.sqrt(3)));
+    addStraight(network, east.from, vec(-20, 0));
 
     const junction = new Junction(network, east.from);
 
@@ -519,24 +409,9 @@ describe("Junction.outline", () => {
     // it borders its roadway; the rest is curb: the branch's edge back to the
     // corner point, and the straight edge through the half-turn gap.
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(
-      east.from,
-      vec(10, 10 * Math.sqrt(3)),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(
-      east.from,
-      vec(-20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    addStraight(network, east.from, vec(10, 10 * Math.sqrt(3)));
+    addStraight(network, east.from, vec(-20, 0));
 
     const junction = new Junction(network, east.from);
 
@@ -558,12 +433,7 @@ describe("Junction.outline", () => {
     const R = 20;
     const center = vec(-R, 0);
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
     network.addSection(
       east.from,
       onCircle(center, R, Math.PI / 2),
@@ -573,12 +443,7 @@ describe("Junction.outline", () => {
       },
       TEST_ROAD_WIDTH_METERS,
     );
-    network.addSection(
-      east.from,
-      vec(-20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, east.from, vec(-20, 0));
 
     const junction = new Junction(network, east.from);
 
@@ -605,12 +470,7 @@ describe("Junction.outline", () => {
     const R = 20;
     const center = vec(-R, 0);
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(40, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(40, 0));
     network.addSection(
       east.from,
       onCircle(center, R, Math.PI / 2),
@@ -640,12 +500,7 @@ describe("Junction.outline", () => {
 describe("Junction.boundingRadius", () => {
   it("covers a dead end by half the width", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const road = addStraight(network, vec(0, 0), vec(20, 0));
 
     const junction = new Junction(network, road.from);
 
@@ -655,13 +510,8 @@ describe("Junction.boundingRadius", () => {
   it("reaches the corner point of a right-angle bend", () => {
     // The corner point is (4, 4).
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(east.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    addStraight(network, east.from, vec(0, 20));
 
     const junction = new Junction(network, east.from);
 
@@ -672,24 +522,9 @@ describe("Junction.boundingRadius", () => {
     // The outline of the skewed T above: east's edge points (4·√3, ±4) and
     // the narrow gap's corner point (0, 8) are all 8 from the node.
     const network = new RoadNetwork();
-    const east = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(
-      east.from,
-      vec(10, 10 * Math.sqrt(3)),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(
-      east.from,
-      vec(-20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const east = addStraight(network, vec(0, 0), vec(20, 0));
+    addStraight(network, east.from, vec(10, 10 * Math.sqrt(3)));
+    addStraight(network, east.from, vec(-20, 0));
 
     const junction = new Junction(network, east.from);
 

@@ -3,7 +3,7 @@ import { changedOrViolatingParts, planRoad, type RoadPlan } from "./roadPlan";
 import { RoadLayout } from "./RoadLayout";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { RoadNetwork } from "../network/RoadNetwork";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 /**
  * Plans a lone arc turning ¾ of the way round a circle of radius `r` about
@@ -44,12 +44,7 @@ describe("changedOrViolatingParts", () => {
     // A dead end at the origin, and a new road starting 7.9 m west of it:
     // two junction circles of w/2 = 4 m that overlap.
     const network = new RoadNetwork();
-    const existing = network.addSection(
-      { x: 0, z: 0 },
-      { x: 40, z: 0 },
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const existing = addStraight(network, { x: 0, z: 0 }, { x: 40, z: 0 });
     const plan = planRoad(
       network,
       new RoadLayout(network),

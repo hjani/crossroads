@@ -12,7 +12,7 @@ import { RoadNetwork } from "../network/RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 import type { NodeId } from "../network/types";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -57,13 +57,8 @@ function isRefused(network: RoadNetwork, from: Vec2, to: Vec2): boolean {
 /** Two parallel roads running north, `apart` meters apart. */
 function twoRoads(apart: number): RoadNetwork {
   const network = new RoadNetwork();
-  network.addSection(vec(0, -50), vec(0, 50), STRAIGHT, TEST_ROAD_WIDTH_METERS);
-  network.addSection(
-    vec(apart, -50),
-    vec(apart, 50),
-    STRAIGHT,
-    TEST_ROAD_WIDTH_METERS,
-  );
+  addStraight(network, vec(0, -50), vec(0, 50));
+  addStraight(network, vec(apart, -50), vec(apart, 50));
   return network;
 }
 
@@ -94,13 +89,8 @@ describe("verifyClearance", () => {
     // and ending alone at the near one. A road leaving that end north makes
     // a second bend, taking 4 m more: a 28 m roadway.
     const network = new RoadNetwork();
-    const short = network.addSection(
-      vec(0, 0),
-      vec(36, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(short.to, vec(36, 50), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    const short = addStraight(network, vec(0, 0), vec(36, 0));
+    addStraight(network, short.to, vec(36, 50));
     const plan = planSection(
       network,
       short.from,
@@ -116,7 +106,7 @@ describe("verifyClearance", () => {
   it("lets two junctions just touch", () => {
     // Two dead ends 8 m apart, each covered by a circle of w/2 = 4 m.
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(40, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    addStraight(network, vec(0, 0), vec(40, 0));
     const plan = planSection(
       network,
       vec(-8, 0),
@@ -132,7 +122,7 @@ describe("verifyClearance", () => {
   it("refuses two junctions whose circles overlap", () => {
     // The same two dead ends, 10 cm closer.
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(40, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    addStraight(network, vec(0, 0), vec(40, 0));
 
     expect(isRefused(network, vec(-7.9, 0), vec(-7.9, -40))).toBe(true);
   });
@@ -168,12 +158,7 @@ describe("verifyClearance", () => {
 
   it("refuses a new roadway running into an existing junction", () => {
     const network = new RoadNetwork();
-    network.addSection(
-      vec(-20, 0),
-      vec(0, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(-20, 0), vec(0, 0));
 
     expect(isRefused(network, vec(6, -20), vec(6, 20))).toBe(true);
     expect(isRefused(network, vec(8, -20), vec(8, 20))).toBe(false);
@@ -181,12 +166,7 @@ describe("verifyClearance", () => {
 
   it("refuses a new junction running into an existing roadway", () => {
     const network = new RoadNetwork();
-    network.addSection(
-      vec(-20, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(-20, 0), vec(20, 0));
 
     expect(isRefused(network, vec(0, -50), vec(0, -7))).toBe(true);
     expect(isRefused(network, vec(0, -50), vec(0, -8))).toBe(false);
@@ -195,12 +175,7 @@ describe("verifyClearance", () => {
   it("measures an arc roadway by its curve, not its chord", () => {
     // The chord runs 10 m from the junction, the arc bulges to 6 m of it.
     const network = new RoadNetwork();
-    network.addSection(
-      vec(-20, 0),
-      vec(0, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(-20, 0), vec(0, 0));
     const plan = planSection(
       network,
       vec(10, -20),
@@ -220,12 +195,7 @@ describe("verifyClearance", () => {
     // Every junction is 20 m or more from the other road; only the bulge
     // comes near, to 7 m of the straight's middle, and w = 8 m.
     const network = new RoadNetwork();
-    network.addSection(
-      vec(-50, 0),
-      vec(50, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(-50, 0), vec(50, 0));
     const planBulgingTo = (z: number): SectionPlan =>
       planSection(
         network,
@@ -275,12 +245,7 @@ describe("verifyClearance", () => {
     // A road leaving the end of another at ψ to it: the inside corner is
     // (w/2)/sin(ψ/2) from the node, 30.6 m at 15° and 18.5 m at 25°.
     const network = new RoadNetwork();
-    network.addSection(
-      vec(0, 0),
-      vec(100, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(0, 0), vec(100, 0));
     const leavingAt = (degrees: number): Vec2 => {
       const angle = (degrees * Math.PI) / 180;
       return vec(100 * Math.cos(angle), 100 * Math.sin(angle));
@@ -360,12 +325,7 @@ describe("verifyClearance's violating parts", () => {
     // and into the existing roadway too — but once named, the new roadway
     // leaves the roadway ↔ roadway rule, so the existing one isn't.
     const network = new RoadNetwork();
-    network.addSection(
-      vec(-20, 0),
-      vec(0, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(-20, 0), vec(0, 0));
     const plan = planSection(
       network,
       vec(6, -20),
@@ -387,13 +347,8 @@ describe("verifyClearance's violating parts", () => {
     // the legs no longer share a node, and run within w of each other past
     // the new junctions — but that is the junctions' doing.
     const network = new RoadNetwork();
-    const left = network.addSection(
-      vec(-20, 80),
-      vec(0, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(left.to, vec(20, 80), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    const left = addStraight(network, vec(-20, 80), vec(0, 0));
+    addStraight(network, left.to, vec(20, 80));
     const plan = planSection(
       network,
       vec(-60, 5),
@@ -411,12 +366,7 @@ describe("verifyClearance's violating parts", () => {
 
   it("names both roadways where an arc bulges into a straight", () => {
     const network = new RoadNetwork();
-    network.addSection(
-      vec(-50, 0),
-      vec(50, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(-50, 0), vec(50, 0));
     const plan = planSection(
       network,
       vec(-30, -20),
@@ -439,12 +389,7 @@ describe("verifyClearance's violating parts", () => {
     // The piece between the two roads is too short, as above, and the far
     // end stops 6 m from a dead end: two junction circles of w/2 = 4 m.
     const network = twoRoads(37);
-    network.addSection(
-      vec(100, 6),
-      vec(100, 40),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    addStraight(network, vec(100, 6), vec(100, 40));
     const plan = planSection(
       network,
       vec(-50, 0),

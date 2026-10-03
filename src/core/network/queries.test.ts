@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { sectionDirectionLeavingNode, sectionRadius } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -17,12 +16,7 @@ function expectDirection(direction: Vec2, expected: Vec2): void {
 describe("sectionDirectionLeavingNode", () => {
   it("points a straight from its from node toward its to node", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const section = addStraight(network, vec(0, 0), vec(10, 0));
 
     expectDirection(
       sectionDirectionLeavingNode(network, section, section.from),
@@ -32,12 +26,7 @@ describe("sectionDirectionLeavingNode", () => {
 
   it("points a straight from its to node back toward its from node", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const section = addStraight(network, vec(0, 0), vec(10, 0));
 
     expectDirection(
       sectionDirectionLeavingNode(network, section, section.to),
@@ -70,18 +59,8 @@ describe("sectionDirectionLeavingNode", () => {
 
   it("throws for a section that does not meet the node", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    const elsewhere = network.addSection(
-      vec(20, 0),
-      vec(30, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const section = addStraight(network, vec(0, 0), vec(10, 0));
+    const elsewhere = addStraight(network, vec(20, 0), vec(30, 0));
 
     expect(() =>
       sectionDirectionLeavingNode(network, section, elsewhere.from),
@@ -110,12 +89,7 @@ describe("sectionRadius", () => {
   it("gives a straight none", () => {
     const network = new RoadNetwork();
 
-    const straight = network.addSection(
-      vec(0, 0),
-      vec(20, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const straight = addStraight(network, vec(0, 0), vec(20, 0));
 
     expect(sectionRadius(network, straight)).toBeNull();
   });

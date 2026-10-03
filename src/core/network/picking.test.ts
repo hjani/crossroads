@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { nearestPointOnSection, nearestSection } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -12,19 +11,14 @@ function vec(x: number, z: number): Vec2 {
 describe("nearestSection", () => {
   it("finds a section the position runs alongside", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const section = addStraight(network, vec(0, 0), vec(10, 0));
 
     expect(nearestSection(network, vec(5, 2), 3)?.id).toBe(section.id);
   });
 
   it("is null where nothing is in range", () => {
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    addStraight(network, vec(0, 0), vec(10, 0));
 
     expect(nearestSection(network, vec(5, 2), 1)).toBeNull();
   });
@@ -35,13 +29,8 @@ describe("nearestSection", () => {
 
   it("takes the nearer of two in range", () => {
     const network = new RoadNetwork();
-    const near = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
-    network.addSection(vec(0, 5), vec(10, 5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    const near = addStraight(network, vec(0, 0), vec(10, 0));
+    addStraight(network, vec(0, 5), vec(10, 5));
 
     expect(nearestSection(network, vec(5, 2), 10)?.id).toBe(near.id);
   });
@@ -68,12 +57,7 @@ describe("nearestSection", () => {
 
   it("reaches a section only by its end", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const section = addStraight(network, vec(0, 0), vec(10, 0));
 
     // Past the end, so the distance is to the end itself — in range at
     // three meters, out of it at one.
@@ -85,12 +69,7 @@ describe("nearestSection", () => {
 describe("nearestPointOnSection", () => {
   it("drops straight across onto a straight", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const section = addStraight(network, vec(0, 0), vec(10, 0));
 
     expect(nearestPointOnSection(network, section, vec(4, 3))).toEqual(
       vec(4, 0),
@@ -99,12 +78,7 @@ describe("nearestPointOnSection", () => {
 
   it("gives the end of a straight for a position past it", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(
-      vec(0, 0),
-      vec(10, 0),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    const section = addStraight(network, vec(0, 0), vec(10, 0));
 
     expect(nearestPointOnSection(network, section, vec(13, 2))).toEqual(
       vec(10, 0),
