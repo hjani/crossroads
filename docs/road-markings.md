@@ -3,36 +3,58 @@
 ## Scope
 
 - Paint on the road surface (`docs/road-surface.md`): a solid line along
-  each curb, a dashed line down the centerline.
+  each curb, a dashed line down the centerline, zebra crossings at
+  junctions.
 - Out of scope: arrows, stop lines, markings that differ by road type.
 
 ## Markings
 
-In meters. `w` is the road width.
+`w` is the road width, `ℓ` a line's width.
 
-- Edge line: 0.1 wide, 0.1 in from the curb.
-  - The gap keeps the line off the mesh edge.
+- Edge line: solid, set in `e` from the curb.
+  - The inset keeps the line off the mesh edge.
 - Along every curb: both sides of every roadway, and on through junctions.
-- Centerline: dashed, 0.1 wide, 1.5 dash, 3 gap. Roadways only → it stops at
-  junctions.
+- Centerline: dashed. Roadways only → it stops at junctions.
 - One color for every marking: white.
 
-## Dash pattern
+## Fitted pattern
 
-Per roadway. `L` its length, `P = 4.5` the period (dash + gap).
+A mark and a gap, repeated over a stretch. `L` the stretch's length, `P`
+the period (mark + gap).
 
 - A whole number of periods, stretched to fit exactly:
 
       n  = round(L / P)
       P' = L / n
 
-- Half a gap at each end: a dash is the middle third of each period.
+- The mark is centered in each period → half a gap at each end.
+- `n = 0` → no marks.
+- `P'` is within `1 / 2n` of `P`.
+
+## Dash pattern
+
+A fitted pattern along the centerline. `δ` the dash's share of a period.
+
+- `L`: the roadway's length, less its crossings.
+- The dash is a share of the period → stretches with it.
+- Half a gap at each end:
   - → two roadways meeting at a 180° join: the two half gaps make one gap →
     the pattern carries on across the node.
-  - → at a junction: about 1.5 of gap before it.
-- `n = 0` → no dashes.
-- Built roadways are at least 30 m (`docs/intersections.md`) → `n ≥ 7`,
-  and `P'` is within `1 / 2n ≈ 7%` of `P`.
+  - → at a junction or a crossing: half a gap before it.
+
+## Crossings
+
+A zebra crossing at a roadway's end, where it meets a junction.
+
+- At an end iff 3 or more sections meet at its node.
+  - Per end → a roadway has one at either end, both or neither.
+  - None at a dead end or a join of two.
+- `D` deep along the road, starting right at the roadway's end.
+- No centerline dashes on it.
+- A roadway under `2D` long has none → two crossings never overlap.
+- Bars run along the road: a fitted pattern across it, between the edge
+  lines → `L = W = w − 2(e + ℓ)`.
+  - A bar is half its period.
 
 ## Drawn in the shader
 
@@ -47,16 +69,28 @@ each triangle.
     distance from the centerline, interpolated for each pixel.
     - Width only in `halfWidth` → a width that varies by road needs no
       change.
-  - `t = s / P'`: distance along the roadway, in periods. `s` is measured
-    from the roadway's start.
+  - `t = (s − c) / P'`: distance along the dashed stretch, in dash periods.
+    `s` is measured from the roadway's start, `c` is `D` with a crossing
+    there, else 0.
+  - `k = (u + W/2) / P'`: distance across, from the inner edge of the edge
+    line, in bar periods.
+    - Linear in `u` → interpolates exactly, like `u`.
+  - `a`, `b`: distance from the start, and from the end, where that end has
+    a crossing. Far (over `D`) where it has none.
+  - A junction's vertices: `t = 0`, `a`, `b` far.
 
 - A pixel is marked where:
 
-      edge line:             0.1 < halfWidth − |u| < 0.2
-      centerline dash:       |u| < 0.05  and  |fract(t) − 0.5| < 1/6
+      edge line:        e < halfWidth − |u| < e + ℓ
+      on a crossing:    min(a, b) < D
+      centerline dash:  |u| < ℓ/2  and  |fract(t) − 0.5| < δ/2
+                        and not on a crossing
+      crossing bar:     on a crossing  and  |fract(k) − 0.5| < 1/4
+                        and  halfWidth − |u| > e + ℓ
 
-- `t` already includes the roadway's own `P'` → nothing per roadway is left
-  for the shader → every roadway shares one mesh.
+- `t` and `k` already include the roadway's own `P'`, `a` and `b` its
+  crossings → nothing per roadway is left for the shader → every roadway
+  shares one mesh.
 
 ## Follows the chords, not the arc
 
@@ -67,7 +101,7 @@ each triangle.
   the diagonal without a kink.
   - → a line keeps its distance from the drawn edge exactly.
   - Measured against the true arc instead, it would drift from the drawn
-    edge by the sag, up to 5 cm: half the line's width.
+    edge by the sag, up to the tessellation's tolerance.
 - Costs, both far under a millimeter at the tessellation's tolerance:
   - the chords are `w·cos(α/2)` apart, `α` the angle a quad covers → the
     lines are thinner by `cos(α/2)`

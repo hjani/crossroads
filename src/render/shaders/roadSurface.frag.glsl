@@ -1,10 +1,15 @@
 uniform vec3 color;
 // How much of a state's tint is mixed over the surface.
 uniform float tintAmount;
+// How far a crossing reaches from the roadway's end, in meters.
+uniform float crossingDepth;
 
 varying float u;
 varying float vHalfWidth;
 varying float t;
+varying float k;
+varying float vFromStart;
+varying float vFromEnd;
 varying float vState;
 varying vec3 vTint;
 
@@ -13,6 +18,8 @@ const float EDGE_INSET = 0.2;
 const float LINE_WIDTH = 0.1;
 // Half a centerline dash, in periods: 1.5 m of dash to 3 m of gap.
 const float DASH_HALF = 1.0 / 6.0;
+// Half a crossing bar, in periods: as much bar as gap.
+const float BAR_HALF = 0.25;
 const vec3 MARKING = vec3(1.0);
 
 // How much of a pixel lies past an edge `x` meters behind its center, for
@@ -39,8 +46,21 @@ void main() {
   float across =
     ramp(u + LINE_WIDTH / 2.0, px) - ramp(u - LINE_WIDTH / 2.0, px);
   float along = ramp(DASH_HALF - abs(fract(t) - 0.5), fwidth(t));
-  float dash = across * along;
-  vec3 surface = mix(color, MARKING, max(edgeLine, dash));
+  // Within a crossing's depth of an end that has one. `px` measured across
+  // the road stands in for along it: both are meters.
+  float crossing = ramp(crossingDepth - min(vFromStart, vFromEnd), px);
+  float dash = across * along * (1.0 - crossing);
+  // Crossing bar: the middle half of each period, between the edge lines.
+  // Between them, not just in a gap: the half gap at the edge is narrower
+  // than the strip out to the curb.
+  // Fades out as a bar narrows from two pixels to one: any narrower, and the
+  // bars and gaps blur into one pale band.
+  float barsFade = 1.0 - smoothstep(0.25, 0.5, fwidth(k));
+  float bar = crossing
+    * ramp(BAR_HALF - abs(fract(k) - 0.5), fwidth(k))
+    * ramp(d - (EDGE_INSET + LINE_WIDTH), px)
+    * barsFade;
+  vec3 surface = mix(color, MARKING, max(edgeLine, max(dash, bar)));
   // No state → no tint.
   float tint = vState < float(PART_STATE_NONE) + 0.5 ? 0.0 : tintAmount;
   gl_FragColor = vec4(mix(surface, vTint, tint), 1.0);

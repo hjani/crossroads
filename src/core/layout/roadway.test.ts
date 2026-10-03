@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
-import { roadwayOf } from "./roadway";
+import { roadwayOf, type Roadway } from "./roadway";
 import { STRAIGHT } from "../geometry/lineGeometry";
-import type { Section } from "../network/types";
+import type { NodeId, Section } from "../network/types";
 import type { Vec2 } from "../geometry/point";
 
 const WIDTH_METERS = 8;
@@ -129,5 +129,64 @@ describe("roadwayOf", () => {
         onCircle(center, R, startAngle / 2),
       );
     }
+  });
+});
+
+describe("roadwayOf crossings", () => {
+  // Set back by hand: only the roadway's length matters to its crossings.
+  const NO_SETBACKS = { from: 0, to: 0 };
+
+  /** Ends `count` more sections at `node`, each to a node of its own. */
+  function addSectionsAt(network: RoadNetwork, node: NodeId, count: number) {
+    const at = network.getNode(node).position;
+    for (let i = 0; i < count; i++) {
+      network.addSection(node, vec(at.x + 50, at.z + 50 * (i + 1)), STRAIGHT);
+    }
+  }
+
+  function crossingsOf(
+    network: RoadNetwork,
+    section: Section,
+    setbacks = NO_SETBACKS,
+  ): Roadway["crossings"] {
+    return roadwayOf(network, section, setbacks, WIDTH_METERS).crossings;
+  }
+
+  it("crosses only at the end where 3 sections meet", () => {
+    const network = new RoadNetwork();
+    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    addSectionsAt(network, road.to, 2);
+    expect(crossingsOf(network, road)).toEqual({ from: false, to: true });
+  });
+
+  it("crosses at both ends where both are junctions of 3 or more", () => {
+    const network = new RoadNetwork();
+    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    addSectionsAt(network, road.from, 3);
+    addSectionsAt(network, road.to, 2);
+    expect(crossingsOf(network, road)).toEqual({ from: true, to: true });
+  });
+
+  it("doesn't cross at a dead end or a join of two", () => {
+    const network = new RoadNetwork();
+    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    addSectionsAt(network, road.to, 1);
+    expect(crossingsOf(network, road)).toEqual({ from: false, to: false });
+  });
+
+  it("doesn't cross a roadway too short for two crossings", () => {
+    const network = new RoadNetwork();
+    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    addSectionsAt(network, road.from, 2);
+    addSectionsAt(network, road.to, 2);
+    // 100 − 2·47.05 = 5.9 left; 100 − 2·47 = 6.
+    expect(crossingsOf(network, road, { from: 47.05, to: 47.05 })).toEqual({
+      from: false,
+      to: false,
+    });
+    expect(crossingsOf(network, road, { from: 47, to: 47 })).toEqual({
+      from: true,
+      to: true,
+    });
   });
 });

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { dashPeriodOf } from "./markings";
+import { DASH_PERIOD_METERS, fittedPeriodOf } from "./markings";
 
-describe("dashPeriodOf", () => {
+function dashPeriodOf(lengthMeters: number): number | null {
+  return fittedPeriodOf(lengthMeters, DASH_PERIOD_METERS);
+}
+
+describe("fittedPeriodOf", () => {
   it("keeps the period when it fits exactly", () => {
     expect(dashPeriodOf(27)).toBe(4.5);
   });
@@ -16,11 +20,11 @@ describe("dashPeriodOf", () => {
     expect(dashPeriodOf(29)).toBeCloseTo(29 / 6);
   });
 
-  it("gives the shortest roadway with a dash one period", () => {
+  it("gives the shortest stretch with a mark one period", () => {
     expect(dashPeriodOf(2.25)).toBe(2.25);
   });
 
-  it("gives no dashes to a roadway too short for one", () => {
+  it("gives no marks to a stretch too short for one", () => {
     expect(dashPeriodOf(2.2)).toBeNull();
     expect(dashPeriodOf(0)).toBeNull();
     expect(dashPeriodOf(-5)).toBeNull();

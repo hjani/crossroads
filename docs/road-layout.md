@@ -55,6 +55,7 @@
   Clearance).
   - The outline then runs backwards. Ugly but harmless: only a refused
     plan's network gets there.
+- Knows which of its ends has a crossing (`docs/road-markings.md`).
 
 ## Outline
 

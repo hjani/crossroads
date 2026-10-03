@@ -1,11 +1,13 @@
 /** Dash + gap along the centerline, in meters. See `docs/road-markings.md`. */
 export const DASH_PERIOD_METERS = 4.5;
+/** Bar + gap across a crossing, in meters. */
+export const BAR_PERIOD_METERS = 1;
 
 /**
- * The period a roadway's dashes are stretched to, so a whole number of them
- * fits its length exactly — or null when it is too short for one.
+ * The period a pattern is stretched to, so a whole number of them fits its
+ * length exactly — or null when it is too short for one.
  *
- * `L = lengthMeters`, `P = DASH_PERIOD_METERS`:
+ * `L = lengthMeters`, `P = periodMeters`:
  *
  * - the nearest whole number of periods, stretched or squeezed to fill `L`:
  *
@@ -13,10 +15,13 @@ export const DASH_PERIOD_METERS = 4.5;
  *       P' = L / n
  *
  * - `L / P' = n` → the pattern ends on a period boundary at both ends; a
- *   dash is the middle third of a period → half a gap at each end
+ *   mark is centered in its period → half a gap at each end
  * - `n ≤ 0` → null: `L < P/2`, and the negative lengths of a refused plan
  */
-export function dashPeriodOf(lengthMeters: number): number | null {
-  const n = Math.round(lengthMeters / DASH_PERIOD_METERS);
+export function fittedPeriodOf(
+  lengthMeters: number,
+  periodMeters: number,
+): number | null {
+  const n = Math.round(lengthMeters / periodMeters);
   return n > 0 ? lengthMeters / n : null;
 }

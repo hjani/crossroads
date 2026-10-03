@@ -2,8 +2,17 @@ import { pointOnArc } from "../geometry/arc";
 import { unitDirection, type Vec2 } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { LineGeometry } from "../geometry/lineGeometry";
-import type { Section } from "../network/types";
+import type { NodeId, Section } from "../network/types";
 import type { RoadwayOutline } from "./outline";
+
+/**
+ * How far a crossing reaches along the road from the roadway's end, in
+ * meters. See `docs/road-markings.md`.
+ */
+export const CROSSING_DEPTH_METERS = 3;
+
+/** How many sections must meet at a node for a crossing at their ends. */
+const CROSSING_MIN_SECTIONS = 3;
 
 /**
  * A section between the setbacks at its two ends: a shorter section of the
@@ -14,6 +23,8 @@ export interface Roadway {
   readonly length: number;
   /** The ground it covers: its centerline, and the width of the road. */
   readonly outline: RoadwayOutline;
+  /** Which of its ends has a crossing. */
+  readonly crossings: { readonly from: boolean; readonly to: boolean };
 }
 
 /**
@@ -36,15 +47,34 @@ export function roadwayOf(
   widthMeters: number,
 ): Roadway {
   const { from: s1, to: s2 } = setbacks;
+  const length = section.length - s1 - s2;
   return {
-    length: section.length - s1 - s2,
+    length,
     outline: {
       kind: "roadway",
       section: section.id,
       ...applySetbacks(network, section, s1, s2),
       widthMeters,
     },
+    crossings: crossingsOf(network, section, length),
   };
+}
+
+/**
+ * Which ends of a section's roadway have a crossing: those at a node where
+ * at least 3 sections meet. None on a roadway too short for two.
+ */
+function crossingsOf(
+  network: RoadNetwork,
+  section: Section,
+  length: number,
+): Roadway["crossings"] {
+  if (length < 2 * CROSSING_DEPTH_METERS) {
+    return { from: false, to: false };
+  }
+  const crosses = (node: NodeId) =>
+    network.sectionsAt(node).length >= CROSSING_MIN_SECTIONS;
+  return { from: crosses(section.from), to: crosses(section.to) };
 }
 
 /**
