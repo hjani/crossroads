@@ -3,6 +3,7 @@ import { sectionDirectionLeavingNode, sectionRadius } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
+import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -16,7 +17,12 @@ function expectDirection(direction: Vec2, expected: Vec2): void {
 describe("sectionDirectionLeavingNode", () => {
   it("points a straight from its from node toward its to node", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirection(
       sectionDirectionLeavingNode(network, section, section.from),
@@ -26,7 +32,12 @@ describe("sectionDirectionLeavingNode", () => {
 
   it("points a straight from its to node back toward its from node", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirection(
       sectionDirectionLeavingNode(network, section, section.to),
@@ -37,10 +48,15 @@ describe("sectionDirectionLeavingNode", () => {
   it("follows an arc's tangent at the node, not its chord", () => {
     const network = new RoadNetwork();
     // A half circle over the top from west to east, going up from both ends.
-    const arc = network.addSection(vec(0, 0), vec(10, 0), {
-      kind: "arc",
-      via: vec(5, 5),
-    });
+    const arc = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      {
+        kind: "arc",
+        via: vec(5, 5),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirection(
       sectionDirectionLeavingNode(network, arc, arc.from),
@@ -54,8 +70,18 @@ describe("sectionDirectionLeavingNode", () => {
 
   it("throws for a section that does not meet the node", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    const elsewhere = network.addSection(vec(20, 0), vec(30, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    const elsewhere = network.addSection(
+      vec(20, 0),
+      vec(30, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(() =>
       sectionDirectionLeavingNode(network, section, elsewhere.from),
@@ -68,10 +94,15 @@ describe("sectionRadius", () => {
     const network = new RoadNetwork();
 
     // The half circle of radius 10 over the top of (0,0)-(20,0).
-    const arc = network.addSection(vec(0, 0), vec(20, 0), {
-      kind: "arc",
-      via: vec(10, 10),
-    });
+    const arc = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      {
+        kind: "arc",
+        via: vec(10, 10),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(sectionRadius(network, arc)).toBeCloseTo(10);
   });
@@ -79,7 +110,12 @@ describe("sectionRadius", () => {
   it("gives a straight none", () => {
     const network = new RoadNetwork();
 
-    const straight = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    const straight = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(sectionRadius(network, straight)).toBeNull();
   });

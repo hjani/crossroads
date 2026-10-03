@@ -158,6 +158,11 @@ cross.**
 None of this reaches the model: it still receives exact positions and ids
 of existing nodes, and decides nothing about either.
 
+## Road width
+
+- The section tools build roads according to the settings object, 
+  which is shared across the tools.
+
 ## Placing an arc
 
 - Three points: the two ends, then a position the arc passes through.

@@ -41,6 +41,8 @@ export interface Leg {
   readonly angle: number;
   /** Along the centerline, in meters. */
   readonly length: number;
+  /** Half the road's width: from the centerline to either edge, in meters. */
+  readonly halfWidth: number;
   /**
    * The circle an arc runs on, and which way it turns leaving the node: +1
    * counterclockwise, −1 clockwise. Null for a straight.
@@ -92,8 +94,8 @@ export function legsAt(network: RoadNetwork, node: NodeId): Leg[] {
  * A leg's edge on its `side` (+1 counterclockwise, −1 clockwise), or null for
  * the inner edge of an arc too tight to have one. `at` is the node's position.
  *
- * Let `N = at`, `w/2 = halfWidth`, `σ = side`, `d` the leg's direction, and
- * for an arc `R` its radius and `τ` the way it turns:
+ * Let `N = at`, `w/2` the leg's half-width, `σ = side`, `d` the leg's
+ * direction, and for an arc `R` its radius and `τ` the way it turns:
  *
  * - straight: the line through `N + σ·(w/2)·(−d.z, d.x)`, along `d`
  * - arc: the circle around the arc's center with radius
@@ -102,13 +104,8 @@ export function legsAt(network: RoadNetwork, node: NodeId): Leg[] {
  *
  *   → the inner edge on the side the arc turns to; none where that is ≤ 0
  */
-export function edgeOf(
-  at: Vec2,
-  leg: Leg,
-  side: number,
-  halfWidth: number,
-): Edge | null {
-  const { direction, arc } = leg;
+export function edgeOf(at: Vec2, leg: Leg, side: number): Edge | null {
+  const { direction, arc, halfWidth } = leg;
   if (arc === null) {
     return {
       kind: "line",
@@ -140,9 +137,9 @@ function edgeRadiusOf(
  * counterclockwise, −1 clockwise) — one end of the roadway's end, and one
  * corner of the junction. `at` is the node's position.
  *
- * Let `N = at`, `s = setback`, `w/2 = halfWidth`, `σ = side`, `d` the leg's
- * direction, and for an arc `O` its center, `R` its radius and `τ` the way it
- * turns:
+ * Let `N = at`, `s = setback`, `w/2` the leg's half-width, `σ = side`, `d`
+ * the leg's direction, and for an arc `O` its center, `R` its radius and `τ`
+ * the way it turns:
  *
  * - straight: the cut is perpendicular to `d`, so the point is `s` along it
  *   and `w/2` to the side:
@@ -167,10 +164,9 @@ export function edgePointAt(
   at: Vec2,
   leg: Leg,
   side: number,
-  halfWidth: number,
   setback: number,
 ): Vec2 {
-  const { direction, arc } = leg;
+  const { direction, arc, halfWidth } = leg;
   if (arc === null) {
     return {
       x: at.x + setback * direction.x - side * halfWidth * direction.z,
@@ -212,7 +208,6 @@ export function edgePointAt(
 export function alongEdge(
   leg: Leg,
   side: number,
-  halfWidth: number,
   from: Vec2,
   to: Vec2,
 ): LineGeometry {
@@ -222,7 +217,7 @@ export function alongEdge(
   }
 
   const { center } = arc.circle;
-  const radius = edgeRadiusOf(arc, side, halfWidth);
+  const radius = edgeRadiusOf(arc, side, leg.halfWidth);
   const middle = lerp(from, to, 0.5);
   if (radius <= 0 || isSamePoint(center, middle)) {
     return STRAIGHT;
@@ -368,6 +363,7 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
     direction,
     angle: angleOf(direction),
     length: distance(from, to),
+    halfWidth: section.width / 2,
     arc: null,
   };
   if (section.centerlineGeometry.kind === "straight") {

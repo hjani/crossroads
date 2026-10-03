@@ -13,12 +13,14 @@ import {
   planRoad,
   type RoadPlan,
 } from "../core/layout/roadPlan";
-import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { JunctionHighlight } from "../render/JunctionHighlight";
 import type { PartStates } from "../render/PartStates";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
+import type { SectionSettingsPanel } from "../ui/SectionSettingsPanel";
+import type { SectionSettings } from "./SectionSettings";
 import {
   endpointFrom,
   placeSectionEnd,
@@ -71,10 +73,10 @@ const HEADING_STEP_RADIANS = Math.PI / 12;
  */
 export class SmartArcTool implements Tool {
   /** Where the next click would land. */
-  private readonly landingMark = new JunctionHighlight(ROAD_WIDTH_METERS);
+  private readonly landingMark: JunctionHighlight;
   /** The start, once placed. */
-  private readonly startMark = new JunctionHighlight(ROAD_WIDTH_METERS);
-  private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
+  private readonly startMark: JunctionHighlight;
+  private readonly planView = new SectionPlanView("surface");
   /**
    * One view per candidate plan on screen. Grown as needed and never shrunk: the ones
    * not in use are hidden.
@@ -83,6 +85,7 @@ export class SmartArcTool implements Tool {
   /** Holds the plan views, first in the decoration so the marks draw over. */
   private readonly planLayer = new THREE.Group();
   private readonly decoration = new THREE.Group();
+  private readonly unsubscribeSettingsChanged: () => void;
 
   private start: Placement | null = null;
   /**
@@ -92,6 +95,11 @@ export class SmartArcTool implements Tool {
    * - null again once a click has built the arc, for the next one to flick
    */
   private flickedDirection: Vec2 | null = null;
+  /**
+   * What the cursor was last aimed at: the raw position on the ground and the
+   * resolved placement.
+   */
+  private aim: { ground: Vec2; placed: Placement } | null = null;
 
   /**
    * Whether a plan is drawn for every candidate from the start. A debug
@@ -104,7 +112,15 @@ export class SmartArcTool implements Tool {
     private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
     private readonly partStates: PartStates,
+    private readonly settings: SectionSettings,
+    private readonly settingsPanel: SectionSettingsPanel,
   ) {
+    this.landingMark = new JunctionHighlight(settings.width);
+    this.startMark = new JunctionHighlight(settings.width);
+    this.unsubscribeSettingsChanged = settingsPanel.onSettingsChanged(() =>
+      this.afterSettingsChange(),
+    );
+
     partStates.reset();
     this.planLayer.add(this.planView.sceneObject);
     this.decoration.add(
@@ -122,8 +138,9 @@ export class SmartArcTool implements Tool {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
+    const placed = this.placeAt(ground, modifiers);
     if (this.start === null) {
-      this.start = this.startAt(ground, modifiers);
+      this.start = placed;
       return;
     }
 
@@ -131,9 +148,9 @@ export class SmartArcTool implements Tool {
     // the arc stays in progress, so the click can be made again somewhere it
     // works. The candidates are only a debug view, and never built.
     const flicked = this.flickedDirection;
-    const placed = this.endAt(this.start, ground, modifiers);
-    if (flicked === null || placed === null) return;
-    const plan = this.plansTo(this.start, placed, [flicked]).at(0);
+    const end = this.endAt(this.start, ground, placed);
+    if (flicked === null || end === null) return;
+    const plan = this.plansTo(this.start, end, [flicked]).at(0);
     if (plan === undefined || !plan.buildable) return;
 
     const far = applyRoadPlan(this.network, plan);
@@ -194,33 +211,49 @@ export class SmartArcTool implements Tool {
     this.flickedDirection = null;
   }
 
-  /**
-   * Draws what a click would do:
-   * - before a start: a mark on where it would start from
-   * - after: a mark on the start, the flicked plan with a mark on where its
-   *   far end lands, and if enabled, also the candidate plans to the far end
-   */
+  /** Works out what the cursor aims at, and redraws for it. */
   afterInputOrViewChange(
     cursor: ScreenPoint | null,
     modifiers: Modifiers,
   ): void {
     const ground =
       cursor === null ? null : this.viewport.screenToGround(cursor);
+    this.aim =
+      ground === null
+        ? null
+        : { ground, placed: this.placeAt(ground, modifiers) };
+    this.redraw();
+  }
 
+  /**
+   * Redraws for the new width. Where a click lands doesn't depend on it, so
+   * the aim stays as it was.
+   */
+  afterSettingsChange(): void {
+    this.landingMark.setRoadWidth(this.settings.width);
+    this.startMark.setRoadWidth(this.settings.width);
+    this.redraw();
+  }
+
+  /**
+   * Draws what a click at the aim would do:
+   * - before a start: a mark on where it would start from
+   * - after: a mark on the start, the flicked plan with a mark on where its
+   *   far end lands, and if enabled, also the candidate plans to the far end
+   */
+  private redraw(): void {
     if (this.start === null) {
       this.startMark.hide();
       this.showPlans(null, []);
       hideSpeculatedParts(this.partStates, null);
-      showLanding(
-        this.landingMark,
-        ground === null ? null : this.startAt(ground, modifiers),
-        null,
-      );
+      showLanding(this.landingMark, this.aim?.placed ?? null, null);
       return;
     }
 
     const end =
-      ground === null ? null : this.endAt(this.start, ground, modifiers);
+      this.aim === null
+        ? null
+        : this.endAt(this.start, this.aim.ground, this.aim.placed);
     const flicked =
       end === null || this.flickedDirection === null
         ? null
@@ -282,7 +315,14 @@ export class SmartArcTool implements Tool {
       const geometry = geometryLeaving(start.position, direction, end.position);
       if (geometry === null) continue;
 
-      const roadPlan = planRoad(this.network, this.layout, from, to, geometry);
+      const roadPlan = planRoad(
+        this.network,
+        this.layout,
+        from,
+        to,
+        geometry,
+        this.settings.width,
+      );
       if (roadPlan.sectionPlan.pieces.length > 0) {
         plans.push(roadPlan);
       }
@@ -302,7 +342,7 @@ export class SmartArcTool implements Tool {
     }
 
     while (this.candidateViews.length < candidates.length) {
-      const view = new SectionPlanView(0);
+      const view = new SectionPlanView("centerline");
       this.candidateViews.push(view);
       this.planLayer.add(view.sceneObject);
     }
@@ -316,33 +356,33 @@ export class SmartArcTool implements Tool {
     });
   }
 
-  /** The place a click at `ground` would start from. */
-  private startAt(ground: Vec2, modifiers: Modifiers): Placement {
+  /** The place a click at `ground` would land on: the start, or the far end. */
+  private placeAt(ground: Vec2, modifiers: Modifiers): Placement {
     return placeSectionEnd(this.network, this.layout, this.viewport, ground, {
       useGrid: !modifiers.ctrl,
     });
   }
 
   /**
-   * Where the cursor at `ground` puts the far end, or null while it has not
-   * left the start's pick radius. Measured from the cursor, as in
-   * `StraightSectionTool`: zoomed out, the radius covers neighboring nodes
-   * too, and a cursor still on the start has not aimed anywhere.
+   * The far end a click at `ground`, landing on `placed`, would make, or null
+   * while it has not left the start's pick radius. Measured from the cursor,
+   * as in `StraightSectionTool`: zoomed out, the radius covers neighboring
+   * nodes too, and a cursor still on the start has not aimed anywhere.
    */
   private endAt(
     start: Placement,
     ground: Vec2,
-    modifiers: Modifiers,
+    placed: Placement,
   ): Placement | null {
-    if (withinPickRadius(this.viewport, ground, start.position)) return null;
-
-    return placeSectionEnd(this.network, this.layout, this.viewport, ground, {
-      useGrid: !modifiers.ctrl,
-    });
+    return withinPickRadius(this.viewport, ground, start.position)
+      ? null
+      : placed;
   }
 
-  /** Releases the marks' and plans' GPU buffers. The tool is unusable after. */
+  /** Releases GPU buffers and any UI. */
   dispose(): void {
+    this.unsubscribeSettingsChanged();
+    this.settingsPanel.dispose();
     this.landingMark.dispose();
     this.startMark.dispose();
     this.planView.dispose();

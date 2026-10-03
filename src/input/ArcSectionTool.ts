@@ -5,12 +5,14 @@ import {
   planRoad,
   type RoadPlan,
 } from "../core/layout/roadPlan";
-import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { JunctionHighlight } from "../render/JunctionHighlight";
 import type { PartStates } from "../render/PartStates";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
+import type { SectionSettingsPanel } from "../ui/SectionSettingsPanel";
+import type { SectionSettings } from "./SectionSettings";
 import {
   endpointFrom,
   placeSectionEnd,
@@ -36,24 +38,38 @@ import type { Modifiers, Tool } from "./Tool";
 export class ArcSectionTool implements Tool {
   /** The start: where the first click would land, and after it the start it
    * placed. */
-  private readonly startHighlight = new JunctionHighlight(ROAD_WIDTH_METERS);
+  private readonly startHighlight: JunctionHighlight;
   /** The end: where the second click would land, and after it the end it
    * placed. */
-  private readonly endHighlight = new JunctionHighlight(ROAD_WIDTH_METERS);
+  private readonly endHighlight: JunctionHighlight;
   /** The full plan to build the arc. */
-  private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
+  private readonly planView = new SectionPlanView("surface");
   private readonly decoration = new THREE.Group();
+  private readonly unsubscribeSettingsChanged: () => void;
 
   /** The ends, in the order they were clicked. */
   private start: Placement | null = null;
   private end: Placement | null = null;
+  /**
+   * Where the cursor last was on the ground, and whether to round it to the
+   * grid. Raw: what it resolves to depends on how far the gesture has got.
+   */
+  private lastCursor: { ground: Vec2; useGrid: boolean } | null = null;
 
   constructor(
     private readonly network: RoadNetwork,
     private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
     private readonly partStates: PartStates,
+    private readonly settings: SectionSettings,
+    private readonly settingsPanel: SectionSettingsPanel,
   ) {
+    this.startHighlight = new JunctionHighlight(settings.width);
+    this.endHighlight = new JunctionHighlight(settings.width);
+    this.unsubscribeSettingsChanged = settingsPanel.onSettingsChanged(() =>
+      this.afterSettingsChange(),
+    );
+
     partStates.reset();
     this.decoration.add(
       this.planView.sceneObject,
@@ -127,39 +143,51 @@ export class ArcSectionTool implements Tool {
     this.end = null;
   }
 
-  /**
-   * Draws what a click would do. One of the three says it, and how far the
-   * gesture has got picks which: the marks come off the screen first, so
-   * each branch only has to put its own back. Which is also what leaves
-   * nothing behind when there is no answer to draw at all.
-   *
-   * Drawn from scratch after every input and change of view, so it answers
-   * for whatever changed — the cursor, Ctrl, the camera, or how far the
-   * gesture has got. The mark on where the first click lands shows before
-   * that click, or there is no way to see that it would join rather than
-   * start something new.
-   */
+  /** Keeps where the cursor is, and redraws for it. */
   afterInputOrViewChange(
     cursor: ScreenPoint | null,
     modifiers: Modifiers,
   ): void {
+    const ground =
+      cursor === null ? null : this.viewport.screenToGround(cursor);
+    this.lastCursor =
+      ground === null ? null : { ground, useGrid: !modifiers.ctrl };
+    this.redraw();
+  }
+
+  /** Redraws for the new width, at the cursor as it was. */
+  afterSettingsChange(): void {
+    this.startHighlight.setRoadWidth(this.settings.width);
+    this.endHighlight.setRoadWidth(this.settings.width);
+    this.redraw();
+  }
+
+  /**
+   * Draws what a click at the last cursor would do. One of the three says
+   * it, and how far the gesture has got picks which: the marks come off the
+   * screen first, so each branch only has to put its own back. Which is also
+   * what leaves nothing behind when there is no answer to draw at all.
+   *
+   * The mark on where the first click lands shows before that click, or
+   * there is no way to see that it would join rather than start something
+   * new.
+   */
+  private redraw(): void {
     this.planView.hide();
     this.startHighlight.hide();
     this.endHighlight.hide();
 
-    const ground =
-      cursor === null ? null : this.viewport.screenToGround(cursor);
-    if (ground === null) {
+    if (this.lastCursor === null) {
       hideSpeculatedParts(this.partStates, null);
       showPlacedEnd(this.startHighlight, this.start, null);
       showPlacedEnd(this.endHighlight, this.end, null);
       return;
     }
+    const { ground, useGrid } = this.lastCursor;
 
     // Both ends down: the arc bending through where the cursor is, which is
     // the whole of what the next click would build. That click places the
     // control point, which welds onto nothing, so it lands on nothing to mark.
-    const useGrid = !modifiers.ctrl;
     if (this.start !== null && this.end !== null) {
       const plan = this.planThrough(placeControlPoint(ground, { useGrid }));
       if (plan !== null) this.planView.showRoadPlan(this.network, plan);
@@ -233,12 +261,15 @@ export class ArcSectionTool implements Tool {
       endpointFrom(this.start),
       endpointFrom(this.end),
       { kind: "arc", via },
+      this.settings.width,
     );
     return plan.sectionPlan.pieces.length === 0 ? null : plan;
   }
 
-  /** Releases the decoration's GPU buffers. The tool is unusable after. */
+  /** Releases GPU buffers and any UI. */
   dispose(): void {
+    this.unsubscribeSettingsChanged();
+    this.settingsPanel.dispose();
     this.planView.dispose();
     this.startHighlight.dispose();
     this.endHighlight.dispose();

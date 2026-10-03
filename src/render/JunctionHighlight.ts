@@ -29,7 +29,7 @@ export class JunctionHighlight {
   >;
 
   /** `roadWidth`: used for free placement positions. */
-  constructor(private readonly roadWidth: number) {
+  constructor(private roadWidth: number) {
     this.sceneObject = new THREE.Mesh(
       makeGeometry([]),
       new THREE.MeshBasicMaterial({
@@ -71,6 +71,11 @@ export class JunctionHighlight {
 
   hide(): void {
     this.sceneObject.visible = false;
+  }
+
+  /** Size used for free placement. */
+  setRoadWidth(roadWidth: number): void {
+    this.roadWidth = roadWidth;
   }
 
   /** Releases the GPU buffers behind the mark. Unusable after. */

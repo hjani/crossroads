@@ -3,6 +3,7 @@ import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { type NodeId, type SectionId } from "./types";
 import type { Vec2 } from "../geometry/point";
+import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -29,7 +30,12 @@ describe("section length", () => {
   it("measures a straight between its nodes", () => {
     const network = new RoadNetwork();
 
-    const section = network.addSection(vec(0, 0), vec(3, 4), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(3, 4),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(section.length).toBeCloseTo(5);
   });
@@ -38,10 +44,15 @@ describe("section length", () => {
     const network = new RoadNetwork();
 
     // The half circle of radius 10 over the top of (0,0)-(20,0): π·10.
-    const section = network.addSection(vec(0, 0), vec(20, 0), {
-      kind: "arc",
-      via: vec(10, 10),
-    });
+    const section = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      {
+        kind: "arc",
+        via: vec(10, 10),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(section.length).toBeCloseTo(10 * Math.PI);
   });
@@ -50,7 +61,12 @@ describe("section length", () => {
 describe("removing a section", () => {
   it("takes both nodes when nothing else holds them", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     network.removeSection(section.id);
 
@@ -60,8 +76,13 @@ describe("removing a section", () => {
 
   it("keeps a node another section still meets", () => {
     const network = new RoadNetwork();
-    const first = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(first.to, vec(20, 0), STRAIGHT);
+    const first = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(first.to, vec(20, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     network.removeSection(first.id);
 
@@ -71,7 +92,7 @@ describe("removing a section", () => {
 
   it("ignores an unknown id", () => {
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
     const version = network.version;
 
     network.removeSection(99 as SectionId);
@@ -84,7 +105,12 @@ describe("removing a section", () => {
 describe("removing a node", () => {
   it("takes its one section, and the far end left bare", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     network.removeNode(section.from);
 
@@ -94,11 +120,16 @@ describe("removing a node", () => {
 
   it("takes every section of a junction", () => {
     const network = new RoadNetwork();
-    const first = network.addSection(vec(0, 0), vec(5, 0), STRAIGHT);
+    const first = network.addSection(
+      vec(0, 0),
+      vec(5, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     const center = first.to;
-    network.addSection(center, vec(10, 0), STRAIGHT);
-    network.addSection(center, vec(5, -5), STRAIGHT);
-    network.addSection(center, vec(5, 5), STRAIGHT);
+    network.addSection(center, vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(center, vec(5, 5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     network.removeNode(center);
 
@@ -108,13 +139,23 @@ describe("removing a node", () => {
 
   it("leaves the far ends that carry other roads", () => {
     const network = new RoadNetwork();
-    const first = network.addSection(vec(0, 0), vec(5, 0), STRAIGHT);
+    const first = network.addSection(
+      vec(0, 0),
+      vec(5, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     const center = first.to;
-    const east = network.addSection(center, vec(10, 0), STRAIGHT);
-    network.addSection(center, vec(5, -5), STRAIGHT);
+    const east = network.addSection(
+      center,
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     // Only the east arm's far end has a road of its own to hold it.
-    network.addSection(east.to, vec(20, 0), STRAIGHT);
+    network.addSection(east.to, vec(20, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     network.removeNode(center);
 
@@ -124,8 +165,13 @@ describe("removing a node", () => {
 
   it("takes both of two sections joining the same pair of nodes", () => {
     const network = new RoadNetwork();
-    const first = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(first.from, first.to, STRAIGHT);
+    const first = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(first.from, first.to, STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     network.removeNode(first.from);
 
@@ -135,10 +181,15 @@ describe("removing a node", () => {
 
   it("counts as one change however many sections it takes", () => {
     const network = new RoadNetwork();
-    const first = network.addSection(vec(0, 0), vec(5, 0), STRAIGHT);
+    const first = network.addSection(
+      vec(0, 0),
+      vec(5, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     const center = first.to;
-    network.addSection(center, vec(10, 0), STRAIGHT);
-    network.addSection(center, vec(5, -5), STRAIGHT);
+    network.addSection(center, vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
     const version = network.version;
 
     network.removeNode(center);
@@ -148,7 +199,7 @@ describe("removing a node", () => {
 
   it("ignores an unknown id", () => {
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
     const version = network.version;
 
     network.removeNode(99 as NodeId);
@@ -161,8 +212,18 @@ describe("removing a node", () => {
 describe("sectionsAt", () => {
   it("answers with a snapshot, not the list the node keeps", () => {
     const network = new RoadNetwork();
-    const first = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(first.from, vec(0, 10), STRAIGHT);
+    const first = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(
+      first.from,
+      vec(0, 10),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     const answered = network.sectionsAt(first.from);
     network.removeSection(first.id);
@@ -184,10 +245,15 @@ describe("building an arc", () => {
   it("keeps the position the arc was given", () => {
     const network = new RoadNetwork();
 
-    const section = network.addSection(vec(1, 0), vec(0, 1), {
-      kind: "arc",
-      via,
-    });
+    const section = network.addSection(
+      vec(1, 0),
+      vec(0, 1),
+      {
+        kind: "arc",
+        via,
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(section.centerlineGeometry).toEqual({ kind: "arc", via });
   });
@@ -195,10 +261,15 @@ describe("building an arc", () => {
   it("joins two nodes like any other section", () => {
     const network = new RoadNetwork();
 
-    const section = network.addSection(vec(1, 0), vec(0, 1), {
-      kind: "arc",
-      via,
-    });
+    const section = network.addSection(
+      vec(1, 0),
+      vec(0, 1),
+      {
+        kind: "arc",
+        via,
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(layout(network)).toEqual(["(1,0)-(0,1)"]);
     expect(network.sectionsAt(section.from)).toEqual([section.id]);
@@ -208,10 +279,15 @@ describe("building an arc", () => {
     const network = new RoadNetwork();
 
     expect(() =>
-      network.addSection(vec(0, 0), vec(10, 0), {
-        kind: "arc",
-        via: vec(5, 0),
-      }),
+      network.addSection(
+        vec(0, 0),
+        vec(10, 0),
+        {
+          kind: "arc",
+          via: vec(5, 0),
+        },
+        TEST_ROAD_WIDTH_METERS,
+      ),
     ).toThrow();
   });
 
@@ -220,10 +296,15 @@ describe("building an arc", () => {
     const version = network.version;
 
     expect(() =>
-      network.addSection(vec(0, 0), vec(10, 0), {
-        kind: "arc",
-        via: vec(5, 0),
-      }),
+      network.addSection(
+        vec(0, 0),
+        vec(10, 0),
+        {
+          kind: "arc",
+          via: vec(5, 0),
+        },
+        TEST_ROAD_WIDTH_METERS,
+      ),
     ).toThrow();
 
     // The ends would have become nodes had the arc been checked any later.

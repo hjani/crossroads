@@ -58,6 +58,11 @@
 - Same look as the palette, from properties the two stylesheets share → one
   place to change how a panel looks.
 
+## Tool settings
+
+- A tool may show its settings in a panel fixed at the top center, there
+  while the tool is active.
+
 ## Input
 
 - A panel is a sibling of the canvas, not a layer over it → the canvas

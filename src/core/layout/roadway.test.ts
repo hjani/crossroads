@@ -5,8 +5,7 @@ import { roadwayOf, type Roadway } from "./roadway";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { NodeId, Section } from "../network/types";
 import type { Vec2 } from "../geometry/point";
-
-const WIDTH_METERS = 8;
+import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -31,26 +30,33 @@ function setbacksOf(
   section: Section,
 ): { from: number; to: number } {
   return {
-    from: new Junction(network, section.from, WIDTH_METERS).setbackOf(
-      section.id,
-    ),
-    to: new Junction(network, section.to, WIDTH_METERS).setbackOf(section.id),
+    from: new Junction(network, section.from).setbackOf(section.id),
+    to: new Junction(network, section.to).setbackOf(section.id),
   };
 }
 
 describe("roadwayOf", () => {
   it("sets a straight back at both ends, each by its own junction", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     // A right-angle bend at the start, a 60° gap at the end.
-    network.addSection(road.from, vec(0, 20), STRAIGHT);
-    network.addSection(road.to, vec(10, 10 * Math.sqrt(3)), STRAIGHT);
+    network.addSection(road.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(
+      road.to,
+      vec(10, 10 * Math.sqrt(3)),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     const { length, outline } = roadwayOf(
       network,
       road,
       setbacksOf(network, road),
-      WIDTH_METERS,
     );
 
     expectPoint(outline.from, vec(4, 0));
@@ -61,31 +67,35 @@ describe("roadwayOf", () => {
 
   it("names its section in its outline, with the width of the road", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
-
-    const { outline } = roadwayOf(
-      network,
-      road,
-      setbacksOf(network, road),
-      WIDTH_METERS,
+    const road = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
     );
 
+    const { outline } = roadwayOf(network, road, setbacksOf(network, road));
+
     expect(outline.section).toBe(road.id);
-    expect(outline.widthMeters).toBe(WIDTH_METERS);
+    expect(outline.widthMeters).toBe(TEST_ROAD_WIDTH_METERS);
   });
 
   it("comes out negative where its setbacks overlap", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(6, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(6, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     // Right-angle bends at both ends, each wanting 4 m of a 6 m road.
-    network.addSection(road.from, vec(0, 20), STRAIGHT);
-    network.addSection(road.to, vec(6, 20), STRAIGHT);
+    network.addSection(road.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(road.to, vec(6, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     const { length, outline } = roadwayOf(
       network,
       road,
       setbacksOf(network, road),
-      WIDTH_METERS,
     );
 
     expectPoint(outline.from, vec(4, 0));
@@ -100,18 +110,27 @@ describe("roadwayOf", () => {
     const R = 10;
     const center = vec(10, 0);
     const network = new RoadNetwork();
-    const arc = network.addSection(vec(0, 0), vec(20, 0), {
-      kind: "arc",
-      via: vec(10, 10),
-    });
-    network.addSection(arc.from, vec(-20, 20), STRAIGHT);
-    const s = new Junction(network, arc.from, WIDTH_METERS).setbackOf(arc.id);
+    const arc = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      {
+        kind: "arc",
+        via: vec(10, 10),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(
+      arc.from,
+      vec(-20, 20),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    const s = new Junction(network, arc.from).setbackOf(arc.id);
 
     const { length, outline } = roadwayOf(
       network,
       arc,
       setbacksOf(network, arc),
-      WIDTH_METERS,
     );
 
     // Set back s along the circle → turned s/R from the start.
@@ -140,7 +159,12 @@ describe("roadwayOf crossings", () => {
   function addSectionsAt(network: RoadNetwork, node: NodeId, count: number) {
     const at = network.getNode(node).position;
     for (let i = 0; i < count; i++) {
-      network.addSection(node, vec(at.x + 50, at.z + 50 * (i + 1)), STRAIGHT);
+      network.addSection(
+        node,
+        vec(at.x + 50, at.z + 50 * (i + 1)),
+        STRAIGHT,
+        TEST_ROAD_WIDTH_METERS,
+      );
     }
   }
 
@@ -149,19 +173,29 @@ describe("roadwayOf crossings", () => {
     section: Section,
     setbacks = NO_SETBACKS,
   ): Roadway["crossings"] {
-    return roadwayOf(network, section, setbacks, WIDTH_METERS).crossings;
+    return roadwayOf(network, section, setbacks).crossings;
   }
 
   it("crosses only at the end where 3 sections meet", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(100, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     addSectionsAt(network, road.to, 2);
     expect(crossingsOf(network, road)).toEqual({ from: false, to: true });
   });
 
   it("crosses at both ends where both are junctions of 3 or more", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(100, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     addSectionsAt(network, road.from, 3);
     addSectionsAt(network, road.to, 2);
     expect(crossingsOf(network, road)).toEqual({ from: true, to: true });
@@ -169,14 +203,24 @@ describe("roadwayOf crossings", () => {
 
   it("doesn't cross at a dead end or a join of two", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(100, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     addSectionsAt(network, road.to, 1);
     expect(crossingsOf(network, road)).toEqual({ from: false, to: false });
   });
 
   it("doesn't cross a roadway too short for two crossings", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(100, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(100, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     addSectionsAt(network, road.from, 2);
     addSectionsAt(network, road.to, 2);
     // 100 − 2·47.05 = 5.9 left; 100 − 2·47 = 6.

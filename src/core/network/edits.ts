@@ -66,6 +66,8 @@ export interface BuildableSectionPlan {
   readonly networkVersion: number;
   readonly start: PlannedPoint;
   readonly pieces: readonly [PlannedPiece, ...PlannedPiece[]];
+  /** Width of the planned road, the same for every piece. */
+  readonly width: number;
 }
 
 /**
@@ -83,6 +85,8 @@ export interface UnbuildableSectionPlan {
   readonly networkVersion: number;
   readonly start: PlannedPoint;
   readonly pieces: readonly PlannedPiece[];
+  /** Width of the planned road, the same for every piece. */
+  readonly width: number;
 }
 
 /** What adding a section would do to the network — or that it cannot. */
@@ -109,6 +113,7 @@ export function planSection(
   from: Endpoint,
   to: Endpoint,
   centerlineGeometry: LineGeometry,
+  width: number,
 ): SectionPlan {
   // Non-empty from the first line and never shrinks, so the chain always
   // has a last point to measure the next one against.
@@ -123,7 +128,7 @@ export function planSection(
     centerlineGeometry.kind === "arc" &&
     !isArcValid(begin, end, centerlineGeometry.via)
   ) {
-    return refusedAsStraight(network, from, to);
+    return refusedAsStraight(network, from, to, width);
   }
 
   for (const crossing of crossingsAlong(
@@ -161,7 +166,7 @@ export function planSection(
   if (firstPiece === undefined) {
     // Everything merged into one point: the section begins and ends in the
     // same place.
-    return { buildable: false, networkVersion, start, pieces };
+    return { buildable: false, networkVersion, start, pieces, width };
   }
 
   return {
@@ -169,6 +174,7 @@ export function planSection(
     networkVersion,
     start,
     pieces: [firstPiece, ...restPieces],
+    width,
   };
 }
 
@@ -217,6 +223,7 @@ export function applySectionPlan(
     plan.start.at,
     firstPiece.to.at,
     firstPiece.centerlineGeometry,
+    plan.width,
   );
   gather(plan.start, first.from);
   gather(firstPiece.to, first.to);
@@ -227,6 +234,7 @@ export function applySectionPlan(
       built[built.length - 1].to,
       piece.to.at,
       piece.centerlineGeometry,
+      plan.width,
     );
     gather(piece.to, section.to);
     built.push(section);
@@ -282,6 +290,7 @@ function cutSection(
       previousNode,
       node,
       subGeometry(section.centerlineGeometry, from, to, previousPlace, place),
+      section.width,
     );
     previousNode = node;
     previousPlace = place;
@@ -290,6 +299,7 @@ function cutSection(
     previousNode,
     section.to,
     subGeometry(section.centerlineGeometry, from, to, previousPlace, to),
+    section.width,
   );
   network.removeSection(id);
 }
@@ -350,6 +360,7 @@ function refusedAsStraight(
   network: RoadNetwork,
   from: Endpoint,
   to: Endpoint,
+  width: number,
 ): UnbuildableSectionPlan {
   const start = plannedPointAt(network, from);
   const pieces: PlannedPiece[] = isSamePoint(
@@ -358,7 +369,13 @@ function refusedAsStraight(
   )
     ? []
     : [{ centerlineGeometry: STRAIGHT, to: plannedPointAt(network, to) }];
-  return { buildable: false, networkVersion: network.version, start, pieces };
+  return {
+    buildable: false,
+    networkVersion: network.version,
+    start,
+    pieces,
+    width,
+  };
 }
 
 /**

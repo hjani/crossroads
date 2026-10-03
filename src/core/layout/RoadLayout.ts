@@ -3,9 +3,6 @@ import { roadwayOf, type Roadway } from "./roadway";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, SectionId } from "../network/types";
 
-/** How wide every road is, in meters — one width for the whole network. */
-export const ROAD_WIDTH_METERS = 8;
-
 /**
  * The network as it lies on the ground: a junction at every node, a roadway
  * along every section. See `docs/road-layout.md`.
@@ -31,7 +28,7 @@ export class RoadLayout {
 
     let junction = this.junctions.get(node);
     if (junction === undefined) {
-      junction = new Junction(this.network, node, ROAD_WIDTH_METERS);
+      junction = new Junction(this.network, node);
       this.junctions.set(node, junction);
     }
     return junction;
@@ -47,15 +44,10 @@ export class RoadLayout {
     let roadway = this.roadways.get(sectionId);
     if (roadway === undefined) {
       const section = this.network.getSection(sectionId);
-      roadway = roadwayOf(
-        this.network,
-        section,
-        {
-          from: this.junctionAt(section.from).setbackOf(sectionId),
-          to: this.junctionAt(section.to).setbackOf(sectionId),
-        },
-        ROAD_WIDTH_METERS,
-      );
+      roadway = roadwayOf(this.network, section, {
+        from: this.junctionAt(section.from).setbackOf(sectionId),
+        to: this.junctionAt(section.to).setbackOf(sectionId),
+      });
       this.roadways.set(sectionId, roadway);
     }
     return roadway;

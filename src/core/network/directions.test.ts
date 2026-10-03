@@ -11,6 +11,7 @@ import { distance, type Vec2 } from "../geometry/point";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
 import { type NodeId, type SectionId } from "./types";
+import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -44,14 +45,24 @@ function expectDirectionsInAnyOrder(
 describe("continuingDirectionsAt", () => {
   it("carries a dead end on past the end it arrives at", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirections(continuingDirectionsAt(network, section.to), [vec(1, 0)]);
   });
 
   it("carries a dead end on past the end it starts from", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirections(continuingDirectionsAt(network, section.from), [
       vec(-1, 0),
@@ -60,8 +71,13 @@ describe("continuingDirectionsAt", () => {
 
   it("points each road at a through-node along the other", () => {
     const network = new RoadNetwork();
-    const west = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(west.to, vec(20, 0), STRAIGHT);
+    const west = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(west.to, vec(20, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     expectDirections(continuingDirectionsAt(network, west.to), [
       vec(1, 0),
@@ -72,10 +88,15 @@ describe("continuingDirectionsAt", () => {
   it("carries an arc on along its tangent", () => {
     const network = new RoadNetwork();
     // A half circle over the top from west to east, coming down at both ends.
-    const section = network.addSection(vec(0, 0), vec(10, 0), {
-      kind: "arc",
-      via: vec(5, 5),
-    });
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      {
+        kind: "arc",
+        via: vec(5, 5),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirections(continuingDirectionsAt(network, section.to), [vec(0, -1)]);
     expectDirections(continuingDirectionsAt(network, section.from), [
@@ -93,8 +114,13 @@ describe("bisectorDirectionsAt", () => {
 
   it("gives the perpendiculars at a straight through-node", () => {
     const network = new RoadNetwork();
-    const west = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(west.to, vec(20, 0), STRAIGHT);
+    const west = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(west.to, vec(20, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     expectDirectionsInAnyOrder(bisectorDirectionsAt(network, west.to), [
       vec(0, 1),
@@ -104,9 +130,14 @@ describe("bisectorDirectionsAt", () => {
 
   it("splits each of the three gaps at a T junction", () => {
     const network = new RoadNetwork();
-    const west = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(west.to, vec(20, 0), STRAIGHT);
-    network.addSection(west.to, vec(10, 10), STRAIGHT);
+    const west = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(west.to, vec(20, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(west.to, vec(10, 10), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     expectDirectionsInAnyOrder(bisectorDirectionsAt(network, west.to), [
       vec(diagonal, diagonal),
@@ -117,8 +148,13 @@ describe("bisectorDirectionsAt", () => {
 
   it("splits a gap wider than a half turn toward its own side", () => {
     const network = new RoadNetwork();
-    const east = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(east.from, vec(0, 10), STRAIGHT);
+    const east = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(east.from, vec(0, 10), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     expectDirectionsInAnyOrder(bisectorDirectionsAt(network, east.from), [
       vec(diagonal, diagonal),
@@ -129,11 +165,16 @@ describe("bisectorDirectionsAt", () => {
   it("splits the gap from an arc's tangent, not from its chord", () => {
     const network = new RoadNetwork();
     // Leaves its start straight up, square to the chord along the x axis.
-    const arc = network.addSection(vec(0, 0), vec(10, 0), {
-      kind: "arc",
-      via: vec(5, 5),
-    });
-    network.addSection(arc.from, vec(-10, 0), STRAIGHT);
+    const arc = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      {
+        kind: "arc",
+        via: vec(5, 5),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(arc.from, vec(-10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     expectDirectionsInAnyOrder(bisectorDirectionsAt(network, arc.from), [
       vec(-diagonal, diagonal),
@@ -143,7 +184,12 @@ describe("bisectorDirectionsAt", () => {
 
   it("is empty at a dead end, having no gap between two roads", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(bisectorDirectionsAt(network, section.to)).toEqual([]);
   });
@@ -156,7 +202,12 @@ describe("bisectorDirectionsAt", () => {
 describe("perpendicularDirectionsAt", () => {
   it("gives both sides of a straight dead end", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirectionsInAnyOrder(perpendicularDirectionsAt(network, section.to), [
       vec(0, 1),
@@ -167,10 +218,15 @@ describe("perpendicularDirectionsAt", () => {
   it("is square to an arc's tangent, not to its chord", () => {
     const network = new RoadNetwork();
     // Leaves its start straight up, square to the chord along the x axis.
-    const arc = network.addSection(vec(0, 0), vec(10, 0), {
-      kind: "arc",
-      via: vec(5, 5),
-    });
+    const arc = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      {
+        kind: "arc",
+        via: vec(5, 5),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirectionsInAnyOrder(perpendicularDirectionsAt(network, arc.from), [
       vec(1, 0),
@@ -180,8 +236,18 @@ describe("perpendicularDirectionsAt", () => {
 
   it("gives both sides of each road where two meet at an angle", () => {
     const network = new RoadNetwork();
-    const east = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
-    network.addSection(east.from, vec(10, 10), STRAIGHT);
+    const east = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(
+      east.from,
+      vec(10, 10),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     const diagonal = Math.SQRT1_2;
 
     expectDirectionsInAnyOrder(perpendicularDirectionsAt(network, east.from), [
@@ -202,7 +268,12 @@ describe("perpendicularDirectionsAt", () => {
 describe("midSectionDirectionsAt", () => {
   it("runs both ways along a straight and square to it", () => {
     const network = new RoadNetwork();
-    const section = network.addSection(vec(0, 0), vec(10, 0), STRAIGHT);
+    const section = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expectDirectionsInAnyOrder(
       midSectionDirectionsAt(network, section.id, vec(5, 0)),
@@ -216,10 +287,15 @@ describe("midSectionDirectionsAt", () => {
     // 45°: the four directions repeat every 90°, so there the place mirrored
     // across the arc's middle would give the same four, and a fraction
     // measured from the wrong end would pass.
-    const arc = network.addSection(vec(0, 0), vec(10, 0), {
-      kind: "arc",
-      via: vec(5, 5),
-    });
+    const arc = network.addSection(
+      vec(0, 0),
+      vec(10, 0),
+      {
+        kind: "arc",
+        via: vec(5, 5),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
     const half = 0.5;
     const root3Half = Math.sqrt(3) / 2;
 

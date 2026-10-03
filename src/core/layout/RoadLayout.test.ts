@@ -3,6 +3,7 @@ import { RoadLayout } from "./RoadLayout";
 import { RoadNetwork } from "../network/RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
+import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -11,8 +12,13 @@ function vec(x: number, z: number): Vec2 {
 describe("RoadLayout", () => {
   it("gives back the junction it worked out before", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
-    network.addSection(road.from, vec(0, 20), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
+    network.addSection(road.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
     const layout = new RoadLayout(network);
 
     expect(layout.junctionAt(road.from)).toBe(layout.junctionAt(road.from));
@@ -21,12 +27,17 @@ describe("RoadLayout", () => {
 
   it("works a junction out again once the network has changed", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     const layout = new RoadLayout(network);
     const before = layout.junctionAt(road.from);
 
     // A right-angle bend at the start, where the road ended alone before.
-    network.addSection(road.from, vec(0, 20), STRAIGHT);
+    network.addSection(road.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
 
     const after = layout.junctionAt(road.from);
     expect(after).not.toBe(before);
@@ -36,10 +47,20 @@ describe("RoadLayout", () => {
 
   it("cuts a roadway back by the junctions at its two ends", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     // A right-angle bend at the start, a 60° gap at the end.
-    network.addSection(road.from, vec(0, 20), STRAIGHT);
-    network.addSection(road.to, vec(10, 10 * Math.sqrt(3)), STRAIGHT);
+    network.addSection(road.from, vec(0, 20), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(
+      road.to,
+      vec(10, 10 * Math.sqrt(3)),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     const layout = new RoadLayout(network);
 
     const { outline } = layout.roadwayAlong(road.id);
@@ -52,7 +73,12 @@ describe("RoadLayout", () => {
 
   it("throws for a node or section the network no longer has", () => {
     const network = new RoadNetwork();
-    const road = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT);
+    const road = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     const layout = new RoadLayout(network);
     network.removeSection(road.id);
 

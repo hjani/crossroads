@@ -1,0 +1,36 @@
+@import "./panel.css";
+
+/* Centered by its own middle: `left: 50%` puts its left edge there, and the
+   shift back by half its width puts its center there instead. */
+.section-settings-panel {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+/* The palette's buttons, so a choice reads the same in both panels. */
+.section-settings-panel button {
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e9e9ee;
+  font: inherit;
+  cursor: pointer;
+}
+
+.section-settings-panel button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.section-settings-panel button:focus-visible {
+  outline: 2px solid #6ea8f0;
+  outline-offset: 1px;
+}
+
+.section-settings-panel button.is-selected {
+  border-color: #6ea8f0;
+  background: #2f5c99;
+}

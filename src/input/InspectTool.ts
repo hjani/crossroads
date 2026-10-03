@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { pick } from "../core/layout/pick";
-import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import {
   nearestNode,
   nearestSection,
@@ -68,8 +68,8 @@ function displayMeters(length: number): string {
  * disposes a tool it switches away from.
  */
 export class InspectTool implements Tool {
-  private readonly aimedJunction = new JunctionHighlight(ROAD_WIDTH_METERS);
-  private readonly selectedJunction = new JunctionHighlight(ROAD_WIDTH_METERS);
+  private readonly aimedJunction = new JunctionHighlight(0);
+  private readonly selectedJunction = new JunctionHighlight(0);
   private readonly decoration = new THREE.Group();
 
   private selected: Selection | null = null;

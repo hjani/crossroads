@@ -11,7 +11,7 @@ import { positionOf } from "../network/queries";
 import type { Endpoint, RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, SectionId } from "../network/types";
 import { verifyClearance, type ClearanceViolations } from "./clearance";
-import { ROAD_WIDTH_METERS, type RoadLayout } from "./RoadLayout";
+import type { RoadLayout } from "./RoadLayout";
 import { speculateLayout, type LayoutSpeculation } from "./speculation";
 
 /**
@@ -53,12 +53,14 @@ export function planRoad(
   from: Endpoint,
   to: Endpoint,
   geometry: LineGeometry,
+  width: number,
 ): RoadPlan {
-  const sectionPlan = planSection(network, from, to, geometry);
+  const sectionPlan = planSection(network, from, to, geometry, width);
   const allowed = allowsRoadway(
     positionOf(network, from),
     positionOf(network, to),
     geometry,
+    width,
   );
   if (!allowed || !sectionPlan.buildable) {
     return {
@@ -115,9 +117,14 @@ export function changedOrViolatingParts(plan: RoadPlan): {
 /**
  * Whether this geometry is suitable for creating a Roadway at all.
  */
-function allowsRoadway(from: Vec2, to: Vec2, geometry: LineGeometry): boolean {
+function allowsRoadway(
+  from: Vec2,
+  to: Vec2,
+  geometry: LineGeometry,
+  width: number,
+): boolean {
   if (geometry.kind !== "arc") return true;
 
   const circle = arcCircle(from, to, geometry.via);
-  return circle === null || circle.radius > ROAD_WIDTH_METERS / 2;
+  return circle === null || circle.radius > width / 2;
 }

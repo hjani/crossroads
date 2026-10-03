@@ -19,6 +19,8 @@ export interface Section {
   readonly from: NodeId;
   readonly to: NodeId;
   readonly centerlineGeometry: LineGeometry;
-  /** Along the centerline, node to node, in meters. */
+  /** Length along the centerline, node to node, in meters. */
   readonly length: number;
+  /** Width of the road, curb to curb, in meters. */
+  readonly width: number;
 }

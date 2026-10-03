@@ -52,10 +52,10 @@ export class SectionPlanView {
   >;
 
   /**
-   * `roadWidth` the width of the road being planned. If 0, the plan is drawn
-   * as its centerline only, otherwise as surface.
+   * `drawAs`: the plan as road surface, as wide as it plans the road, or as
+   * its centerline only.
    */
-  constructor(private readonly roadWidth: number) {
+  constructor(private readonly drawAs: "surface" | "centerline") {
     this.band = new THREE.Mesh(
       makeGeometry([]),
       new THREE.MeshBasicMaterial({
@@ -83,15 +83,15 @@ export class SectionPlanView {
   /**
    * Draws a road plan.
    *
-   * With no width, the centerline alone. Otherwise, if a speculative layout
-   * is available, the parts it changes or that are in violation are drawn
-   * from it as road surface, in place of the live ones; if not, just a band
-   * along the plan's line geometry.
+   * As a centerline, the centerline alone. As surface, if a speculative
+   * layout is available, the parts it changes or that are in violation are
+   * drawn from it, in place of the live ones; if not, just a band along the
+   * plan's line geometry.
    */
   showRoadPlan(liveNetwork: RoadNetwork, plan: RoadPlan): void {
     const { sectionPlan, speculation } = plan;
     const color = plan.buildable ? STATE_COLOR.PLANNED : STATE_COLOR.REFUSED;
-    if (this.roadWidth === 0) {
+    if (this.drawAs === "centerline") {
       this.showCenterline(liveNetwork, sectionPlan, color);
     } else {
       if (speculation !== null) {
@@ -146,7 +146,7 @@ export class SectionPlanView {
     replaceGeometry(this.centerline, coordinates);
   }
 
-  /** The road surface as a band `roadWidth` wide along the centerline. */
+  /** The road surface as a band, along the centerline. */
   private showBand(
     liveNetwork: RoadNetwork,
     plan: SectionPlan,
@@ -160,7 +160,7 @@ export class SectionPlanView {
         previous,
         position,
         piece.centerlineGeometry,
-        this.roadWidth,
+        plan.width,
       )) {
         coordinates.push(point.x, LAYER.SURFACE_DECORATION, point.z);
       }

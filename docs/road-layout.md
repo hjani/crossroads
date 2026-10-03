@@ -20,28 +20,39 @@
 - Worked out from that node and the sections meeting it alone.
 - The setback of each section meeting it: how far from the node its roadway
   ends, measured along the centerline.
-  - Each gap under 180° sets its two roads back, to end square through `P`.
-    A road set back from both sides takes the longer setback.
+  - Each gap sets its two roads back as its join says (below). A road set
+    back from both sides takes the longer setback.
   - Not limited by the section's length → a junction needs only its own
     node, not the sections' lengths.
     - As a gap → 0, the setback grows without limit.
-  - A gap whose edges don't cross ahead of the node sets nothing back.
   - No setback because of an error → error is logged, with the
     reason.
   - Asked for a section not meeting the node → error.
-- The area it covers, walked around the node gap by gap:
-  - gap under 180° → reaches `P`
-  - gap of 180° or over → a round join, along the circle of radius `w/2`
-    around the node
+- Roads of different widths may meet; each keeps its own width up to its
+  roadway's end.
+- The area it covers, walked around the node gap by gap. Each gap is joined
+  one of two ways:
+  - corner: the two curbs on the gap's side cross ahead of the node on both
+    roads, at `P` → both roads end square through `P`
+  - round, where they don't: along the circle around the node, its radius
+    the wider road's `w/2`
+    - the wider road's curb touches the circle → not set back
+    - the narrower road's curb crosses it at `X` → ends square through `X`
+    - equal widths → `X` is where that curb touches too → nothing set back
+  - equal widths → round from 180°; different widths → already under
+    180°, the more so the more the widths differ
   - a dead end is one gap of 360° → a round cap
 - A round join stays a true arc, never broken into pieces.
   - Same rule as picking a section against its circle, not its chords.
-- As a gap → 180°, its setbacks and the part of the junction in it →
-  nothing → moving a road a little never makes the junction jump.
+- Moving a road a little never makes the junction jump:
+  - equal widths: as a gap → 180°, its setbacks and its part of the
+    junction → nothing
+  - where a gap turns from corner to round, `P` and `X` are the same point
 
 ## Roadway
 
 - One per section: the section between the setbacks at its two ends.
+- As wide as its section's road.
 - A shorter section of the same kind:
   - straight → the straight between the setbacks
   - arc → the same circle, between the setbacks
@@ -101,6 +112,5 @@
 ## Relationship to other modules
 
 - In `src/core/layout/`, outside `RoadNetwork`: uses only its public API.
-  - The model stores; width and junction rules stay out of it.
 - `src/render/` draws it (`docs/road-surface.md`).
 - Edits are validated against it via `clearance` (`docs/intersections.md`).

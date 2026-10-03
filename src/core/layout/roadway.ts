@@ -28,7 +28,7 @@ export interface Roadway {
 }
 
 /**
- * The roadway along a section, for a road `widthMeters` wide, given how far
+ * The roadway along a section, given how far
  * back the junctions at its two ends set it — `s₁` at `from` and `s₂` at
  * `to`, in meters along the centerline (`Junction.setbackOf`).
  *
@@ -44,7 +44,6 @@ export function roadwayOf(
   network: RoadNetwork,
   section: Section,
   setbacks: { readonly from: number; readonly to: number },
-  widthMeters: number,
 ): Roadway {
   const { from: s1, to: s2 } = setbacks;
   const length = section.length - s1 - s2;
@@ -54,7 +53,7 @@ export function roadwayOf(
       kind: "roadway",
       section: section.id,
       ...applySetbacks(network, section, s1, s2),
-      widthMeters,
+      widthMeters: section.width,
     },
     crossings: crossingsOf(network, section, length),
   };

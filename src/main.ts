@@ -4,6 +4,7 @@ import { RoadNetwork } from "./core/network/RoadNetwork";
 import { ArcSectionTool } from "./input/ArcSectionTool";
 import { InspectTool } from "./input/InspectTool";
 import { PanZoomControls } from "./input/PanZoomControls";
+import { SectionSettings } from "./input/SectionSettings";
 import { SmartArcTool } from "./input/SmartArcTool";
 import { StraightSectionTool } from "./input/StraightSectionTool";
 import { ToolManager } from "./input/ToolManager";
@@ -12,6 +13,7 @@ import { LiveRoadLayoutView } from "./render/LiveRoadLayoutView";
 import { PartStates } from "./render/PartStates";
 import { Viewport } from "./render/Viewport";
 import { InspectPanel } from "./ui/InspectPanel";
+import { SectionSettingsPanel } from "./ui/SectionSettingsPanel";
 import { ToolPalette } from "./ui/ToolPalette";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -48,6 +50,9 @@ scene.add(liveRoadLayoutView.sceneObject);
 const tools = new ToolManager(renderer.domElement, window, viewport);
 scene.add(tools.sceneObject);
 
+// Global settings for section tools.
+const sectionSettings = new SectionSettings();
+
 // Where the layers meet: the palette names the tools, and this is what the
 // names do. A tool is built fresh on every activation, since the manager
 // disposes the one it replaces and an instance is single-use.
@@ -71,7 +76,14 @@ const palette = new ToolPalette(document.body, [
     label: "Straight",
     activate: () =>
       tools.setActiveTool(
-        new StraightSectionTool(network, layout, viewport, partStates),
+        new StraightSectionTool(
+          network,
+          layout,
+          viewport,
+          partStates,
+          sectionSettings,
+          new SectionSettingsPanel(document.body, sectionSettings),
+        ),
       ),
   },
   {
@@ -79,7 +91,14 @@ const palette = new ToolPalette(document.body, [
     label: "Arc",
     activate: () =>
       tools.setActiveTool(
-        new ArcSectionTool(network, layout, viewport, partStates),
+        new ArcSectionTool(
+          network,
+          layout,
+          viewport,
+          partStates,
+          sectionSettings,
+          new SectionSettingsPanel(document.body, sectionSettings),
+        ),
       ),
   },
   {
@@ -87,7 +106,14 @@ const palette = new ToolPalette(document.body, [
     label: "Smart Arc",
     activate: () =>
       tools.setActiveTool(
-        new SmartArcTool(network, layout, viewport, partStates),
+        new SmartArcTool(
+          network,
+          layout,
+          viewport,
+          partStates,
+          sectionSettings,
+          new SectionSettingsPanel(document.body, sectionSettings),
+        ),
       ),
   },
 ]);

@@ -13,6 +13,7 @@ import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { type NodeId } from "./types";
+import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -27,7 +28,10 @@ function build(
   from: Endpoint,
   to: Endpoint,
 ): NodeId | null {
-  return buildPlan(network, planSection(network, from, to, STRAIGHT));
+  return buildPlan(
+    network,
+    planSection(network, from, to, STRAIGHT, TEST_ROAD_WIDTH_METERS),
+  );
 }
 
 /** The same, for an arc bending through `via`. */
@@ -39,7 +43,13 @@ function buildArc(
 ): NodeId | null {
   return buildPlan(
     network,
-    planSection(network, from, to, { kind: "arc", via }),
+    planSection(
+      network,
+      from,
+      to,
+      { kind: "arc", via },
+      TEST_ROAD_WIDTH_METERS,
+    ),
   );
 }
 
@@ -226,7 +236,13 @@ describe("planning and building a section", () => {
 
     // Half a centimeter apart, which is the same place: the two crossings
     // are one point of the chain, and it cuts both roads.
-    const plan = planSection(network, vec(0, 0), vec(10, 0), STRAIGHT);
+    const plan = planSection(
+      network,
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     assert(plan.buildable);
     expect(cutPoints(network, plan)).toEqual([vec(5, 0)]);
 
@@ -252,7 +268,13 @@ describe("planning and building a section", () => {
     build(network, vec(6, -2), vec(6, 2));
     const before = layout(network);
 
-    const plan = planSection(network, vec(0, 0), vec(8, 0), STRAIGHT);
+    const plan = planSection(
+      network,
+      vec(0, 0),
+      vec(8, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     assert(plan.buildable);
 
     expect(cutPoints(network, plan)).toEqual([vec(2, 0), vec(6, 0)]);
@@ -266,7 +288,13 @@ describe("planning and building a section", () => {
     // Building a plan is itself a change, so the plan is stale the moment
     // it lands: the section it cut is gone, and applying it again would
     // cut it a second time.
-    const plan = planSection(network, vec(0, 0), vec(10, 0), STRAIGHT);
+    const plan = planSection(
+      network,
+      vec(0, 0),
+      vec(10, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     assert(plan.buildable);
     applySectionPlan(network, plan);
     const before = layout(network);
@@ -279,7 +307,13 @@ describe("planning and building a section", () => {
     // Covers no ground twice, so nothing here or in clearance refuses it.
     const network = new RoadNetwork();
 
-    const plan = planSection(network, vec(0, 0), vec(0.4, 0), STRAIGHT);
+    const plan = planSection(
+      network,
+      vec(0, 0),
+      vec(0.4, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     expect(plan.buildable).toBe(true);
   });
 
@@ -292,7 +326,13 @@ describe("planning and building a section", () => {
     // there is no piece of road between them, and nothing a preview could
     // show either. The tool leans on this to tell a click that does
     // nothing from a section it turned down.
-    const plan = planSection(network, corner, vec(5, 0), STRAIGHT);
+    const plan = planSection(
+      network,
+      corner,
+      vec(5, 0),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(plan.buildable).toBe(false);
     expect(plan.pieces).toHaveLength(0);
@@ -303,10 +343,16 @@ describe("planning and building an arc", () => {
   it("builds one through the position it was given", () => {
     const network = new RoadNetwork();
 
-    const plan = planSection(network, vec(0, 0), vec(10, 0), {
-      kind: "arc",
-      via: vec(5, 2),
-    });
+    const plan = planSection(
+      network,
+      vec(0, 0),
+      vec(10, 0),
+      {
+        kind: "arc",
+        via: vec(5, 2),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
     assert(plan.buildable);
     applySectionPlan(network, plan);
 
@@ -324,10 +370,16 @@ describe("planning and building an arc", () => {
     // No circle passes through three positions in a line, so there is no
     // arc to build. Refused rather than thrown: this is where a third
     // position lands on its way across the road.
-    const plan = planSection(network, vec(0, 0), vec(10, 0), {
-      kind: "arc",
-      via: vec(5, 0),
-    });
+    const plan = planSection(
+      network,
+      vec(0, 0),
+      vec(10, 0),
+      {
+        kind: "arc",
+        via: vec(5, 0),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(plan.buildable).toBe(false);
     expect(layout(network)).toEqual([]);
@@ -340,10 +392,16 @@ describe("planning and building an arc", () => {
     // The third position on an end, with a road across the chord. The
     // crossing lands a rounding off the chord, so cutting the arc there
     // would give pieces almost in a line: circles of enormous radius.
-    const plan = planSection(network, vec(-6, 0), vec(12, 1), {
-      kind: "arc",
-      via: vec(-6, 0),
-    });
+    const plan = planSection(
+      network,
+      vec(-6, 0),
+      vec(12, 1),
+      {
+        kind: "arc",
+        via: vec(-6, 0),
+      },
+      TEST_ROAD_WIDTH_METERS,
+    );
 
     expect(plan.buildable).toBe(false);
     expect(plan.pieces.map((piece) => piece.centerlineGeometry)).toEqual([
@@ -426,7 +484,13 @@ describe("planning and building an arc", () => {
 
     // Level with the middle of it, so it goes in one side and out the
     // other: two junctions, and the arc left in three pieces.
-    const plan = planSection(network, vec(-5, 3), vec(15, 3), STRAIGHT);
+    const plan = planSection(
+      network,
+      vec(-5, 3),
+      vec(15, 3),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     expect(cutPoints(network, plan)).toHaveLength(2);
 
     build(network, vec(-5, 3), vec(15, 3));
@@ -511,7 +575,13 @@ describe("starting or ending on a road", () => {
 
     // Never touches the road, so no crossing is found: being that close is
     // what puts it on the road.
-    const plan = planSection(network, vec(4, 0.005), vec(4, 6), STRAIGHT);
+    const plan = planSection(
+      network,
+      vec(4, 0.005),
+      vec(4, 6),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     expect(cutPoints(network, plan)).toEqual([vec(4, 0.005)]);
 
     assert(plan.buildable);
@@ -524,7 +594,13 @@ describe("starting or ending on a road", () => {
     const network = new RoadNetwork();
     build(network, vec(0, 0), vec(10, 0));
 
-    const plan = planSection(network, vec(4, 6), vec(4, 0.005), STRAIGHT);
+    const plan = planSection(
+      network,
+      vec(4, 6),
+      vec(4, 0.005),
+      STRAIGHT,
+      TEST_ROAD_WIDTH_METERS,
+    );
     expect(cutPoints(network, plan)).toEqual([vec(4, 0.005)]);
 
     assert(plan.buildable);

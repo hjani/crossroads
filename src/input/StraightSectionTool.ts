@@ -4,7 +4,7 @@ import {
   planRoad,
   type RoadPlan,
 } from "../core/layout/roadPlan";
-import { ROAD_WIDTH_METERS, type RoadLayout } from "../core/layout/RoadLayout";
+import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import { STRAIGHT } from "../core/geometry/lineGeometry";
 import { JunctionHighlight } from "../render/JunctionHighlight";
@@ -20,6 +20,8 @@ import {
 import { hideSpeculatedParts, showLanding, showPlacedEnd } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
 import type { Vec2 } from "../core/geometry/point";
+import type { SectionSettingsPanel } from "../ui/SectionSettingsPanel";
+import type { SectionSettings } from "./SectionSettings";
 
 /**
  * Draws straight sections by clicking their endpoints.
@@ -38,21 +40,35 @@ import type { Vec2 } from "../core/geometry/point";
  * looks like is the tool's business, not its caller's.
  */
 export class StraightSectionTool implements Tool {
-  private readonly planView = new SectionPlanView(ROAD_WIDTH_METERS);
+  private readonly planView = new SectionPlanView("surface");
   /** The start, once placed. */
-  private readonly startMark = new JunctionHighlight(ROAD_WIDTH_METERS);
+  private readonly startMark: JunctionHighlight;
   /** Where the next click would land. */
-  private readonly landingMark = new JunctionHighlight(ROAD_WIDTH_METERS);
+  private readonly landingMark: JunctionHighlight;
   private readonly decoration = new THREE.Group();
+  private readonly unsubscribeSettingsChanged: () => void;
 
   private pending: Placement | null = null;
+  /**
+   * What the cursor was last aimed at: the raw position on the ground and the
+   * resolved placement.
+   */
+  private aim: { ground: Vec2; placed: Placement } | null = null;
 
   constructor(
     private readonly network: RoadNetwork,
     private readonly layout: RoadLayout,
     private readonly viewport: Viewport,
     private readonly partStates: PartStates,
+    private readonly settings: SectionSettings,
+    private readonly settingsPanel: SectionSettingsPanel,
   ) {
+    this.startMark = new JunctionHighlight(settings.width);
+    this.landingMark = new JunctionHighlight(settings.width);
+    this.unsubscribeSettingsChanged = settingsPanel.onSettingsChanged(() =>
+      this.afterSettingsChange(),
+    );
+
     partStates.reset();
     this.decoration.add(
       this.planView.sceneObject,
@@ -109,15 +125,11 @@ export class StraightSectionTool implements Tool {
   }
 
   /**
-   * Draws what a click would do: the section it would build where there is
-   * one to plan, the start once placed, and where the click would land.
+   * Works out what the cursor aims at, and redraws for it.
    *
-   * Drawn from scratch after every input and change of view, so it answers
-   * for whatever changed — the cursor, Ctrl, the camera, or the network once
-   * a click has built a section.
-   *
-   * Where the click lands shows before the first click too, or there is no
-   * way to see that it would join rather than start something new.
+   * Asked again after every input and change of view, so it answers for
+   * whatever changed — the cursor, Ctrl, the camera, or the network once a
+   * click has built a section.
    */
   afterInputOrViewChange(
     cursor: ScreenPoint | null,
@@ -125,14 +137,44 @@ export class StraightSectionTool implements Tool {
   ): void {
     const ground =
       cursor === null ? null : this.viewport.screenToGround(cursor);
-    const placed =
+    this.aim =
       ground === null
         ? null
-        : placeSectionEnd(this.network, this.layout, this.viewport, ground, {
-            useGrid: !modifiers.ctrl,
-          });
+        : {
+            ground,
+            placed: placeSectionEnd(
+              this.network,
+              this.layout,
+              this.viewport,
+              ground,
+              { useGrid: !modifiers.ctrl },
+            ),
+          };
+    this.redraw();
+  }
+
+  /**
+   * Redraws for the new width. Where a click lands doesn't depend on it, so
+   * the aim stays as it was.
+   */
+  afterSettingsChange(): void {
+    this.startMark.setRoadWidth(this.settings.width);
+    this.landingMark.setRoadWidth(this.settings.width);
+    this.redraw();
+  }
+
+  /**
+   * Draws what a click at the aim would do: the section it would build where
+   * there is one to plan, the start once placed, and where the click would
+   * land.
+   *
+   * Where the click lands shows before the first click too, or there is no
+   * way to see that it would join rather than start something new.
+   */
+  private redraw(): void {
+    const placed = this.aim?.placed ?? null;
     const plan =
-      ground === null || placed === null ? null : this.planTo(ground, placed);
+      this.aim === null ? null : this.planTo(this.aim.ground, this.aim.placed);
 
     hideSpeculatedParts(this.partStates, plan);
     if (plan !== null) {
@@ -185,12 +227,17 @@ export class StraightSectionTool implements Tool {
       endpointFrom(this.pending),
       endpointFrom(end),
       STRAIGHT,
+      this.settings.width,
     );
     return plan.sectionPlan.pieces.length === 0 ? null : plan;
   }
 
-  /** Releases the decoration's GPU buffers. The tool is unusable after. */
+  /**
+   * Releases GPU buffers and any UI.
+   */
   dispose(): void {
+    this.unsubscribeSettingsChanged();
+    this.settingsPanel.dispose();
     this.planView.dispose();
     this.startMark.dispose();
     this.landingMark.dispose();

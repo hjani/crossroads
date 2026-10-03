@@ -52,6 +52,7 @@ export class RoadNetwork {
     from: Endpoint,
     to: Endpoint,
     centerlineGeometry: LineGeometry,
+    width: number,
   ): Section {
     const fromPosition = this.requirePosition(from);
     const toPosition = this.requirePosition(to);
@@ -75,6 +76,7 @@ export class RoadNetwork {
       to: toId,
       centerlineGeometry,
       length: lineLength(fromPosition, toPosition, centerlineGeometry),
+      width,
     };
     this.sections.set(id, section);
     this.attach(fromId, id);
