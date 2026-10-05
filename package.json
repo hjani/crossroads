@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write src",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
+    "format": "prettier --write src scripts",
+    "test": "vitest run",
+    "docs:images": "rolldown scripts/docs-images/main.ts --file node_modules/.cache/docs-images.mjs --format esm --platform node && node node_modules/.cache/docs-images.mjs"
   },
   "devDependencies": {
+    "@types/node": "^24.19.1",
     "@types/three": "^0.185.4",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2",

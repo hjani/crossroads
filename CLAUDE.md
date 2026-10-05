@@ -37,6 +37,8 @@ TypeScript 7 + Three.js + Vite, running in the browser.
     palette). Only the DOM ones: anything drawn in the scene belongs to
     `src/render/`, however much it looks like interface.
   - `src/main.ts` — app entry point.
+  - `scripts/` — Node scripts run by hand, outside the app (currently the
+    documentation pictures).
 - Coordinate system: Y is up, so the XZ plane is the ground. World units are meters.
 - Screen positions are client pixels (`ScreenPoint`, as pointer events
   report them) and never mix with world coordinates. Converting between
@@ -72,12 +74,22 @@ consequence, a nested bullet for its reason or exception. A sentence only
 where a list can't carry it. `docs/intersections.md` is the reference
 example.
 
+Where a picture helps understanding, add an SVG illustration in
+`docs/images/` and embed it in the note. A picture of the project's own
+geometry (a layout, a tessellation) is drawn by the project's code, not by
+hand: one module per picture in `scripts/docs-images/`, registered in its
+`main.ts`, written by `npm run docs:images`. Rerun it after changing what a
+picture shows. A sketch of an idea, with no code behind it, can be drawn by
+hand.
+
 ## Verification
 
 - `npm run dev` — start the Vite dev server.
-- `npm run typecheck` — run `tsc --noEmit` as a quick correctness gate.
-- `npm run format` — Prettier over `src/`, with its default settings. Run
-  it at the end of every increment, before handing it back.
+- `npm run typecheck` — run `tsc --noEmit` as a quick correctness gate,
+  once for `src/` and once for `scripts/`, which has its own
+  `tsconfig.json`: Node's types there, the browser's in `src/`.
+- `npm run format` — Prettier over `src/` and `scripts/`, with its default
+  settings. Run it at the end of every increment, before handing it back.
 - `npm test` — run the Vitest suite. Tests live next to the code as
   `*.test.ts`, and cover `src/core/` only: logic with exact expected
   answers and no Three.js in the way. Rendering and input are checked by

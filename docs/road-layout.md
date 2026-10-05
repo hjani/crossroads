@@ -15,6 +15,8 @@
 
 ## Junction
 
+![The parts of a junction where three roads meet: the node N, each leg and its centerline, a gap between two legs, a leg's setback, a roadway end, corners P, a round join from T to T, and a curb](images/junction-anatomy.svg)
+
 - One per node, every node: a dead end and a 180° join too.
   - → a reader never special-cases a node by how many sections meet it.
 - Worked out from that node and the sections meeting it alone.
@@ -42,6 +44,9 @@
   - equal widths → round from 180°; different widths → already under
     180°, the more so the more the widths differ
   - a dead end is one gap of 360° → a round cap
+
+![Left: two equal roads, the narrow gap joined at a corner P, the wide one round from T to T. Right: a 16 m and an 8 m road, joined round; the wide road touches the circle at T, the narrow one crosses it at X](images/junction-joins.svg)
+
 - A round join stays a true arc, never broken into pieces.
   - Same rule as picking a section against its circle, not its chords.
 - Moving a road a little never makes the junction jump:

@@ -414,6 +414,9 @@ Why, all on the line through `O` and `N`:
 
 ### The triangle fan from `N`
 
+Superseded: junctions are no longer drawn as a fan, see
+`docs/road-tessellation.md`.
+
 - The renderer draws the outline as a triangle fan from `N`.
 - The fan matches the outline only if the straight line from `N` to every
   outline point stays inside the junction. On straight roads it does (see

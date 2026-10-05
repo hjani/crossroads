@@ -56,6 +56,8 @@ A zebra crossing at a roadway's end, where it meets a junction.
   lines → `L = W = w − 2(e + ℓ)`.
   - A bar is half its period.
 
+![A roadway's end at a junction, to scale: edge lines e in from the curb, centerline dashes with period P′ and half a gap at the end, and a crossing D deep with bars across W](images/road-markings.svg)
+
 ## Drawn in the shader
 
 Markings are not geometry of their own: the fragment shader colors each

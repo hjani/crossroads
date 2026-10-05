@@ -208,6 +208,8 @@ place.
   joins smoothly without aiming any join.
 - Cancel ends the run and keeps what was built.
 
+![A node where two roads meet, with the directions it offers drawn as rays; the cursor leaves the capture circle, the nearest ray is picked, and the arc leaves the node that way to the far end](images/smart-arc.svg)
+
 ## Inspect
 
 A tool like any other, and the one that builds nothing: it names what the

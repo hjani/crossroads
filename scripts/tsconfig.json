@@ -1,0 +1,9 @@
+{
+  // The root project's settings, with Node's types instead of the browser's:
+  // these scripts run in Node, and src/ must not see Node's globals.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["."]
+}

@@ -98,7 +98,8 @@ road.
     count as round, not square: conservative again
   - that extra half disc lies inside the end's own junction circle → it
     refuses nothing junction ↔ junction doesn't already
-- Two roadways are clear where their centerlines stay `w` apart.
+- Two roadways are clear where their centerlines stay `w₁/2 + w₂/2` apart:
+  their two half-widths added up.
   - two straights refuse nothing junction ↔ roadway doesn't already: they
     come closest at a roadway's end, whose junction's circle then reaches
     the other roadway
@@ -106,9 +107,11 @@ road.
 - Exempt: parts sharing a node.
   - they meet by design, and the junction rules (`docs/road-layout.md`)
     already say how
-  - two roadways at a gap `ψ` end `w·cos(ψ/2)` apart → always under `w`,
-    approaching it as the gap closes
+  - their bands would overlap near the node; the junction's setbacks end
+    them before they do
 - Any of these → the plan cannot be built.
+
+![Three panels: two junctions whose circles stay R₁ + R₂ apart; a roadway whose centerline stays R + w/2 from a junction's node; two roadways whose centerlines stay w₁/2 + w₂/2 apart](images/clearance-rules.svg)
 
 ## Practical limits
 
