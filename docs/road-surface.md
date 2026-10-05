@@ -13,20 +13,16 @@
 - A roadway's ribbon: the strip `w/2` either side of its centerline.
 - A roadway is a section of the same kind → drawn by the same code whether it
   is set back or not.
-- Arc: both edges are circles around the arc's center, broken into pieces
-  at the same angles → a strip of quads square to the road.
-  - The outer edge sets how fine: at a given angle step it strays furthest
-    from its curve.
+- Broken into triangles as `docs/road-tessellation.md` describes.
 - The centerline stays. A ribbon is a second drawing of a section, not a
   replacement for the line.
 
 ## Junctions
 
-- Drawn as a triangle fan from the node, at the ribbons' height and in their
-  color → ribbons and junctions meet edge to edge, no overlap.
-- Round joins are broken into pieces here, not in the layout.
-  - → the fan, and the grass it can pave, is how a junction is drawn, not
-    what it is.
+- Drawn at the ribbons' height and in their color → ribbons and junctions
+  meet edge to edge, no overlap.
+- Arcs in the outline are broken into pieces here, not in the layout.
+- Broken into triangles as `docs/road-tessellation.md` describes.
 
 ## Limits
 
@@ -34,7 +30,6 @@ Drawn wrong, never an error. Nothing here refuses an edit.
 
 - Arc radius under `w/2` → the inner edge doesn't exist → the ribbon folds
   over itself.
-- A tight arc beside a sharp gap → the fan paves a sliver of grass. Accepted.
 
 ## Relationship to other modules
 

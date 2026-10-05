@@ -109,29 +109,25 @@ each triangle.
 
 ## Through junctions
 
-- A junction is drawn as a fan from its node `N`: one triangle `N, a, b` per
-  outline piece `ab` (`docs/road-surface.md`).
-- Each triangle is drawn as a slice of a road: its vertices carry `side` and
-  `halfWidth` like a roadway's → the same edge line rule.
-- By what `ab` borders:
-  - a roadway's end → that roadway, carried on to `N`:
+- A junction is drawn as a strip of quads along its outline, `d₀` deep, plus
+  a fill (`docs/road-tessellation.md`).
+- Each strip quad is drawn as a slice of a road: its vertices carry `side`
+  and `halfWidth` like a roadway's → the same edge line rule.
+- By what its outline piece `ab` borders:
+  - a roadway's end → `side · halfWidth` is the distance across that
+    road, as if it went on past the cut → the road's edge lines cross the
+    cut unbroken and meet the curb's lines at the corners
+  - curb → a road whose centerline is the piece moved in by `d₀`:
 
-        halfWidth = w/2,              side = ±1 at a, b,  0 at N
+        halfWidth = d₀,  side = 1 on ab,  0 on the moved piece
 
-  - curb → a road with its centerline through `N`, parallel to `ab`:
-
-        halfWidth = dist(N, line ab), side =  1 at a, b,  0 at N
-
-    - straight edge → `dist = w/2` → the real road's values
-    - round join → one triangle per chord → follows the chords, as a roadway
-      does
-- `halfWidth` is the same at all three vertices → `u` is a distance in
+    - arcs → one quad per chord → follows the chords, as a roadway does
+- `halfWidth` is the same at all vertices of a quad → `u` is a distance in
   meters → `fwidth(u)` still measures a pixel.
-- Two neighboring triangles' lines meet on the line from `N` to their shared
-  corner.
-  - At `P`: `N` is `w/2` from both edges, `P` is 0 from both → that line is
-    the bisector → the lines meet in a clean miter.
-  - On an arc road only nearly.
+- Fill: `side = 0`, `halfWidth = d₀` → `halfWidth − |u| = d₀` everywhere →
+  no line.
+  - `u` constant → `fwidth(u) = 0`: the shader's `ramp` divides by zero, as
+    it already does for `t`, and comes out right.
 - No centerline dashes in junctions.
 
 ## Zoom

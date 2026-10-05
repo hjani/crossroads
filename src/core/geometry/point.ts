@@ -89,3 +89,25 @@ export function lerp(from: Vec2, to: Vec2, t: number): Vec2 {
     z: from.z + (to.z - from.z) * t,
   };
 }
+
+/** The vector from `from` to `to`. */
+export function difference(from: Vec2, to: Vec2): Vec2 {
+  return { x: to.x - from.x, z: to.z - from.z };
+}
+
+export function dot(u: Vec2, v: Vec2): number {
+  return u.x * v.x + u.z * v.z;
+}
+
+/**
+ * The area a closed ring of points encloses, by the shoelace formula:
+ * positive when it runs from +x toward +z, negative the other way round.
+ */
+export function signedArea(ring: readonly Vec2[]): number {
+  let twice = 0;
+  ring.forEach((p, i) => {
+    const q = ring[(i + 1) % ring.length];
+    twice += p.x * q.z - p.z * q.x;
+  });
+  return twice / 2;
+}
