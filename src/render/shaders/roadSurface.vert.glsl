@@ -21,8 +21,9 @@ varying float t;
 varying float k;
 varying float vFromStart;
 varying float vFromEnd;
-varying float vState;
-varying vec3 vTint;
+// The part's, not the point's: taken from one vertex, never interpolated.
+flat varying int vState;
+flat varying vec3 vTint;
 
 void main() {
   u = side * halfWidth;
@@ -31,7 +32,7 @@ void main() {
   k = periodsAcross;
   vFromStart = fromStart;
   vFromEnd = fromEnd;
-  vState = state;
+  vState = int(state);
   vTint = stateColors[int(state)];
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }

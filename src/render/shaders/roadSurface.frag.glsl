@@ -10,8 +10,8 @@ varying float t;
 varying float k;
 varying float vFromStart;
 varying float vFromEnd;
-varying float vState;
-varying vec3 vTint;
+flat varying int vState;
+flat varying vec3 vTint;
 
 // Edge line, in meters: a gap in from the curb, then the line.
 const float EDGE_INSET = 0.2;
@@ -29,9 +29,7 @@ float ramp(float x, float px) {
 }
 
 void main() {
-  // State is The same at all three vertices, but interpolation can still land
-  // a hair off → compared half a step away.
-  if (vState > float(PART_STATE_HIDDEN) - 0.5) discard;
+  if (vState == PART_STATE_HIDDEN) discard;
 
   // Meters per pixel. Taken of `u`, not `d`: `abs` kinks at the centerline.
   float px = fwidth(u);
@@ -62,7 +60,7 @@ void main() {
     * barsFade;
   vec3 surface = mix(color, MARKING, max(edgeLine, max(dash, bar)));
   // No state → no tint.
-  float tint = vState < float(PART_STATE_NONE) + 0.5 ? 0.0 : tintAmount;
+  float tint = vState == PART_STATE_NONE ? 0.0 : tintAmount;
   gl_FragColor = vec4(mix(surface, vTint, tint), 1.0);
   // THREE.Color holds linear values; this converts them for the screen, as
   // every built-in material does last.
