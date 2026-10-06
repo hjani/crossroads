@@ -115,7 +115,7 @@
 ## Roadway
 
 - One per section: the section between the setbacks at its two ends.
-- As wide as its section's road.
+- Carries its section's road profile → as wide as its section's road.
 - A shorter section of the same kind:
   - straight → the straight between the setbacks
   - arc → the same circle, between the setbacks

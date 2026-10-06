@@ -20,13 +20,14 @@
 
 ## Lane marks
 
-`v` is the divider offset: a constant, in meters from the centerline.
+`v` is the inner lane width: a constant, in meters, line center to line
+center.
 
 - 1 lane each way: dashed centerline.
 - 2 lanes each way: solid centerline, and a dashed divider `v` out on each
   side.
-  - `v` is fixed, not a share of `w` → the outer lanes take the rest of the
-    width.
+  - Every lane but the curb lane is `v` wide → divider `i` at `i · v` from
+    the centerline, and the curb lane takes the rest of the width.
     - Room at the curb, e.g. for parking.
 - More: no lane marks → edge lines and crossings only.
 
@@ -104,7 +105,7 @@ each triangle.
       crossing bar:     on a crossing  and  |fract(k) − 0.5| < 1/4
                         and  halfWidth − |u| > e + ℓ
 
-  and by lane layout, never on a crossing:
+  and by lane marking, never on a crossing:
 
       1 lane:   centerline dash   |u| < ℓ/2  and  dashed
       2 lanes:  centerline        |u| < ℓ/2
@@ -112,18 +113,18 @@ each triangle.
 
 - `t` and `k` already include the roadway's own `P'`, `a` and `b` its
   crossings → nothing per roadway is left for the shader but its lane
-  layout.
+  marking.
 
-## A program per lane layout
+## A program per lane marking
 
-- One fragment shader per lane layout. The lane marks are its own; edge
+- One fragment shader per lane marking. The lane marks are its own; edge
   lines, crossings and part states are code they share.
-  - Not one shader branching on the lane count: every new layout (one-way
+  - Not one shader branching on the lane count: every new marking (one-way
     roads, parking) would add a branch to it.
-- Every layout's roadways carry the same vertex values → one tessellation,
+- Profiles marked alike share a program → and a mesh.
+- Every marking's roadways carry the same vertex values → one tessellation,
   one vertex shader.
-- One roadway mesh per layout; a roadway goes in its own layout's.
-- Junctions: the layout with no lane marks.
+- Junctions: the program with no lane marks.
 
 ## Follows the chords, not the arc
 
@@ -170,6 +171,6 @@ each triangle.
 ## Relationship to other modules
 
 - Drawn by the road surface, in its own meshes, in `src/render/`: one per
-  lane layout for the roadways, one for the junctions.
+  lane marking for the roadways, one for the junctions.
 - The dash pattern is worked out in `src/core/layout/`, from the roadway's
   length.

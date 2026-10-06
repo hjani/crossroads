@@ -2,7 +2,7 @@ import { pointOnArc } from "../geometry/arc";
 import { unitDirection, type Vec2 } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { LineGeometry } from "../geometry/lineGeometry";
-import type { NodeId, Section } from "../network/types";
+import type { NodeId, RoadProfile, Section } from "../network/types";
 import type { RoadwayOutline } from "./outline";
 
 /**
@@ -23,6 +23,8 @@ export interface Roadway {
   readonly length: number;
   /** The ground it covers: its centerline, and the width of the road. */
   readonly outline: RoadwayOutline;
+  /** Its section's. */
+  readonly profile: RoadProfile;
   /** Which of its ends has a crossing. */
   readonly crossings: { readonly from: boolean; readonly to: boolean };
 }
@@ -55,6 +57,7 @@ export function roadwayOf(
       ...applySetbacks(network, section, s1, s2),
       widthMeters: section.profile.width,
     },
+    profile: section.profile,
     crossings: crossingsOf(network, section, length),
   };
 }

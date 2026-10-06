@@ -315,7 +315,7 @@ only for now.
       marks by lane count
 - [x] `RoadProfile` replaces `width` on `Section`, the plan and
       `SectionSettings`, shared by the pieces of a cut
-- [ ] "two lanes" builds 2×2 lanes, marked by a fragment shader per lane
+- [x] "two lanes" builds 2×2 lanes, marked by a fragment shader per lane
       layout; `state` becomes a `flat varying`
 
 ## Backlog

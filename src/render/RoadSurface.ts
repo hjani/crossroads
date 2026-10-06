@@ -8,12 +8,10 @@ import {
 } from "../core/layout/markings";
 import { CROSSING_DEPTH_METERS, type Roadway } from "../core/layout/roadway";
 import type { NodeId, SectionId } from "../core/network/types";
-import { HIGHLIGHT_OPACITY, STATE_COLOR } from "./colors";
 import { LAYER } from "./layers";
 import { PART_STATE, type PartState, type PartStates } from "./PartStates";
+import { RoadSurfaceMaterials } from "./RoadSurfaceMaterials";
 import { tessellateJunction, tessellateRoadway } from "./tessellate";
-import surfaceVertexShader from "./shaders/roadSurface.vert.glsl?raw";
-import surfaceFragmentShader from "./shaders/roadSurface.frag.glsl?raw";
 
 type SurfaceMesh = THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
 
@@ -26,8 +24,9 @@ const EDGE_LINE_INNER_METERS = 0.3;
 /** Distance from an end without a crossing: far past any crossing. */
 const FAR_METERS = 1e6;
 
-/** A part's vertices in its mesh: the first one's index, and how many. */
+/** A part's vertices: the mesh they are in, the first one's index, and how many. */
 interface VertexRange {
+  readonly mesh: SurfaceMesh;
   readonly start: number;
   readonly count: number;
 }
@@ -37,28 +36,27 @@ interface VertexRange {
  * according to the state each part is in (`docs/part-states.md`).
  *
  * Draws exactly the parts it is given: which ones, and from which layout, is
- * its owner's to decide. Roadways and junctions are separate meshes.
+ * its owner's to decide. Junctions are one mesh; roadways are one mesh per
+ * material, so each is drawn with its own lane marks.
  */
 export class RoadSurface {
   readonly sceneObject = new THREE.Group();
 
-  private readonly roadwayMesh: SurfaceMesh;
+  private readonly materials = new RoadSurfaceMaterials();
+  /** Made the first time a roadway needs one, kept after, empty or not. */
+  private readonly roadwayMeshes = new Map<THREE.ShaderMaterial, SurfaceMesh>();
   private readonly junctionMesh: SurfaceMesh;
-  /** Where each part's vertices are in its mesh, from the last `setParts`. */
+  /** Where each part's vertices are, from the last `setParts`. */
   private roadwayRanges = new Map<SectionId, VertexRange>();
   private junctionRanges = new Map<NodeId, VertexRange>();
   private drawnStatesVersion = -1;
 
   constructor(private readonly partStates: PartStates) {
-    this.roadwayMesh = new THREE.Mesh(
-      new SurfaceVertices().toGeometry(),
-      makeMaterial(),
-    );
     this.junctionMesh = new THREE.Mesh(
       new SurfaceVertices().toGeometry(),
-      makeMaterial(),
+      this.materials.forJunctions(),
     );
-    this.sceneObject.add(this.roadwayMesh, this.junctionMesh);
+    this.sceneObject.add(this.junctionMesh);
   }
 
   /** Discards the geometry and builds it again from exactly these parts. */
@@ -77,12 +75,12 @@ export class RoadSurface {
     if (this.partStates.version === this.drawnStatesVersion) return;
 
     writeStates(
-      this.roadwayMesh,
+      this.roadwayMeshes.values(),
       this.roadwayRanges,
       this.partStates.roadways(),
     );
     writeStates(
-      this.junctionMesh,
+      [this.junctionMesh],
       this.junctionRanges,
       this.partStates.junctions(),
     );
@@ -91,19 +89,25 @@ export class RoadSurface {
 
   /** Releases the GPU buffers behind the surface. Unusable after. */
   dispose(): void {
-    for (const mesh of [this.roadwayMesh, this.junctionMesh]) {
+    for (const mesh of [...this.roadwayMeshes.values(), this.junctionMesh]) {
       mesh.geometry.dispose();
-      mesh.material.dispose();
     }
+    this.materials.dispose();
   }
 
   private buildRoadways(roadways: Iterable<[SectionId, Roadway]>): void {
-    const vertices = new SurfaceVertices();
+    const verticesByMesh = new Map<SurfaceMesh, SurfaceVertices>();
     const ranges = new Map<SectionId, VertexRange>();
     for (const [id, roadway] of roadways) {
       // Negative may happen when junction setbacks overlap:
       // it shouldn't have been built, but just skip rendering for it
       if (roadway.length >= 0) {
+        const mesh = this.roadwayMeshFor(roadway);
+        let vertices = verticesByMesh.get(mesh);
+        if (vertices === undefined) {
+          vertices = new SurfaceVertices();
+          verticesByMesh.set(mesh, vertices);
+        }
         const start = vertices.count;
         const { length, crossings } = roadway;
         const halfWidth = roadway.outline.widthMeters / 2;
@@ -137,15 +141,32 @@ export class RoadSurface {
             fromEnd: crossings.to ? length - s : FAR_METERS,
           });
         }
-        ranges.set(id, { start, count: vertices.count - start });
+        ranges.set(id, { mesh, start, count: vertices.count - start });
       }
     }
 
-    replaceGeometry(this.roadwayMesh, vertices.toGeometry());
+    // A mesh no roadway uses this time is emptied, not removed.
+    for (const mesh of this.roadwayMeshes.values()) {
+      const vertices = verticesByMesh.get(mesh) ?? new SurfaceVertices();
+      replaceGeometry(mesh, vertices.toGeometry());
+    }
     this.roadwayRanges = ranges;
   }
 
+  /** The mesh drawn in the roadway's material, made if there is none yet. */
+  private roadwayMeshFor(roadway: Roadway): SurfaceMesh {
+    const material = this.materials.forRoadway(roadway.profile);
+    let mesh = this.roadwayMeshes.get(material);
+    if (mesh === undefined) {
+      mesh = new THREE.Mesh(new SurfaceVertices().toGeometry(), material);
+      this.roadwayMeshes.set(material, mesh);
+      this.sceneObject.add(mesh);
+    }
+    return mesh;
+  }
+
   private buildJunctions(junctions: Iterable<[NodeId, Junction]>): void {
+    const mesh = this.junctionMesh;
     const vertices = new SurfaceVertices();
     const ranges = new Map<NodeId, VertexRange>();
     for (const [id, junction] of junctions) {
@@ -153,8 +174,8 @@ export class RoadSurface {
       for (const { point, side, halfWidth } of tessellateJunction(
         junction.outline(),
       )) {
-        // No dashes in a junction: 0 everywhere is in a period's gap. No
-        // crossings either.
+        // No lane marks in a junction, so `periodsAlong` goes unread. No
+        // crossings either, and 0 across is a bar period's gap.
         vertices.push({
           point,
           side,
@@ -165,72 +186,43 @@ export class RoadSurface {
           fromEnd: FAR_METERS,
         });
       }
-      ranges.set(id, { start, count: vertices.count - start });
+      ranges.set(id, { mesh, start, count: vertices.count - start });
     }
 
-    replaceGeometry(this.junctionMesh, vertices.toGeometry());
+    replaceGeometry(mesh, vertices.toGeometry());
     this.junctionRanges = ranges;
   }
 }
 
 /**
- * The tint each `PART_STATE` shows, by its number. `NONE` and `HIDDEN` show
- * none, but the shader indexes the table by every state.
- */
-const STATE_TINTS: Record<PartState, number> = {
-  [PART_STATE.NONE]: 0,
-  [PART_STATE.AIMED]: STATE_COLOR.AIMED,
-  [PART_STATE.SELECTED]: STATE_COLOR.SELECTED,
-  [PART_STATE.PLANNED]: STATE_COLOR.PLANNED,
-  [PART_STATE.REFUSED]: STATE_COLOR.REFUSED,
-  [PART_STATE.HIDDEN]: 0,
-};
-
-/** Unlit asphalt, with the markings drawn on it and each part's tint. */
-function makeMaterial(): THREE.ShaderMaterial {
-  const states = Object.values(PART_STATE);
-  return new THREE.ShaderMaterial({
-    vertexShader: surfaceVertexShader,
-    fragmentShader: surfaceFragmentShader,
-    defines: {
-      PART_STATE_COUNT: states.length,
-      PART_STATE_NONE: PART_STATE.NONE,
-      PART_STATE_HIDDEN: PART_STATE.HIDDEN,
-    },
-    uniforms: {
-      color: { value: new THREE.Color(STATE_COLOR.EXISTING) },
-      stateColors: {
-        value: states.map((state) => new THREE.Color(STATE_TINTS[state])),
-      },
-      tintAmount: { value: HIGHLIGHT_OPACITY },
-      crossingDepth: { value: CROSSING_DEPTH_METERS },
-    },
-    // Seen only from above, so which way a triangle winds doesn't matter.
-    side: THREE.DoubleSide,
-  });
-}
-
-/**
- * Writes every part's state into the mesh's `state` attribute: all of it,
- * `NONE` first and then each part in a state over its own range.
+ * Writes every part's state into its mesh's `state` attribute: all of every
+ * mesh, `NONE` first and then each part in a state over its own range.
  *
- * A part the mesh has no range for isn't drawn — not among its parts, or a
- * roadway too short to draw — so there is nothing to mark.
+ * A part with no range isn't drawn — not among the parts, or a roadway too
+ * short to draw — so there is nothing to mark.
  */
 function writeStates<Id>(
-  mesh: SurfaceMesh,
+  meshes: Iterable<SurfaceMesh>,
   ranges: ReadonlyMap<Id, VertexRange>,
   states: Iterable<[Id, PartState]>,
 ): void {
-  const attribute = mesh.geometry.getAttribute("state");
-  attribute.array.fill(PART_STATE.NONE);
+  const attributes = [...meshes].map((mesh) =>
+    mesh.geometry.getAttribute("state"),
+  );
+  for (const attribute of attributes) {
+    attribute.array.fill(PART_STATE.NONE);
+  }
   for (const [id, state] of states) {
     const range = ranges.get(id);
     if (range !== undefined) {
-      attribute.array.fill(state, range.start, range.start + range.count);
+      range.mesh.geometry
+        .getAttribute("state")
+        .array.fill(state, range.start, range.start + range.count);
     }
   }
-  attribute.needsUpdate = true;
+  for (const attribute of attributes) {
+    attribute.needsUpdate = true;
+  }
 }
 
 function replaceGeometry(
