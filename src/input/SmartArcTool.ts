@@ -115,8 +115,8 @@ export class SmartArcTool implements Tool {
     private readonly settings: SectionSettings,
     private readonly settingsPanel: SectionSettingsPanel,
   ) {
-    this.landingMark = new JunctionHighlight(settings.width);
-    this.startMark = new JunctionHighlight(settings.width);
+    this.landingMark = new JunctionHighlight(settings.profile.width);
+    this.startMark = new JunctionHighlight(settings.profile.width);
     this.unsubscribeSettingsChanged = settingsPanel.onSettingsChanged(() =>
       this.afterSettingsChange(),
     );
@@ -230,8 +230,8 @@ export class SmartArcTool implements Tool {
    * the aim stays as it was.
    */
   afterSettingsChange(): void {
-    this.landingMark.setRoadWidth(this.settings.width);
-    this.startMark.setRoadWidth(this.settings.width);
+    this.landingMark.setRoadWidth(this.settings.profile.width);
+    this.startMark.setRoadWidth(this.settings.profile.width);
     this.redraw();
   }
 
@@ -321,7 +321,7 @@ export class SmartArcTool implements Tool {
         from,
         to,
         geometry,
-        this.settings.width,
+        this.settings.profile,
       );
       if (roadPlan.sectionPlan.pieces.length > 0) {
         plans.push(roadPlan);

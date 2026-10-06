@@ -306,6 +306,18 @@ after the click.
 - [ ] one overlay for dots and lines: `NodeHighlight` merged into
       `RoadNetworkHighlight`, with a mark for a place that has no node
 
+### M12 — Lanes
+
+Roads know how many lanes run each way, and are marked to match. Visuals
+only for now.
+
+- [x] `docs/road-network.md`, `docs/road-markings.md`: road profile, lane
+      marks by lane count
+- [x] `RoadProfile` replaces `width` on `Section`, the plan and
+      `SectionSettings`, shared by the pieces of a cut
+- [ ] "two lanes" builds 2×2 lanes, marked by a fragment shader per lane
+      layout; `state` becomes a `flat varying`
+
 ## Backlog
 
 Wanted, but not part of a milestone yet.

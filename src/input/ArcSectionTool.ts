@@ -64,8 +64,8 @@ export class ArcSectionTool implements Tool {
     private readonly settings: SectionSettings,
     private readonly settingsPanel: SectionSettingsPanel,
   ) {
-    this.startHighlight = new JunctionHighlight(settings.width);
-    this.endHighlight = new JunctionHighlight(settings.width);
+    this.startHighlight = new JunctionHighlight(settings.profile.width);
+    this.endHighlight = new JunctionHighlight(settings.profile.width);
     this.unsubscribeSettingsChanged = settingsPanel.onSettingsChanged(() =>
       this.afterSettingsChange(),
     );
@@ -157,8 +157,8 @@ export class ArcSectionTool implements Tool {
 
   /** Redraws for the new width, at the cursor as it was. */
   afterSettingsChange(): void {
-    this.startHighlight.setRoadWidth(this.settings.width);
-    this.endHighlight.setRoadWidth(this.settings.width);
+    this.startHighlight.setRoadWidth(this.settings.profile.width);
+    this.endHighlight.setRoadWidth(this.settings.profile.width);
     this.redraw();
   }
 
@@ -261,7 +261,7 @@ export class ArcSectionTool implements Tool {
       endpointFrom(this.start),
       endpointFrom(this.end),
       { kind: "arc", via },
-      this.settings.width,
+      this.settings.profile,
     );
     return plan.sectionPlan.pieces.length === 0 ? null : plan;
   }

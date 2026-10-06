@@ -1,3 +1,4 @@
+import { ONE_LANE_PROFILE } from "../../src/input/SectionSettings";
 import {
   arcCircle,
   arcPolyline,
@@ -186,16 +187,17 @@ function casePanel(
 ): string {
   const network = new RoadNetwork();
   const shapes = c.roads.map(shapeOf);
-  const first = network.addSection(
-    ORIGIN,
-    shapes[0].end,
-    shapes[0].geometry,
-    c.roads[0].width,
-  );
+  const first = network.addSection(ORIGIN, shapes[0].end, shapes[0].geometry, {
+    ...ONE_LANE_PROFILE,
+    width: c.roads[0].width,
+  });
   const node = first.from;
   c.roads.slice(1).forEach((road, i) => {
     const { end, geometry } = shapes[i + 1];
-    network.addSection(node, end, geometry, road.width);
+    network.addSection(node, end, geometry, {
+      ...ONE_LANE_PROFILE,
+      width: road.width,
+    });
   });
   const layout = new RoadLayout(network);
   const { pieces } = layout.junctionAt(node).outline();

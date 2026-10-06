@@ -437,7 +437,7 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
     direction,
     angle: angleOf(direction),
     length: distance(from, to),
-    halfWidth: section.width / 2,
+    halfWidth: section.profile.width / 2,
     arc: null,
   };
   if (section.centerlineGeometry.kind === "straight") {

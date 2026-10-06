@@ -1,3 +1,4 @@
+import { ONE_LANE_PROFILE } from "../../src/input/SectionSettings";
 import {
   STRAIGHT,
   type LineGeometry,
@@ -22,7 +23,6 @@ import {
  * as quads between slices along its radii.
  */
 
-const WIDTH = 8;
 const ARC_RADIUS = 12;
 const TONES = ["#9a9993", "#b9b8b1"];
 
@@ -70,7 +70,7 @@ function roadwayTriangles(
   geometry: LineGeometry,
 ): Vec2[][] {
   const network = new RoadNetwork();
-  const section = network.addSection(from, to, geometry, WIDTH);
+  const section = network.addSection(from, to, geometry, ONE_LANE_PROFILE);
   const roadway = new RoadLayout(network).roadwayAlong(section.id);
   return triangles(tessellateRoadway(roadway.outline)).map((tri) =>
     tri.map((v) => v.point),

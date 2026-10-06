@@ -53,7 +53,7 @@ export function roadwayOf(
       kind: "roadway",
       section: section.id,
       ...applySetbacks(network, section, s1, s2),
-      widthMeters: section.width,
+      widthMeters: section.profile.width,
     },
     crossings: crossingsOf(network, section, length),
   };

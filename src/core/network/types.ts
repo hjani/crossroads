@@ -13,6 +13,15 @@ export interface Node {
   readonly position: Vec2;
 }
 
+/**
+ * The road across its width. Read-only, so sections share an instance.
+ */
+export interface RoadProfile {
+  /** Curb to curb, in meters. */
+  readonly width: number;
+  readonly lanesPerDirection: number;
+}
+
 /** An edge between two distinct nodes. */
 export interface Section {
   readonly id: SectionId;
@@ -21,6 +30,5 @@ export interface Section {
   readonly centerlineGeometry: LineGeometry;
   /** Length along the centerline, node to node, in meters. */
   readonly length: number;
-  /** Width of the road, curb to curb, in meters. */
-  readonly width: number;
+  readonly profile: RoadProfile;
 }

@@ -6,7 +6,7 @@ import { STRAIGHT } from "../geometry/lineGeometry";
 import { type SectionId } from "../network/types";
 import { distance, SAME_POINT_METERS, type Vec2 } from "../geometry/point";
 import { nearestPointOnSegment } from "../geometry/segment";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, profileOfWidth, TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -105,7 +105,7 @@ describe("Junction", () => {
       east.from,
       onCircle(center, R, Math.PI / 2),
       { kind: "arc", via: onCircle(center, R, Math.PI / 4) },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     const junction = new Junction(network, east.from);
@@ -113,10 +113,10 @@ describe("Junction", () => {
     // Straight edge z = w/2; the arc's outer edge, radius R + w/2, around O.
     // They cross at P = (h − R, w/2), with h² = (R + w/2)² − (w/2)² = R² + Rw.
     // Straight: s = P.x. Arc: s = R·θ, θ the angle at O between N and P.
-    const h = Math.sqrt(R * R + R * TEST_ROAD_WIDTH_METERS);
+    const h = Math.sqrt(R * R + R * TEST_ROAD_PROFILE.width);
     expect(junction.setbackOf(east.id)).toBeCloseTo(h - R);
     expect(junction.setbackOf(arc.id)).toBeCloseTo(
-      R * Math.atan2(TEST_ROAD_WIDTH_METERS / 2, h),
+      R * Math.atan2(TEST_ROAD_PROFILE.width / 2, h),
     );
   });
 
@@ -134,13 +134,13 @@ describe("Junction", () => {
         kind: "arc",
         via: onCircle(southCenter, R, Math.PI / 4),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const north = network.addSection(
       east.from,
       onCircle(westCenter, R, Math.PI / 2),
       { kind: "arc", via: onCircle(westCenter, R, Math.PI / 4) },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     const junction = new Junction(network, east.from);
@@ -149,7 +149,7 @@ describe("Junction", () => {
     //   (x + R)² + x² = r²  →  x = (√(2r² − R²) − R) / 2
     // Seen from (0, −R), N is straight up and P at (x, R + x):
     //   s = R·atan2(x, R + x)
-    const r = R + TEST_ROAD_WIDTH_METERS / 2;
+    const r = R + TEST_ROAD_PROFILE.width / 2;
     const x = (Math.sqrt(2 * r * r - R * R) - R) / 2;
     const expected = R * Math.atan2(x, R + x);
     expect(junction.setbackOf(east.id)).toBeCloseTo(expected);
@@ -170,7 +170,7 @@ describe("Junction", () => {
         kind: "arc",
         via: onCircle(center, R, Math.PI / 4),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     const junction = new Junction(network, west.from);
@@ -191,7 +191,7 @@ describe("Junction", () => {
       east.from,
       onCircle(center, R, Math.PI / 2),
       { kind: "arc", via: onCircle(center, R, (3 * Math.PI) / 4) },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     const junction = new Junction(network, east.from);
@@ -219,7 +219,7 @@ describe("Junction", () => {
           kind: "arc",
           via: onCircle(center, R, 0),
         },
-        TEST_ROAD_WIDTH_METERS,
+        TEST_ROAD_PROFILE,
       );
 
       const junction = new Junction(network, east.from);
@@ -229,10 +229,10 @@ describe("Junction", () => {
       //   x² = (R + w/2)² − (R − w/2)² = 2Rw
       // Straight: s = x. Arc: seen from its center, N is at (0, −side·R) and
       // P at (x, −side·(R − w/2)) → s = R·atan2(x, R − w/2).
-      const x = Math.sqrt(2 * R * TEST_ROAD_WIDTH_METERS);
+      const x = Math.sqrt(2 * R * TEST_ROAD_PROFILE.width);
       expect(junction.setbackOf(east.id)).toBeCloseTo(x);
       expect(junction.setbackOf(arc.id)).toBeCloseTo(
-        R * Math.atan2(x, R - TEST_ROAD_WIDTH_METERS / 2),
+        R * Math.atan2(x, R - TEST_ROAD_PROFILE.width / 2),
       );
     });
   }
@@ -247,12 +247,17 @@ describe("Junction", () => {
     narrow: SectionId;
   } {
     const network = new RoadNetwork();
-    const wide = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+    const wide = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      profileOfWidth(16),
+    );
     const narrow = network.addSection(
       wide.from,
       onCircle(vec(0, 0), 20, angle),
       STRAIGHT,
-      8,
+      profileOfWidth(8),
     );
     return {
       junction: new Junction(network, wide.from),
@@ -367,8 +372,13 @@ describe("Junction.outline", () => {
     // touches east's curb at (4, −8), north's at (−4, 0) beside the node,
     // and runs between them through 225° round its center.
     const network = new RoadNetwork();
-    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
-    network.addSection(east.from, vec(0, 20), STRAIGHT, 8);
+    const east = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      profileOfWidth(16),
+    );
+    network.addSection(east.from, vec(0, 20), STRAIGHT, profileOfWidth(8));
 
     const junction = new Junction(network, east.from);
 
@@ -388,8 +398,18 @@ describe("Junction.outline", () => {
     // along. That piece drops 4 over √48, a 30° corner at T, which the circle
     // rounds off by sliding 8·tan 15° — and touches the piece as far from T.
     const network = new RoadNetwork();
-    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
-    const west = network.addSection(east.from, vec(-20, 0), STRAIGHT, 8);
+    const east = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      profileOfWidth(16),
+    );
+    const west = network.addSection(
+      east.from,
+      vec(-20, 0),
+      STRAIGHT,
+      profileOfWidth(8),
+    );
 
     const junction = new Junction(network, east.from);
 
@@ -422,8 +442,18 @@ describe("Junction.outline", () => {
     // narrower road, so that curb runs on past the node into the junction.
     const angle = (105 * Math.PI) / 180;
     const network = new RoadNetwork();
-    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
-    network.addSection(east.from, onCircle(vec(0, 0), 20, angle), STRAIGHT, 8);
+    const east = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      profileOfWidth(16),
+    );
+    network.addSection(
+      east.from,
+      onCircle(vec(0, 0), 20, angle),
+      STRAIGHT,
+      profileOfWidth(8),
+    );
 
     const junction = new Junction(network, east.from);
 
@@ -444,12 +474,17 @@ describe("Junction.outline", () => {
     // but the curb has long swung past T: the circle still touches it,
     // centered (W − w)/(2·sin 125°) along east.
     const network = new RoadNetwork();
-    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+    const east = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      profileOfWidth(16),
+    );
     network.addSection(
       east.from,
       onCircle(vec(0, 0), 20, (55 * Math.PI) / 180),
       STRAIGHT,
-      8,
+      profileOfWidth(8),
     );
 
     const junction = new Junction(network, east.from);
@@ -466,12 +501,17 @@ describe("Junction.outline", () => {
     // piece to the curb (β₁ = 60°). Either side of that, the same outline.
     const cornersAt = (angle: number) => {
       const network = new RoadNetwork();
-      const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+      const east = network.addSection(
+        vec(0, 0),
+        vec(20, 0),
+        STRAIGHT,
+        profileOfWidth(16),
+      );
       network.addSection(
         east.from,
         onCircle(vec(0, 0), 20, angle),
         STRAIGHT,
-        8,
+        profileOfWidth(8),
       );
       return cornersOf(new Junction(network, east.from));
     };
@@ -498,12 +538,17 @@ describe("Junction.outline", () => {
           Math.atan2(p.z, p.x) + turned,
         );
       const network = new RoadNetwork();
-      const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+      const east = network.addSection(
+        vec(0, 0),
+        vec(20, 0),
+        STRAIGHT,
+        profileOfWidth(16),
+      );
       network.addSection(
         east.from,
         turn(onCircle(center, 30, -Math.PI / 2)),
         { kind: "arc", via: turn(onCircle(center, 30, -Math.PI / 3)) },
-        8,
+        profileOfWidth(8),
       );
       return new Junction(network, east.from).setbackOf(east.id);
     };
@@ -580,7 +625,7 @@ describe("Junction.outline", () => {
         kind: "arc",
         via: onCircle(center, R, Math.PI / 4),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     addStraight(network, east.from, vec(-20, 0));
 
@@ -588,8 +633,8 @@ describe("Junction.outline", () => {
 
     // East's edge z = w/2 meets the arc's outer edge, radius R + w/2, at
     //   x = −R + √((R + w/2)² − (w/2)²)
-    const outer = R + TEST_ROAD_WIDTH_METERS / 2;
-    const half = TEST_ROAD_WIDTH_METERS / 2;
+    const outer = R + TEST_ROAD_PROFILE.width / 2;
+    const half = TEST_ROAD_PROFILE.width / 2;
     const corner = vec(Math.sqrt(outer * outer - half * half) - R, half);
     expect(junction.outline().pieces).toHaveLength(6);
     expectPoints([junction.outline().pieces[0].point], [corner]);
@@ -617,7 +662,7 @@ describe("Junction.outline", () => {
         kind: "arc",
         via: onCircle(center, R, Math.PI / 4),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     const junction = new Junction(network, east.from);
@@ -683,12 +728,17 @@ describe("Junction between two widths, across every bend", () => {
   /** A `wide` road east and a `narrow` one leaving `degrees` round from it. */
   function junctionAt(wide: number, narrow: number, degrees: number): Junction {
     const network = new RoadNetwork();
-    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, wide);
+    const east = network.addSection(
+      vec(0, 0),
+      vec(20, 0),
+      STRAIGHT,
+      profileOfWidth(wide),
+    );
     network.addSection(
       east.from,
       onCircle(vec(0, 0), 20, (degrees * Math.PI) / 180),
       STRAIGHT,
-      narrow,
+      profileOfWidth(narrow),
     );
     return new Junction(network, east.from);
   }

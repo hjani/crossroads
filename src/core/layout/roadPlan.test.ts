@@ -3,7 +3,7 @@ import { changedOrViolatingParts, planRoad, type RoadPlan } from "./roadPlan";
 import { RoadLayout } from "./RoadLayout";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { RoadNetwork } from "../network/RoadNetwork";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
 /**
  * Plans a lone arc turning ¾ of the way round a circle of radius `r` about
@@ -17,7 +17,7 @@ function planArcOfRadius(r: number): RoadPlan {
     { x: r, z: 0 },
     { x: 0, z: -r },
     { kind: "arc", via: { x: -r, z: 0 } },
-    TEST_ROAD_WIDTH_METERS,
+    TEST_ROAD_PROFILE,
   );
 }
 
@@ -51,7 +51,7 @@ describe("changedOrViolatingParts", () => {
       { x: -7.9, z: 0 },
       { x: -7.9, z: -40 },
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.speculation !== null);
 

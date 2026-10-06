@@ -9,7 +9,7 @@ import {
 } from "../network/edits";
 import { positionOf } from "../network/queries";
 import type { Endpoint, RoadNetwork } from "../network/RoadNetwork";
-import type { NodeId, SectionId } from "../network/types";
+import type { NodeId, RoadProfile, SectionId } from "../network/types";
 import { verifyClearance, type ClearanceViolations } from "./clearance";
 import type { RoadLayout } from "./RoadLayout";
 import { speculateLayout, type LayoutSpeculation } from "./speculation";
@@ -53,14 +53,14 @@ export function planRoad(
   from: Endpoint,
   to: Endpoint,
   geometry: LineGeometry,
-  width: number,
+  profile: RoadProfile,
 ): RoadPlan {
-  const sectionPlan = planSection(network, from, to, geometry, width);
+  const sectionPlan = planSection(network, from, to, geometry, profile);
   const allowed = allowsRoadway(
     positionOf(network, from),
     positionOf(network, to),
     geometry,
-    width,
+    profile.width,
   );
   if (!allowed || !sectionPlan.buildable) {
     return {

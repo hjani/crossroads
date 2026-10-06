@@ -1,6 +1,6 @@
 import { isArcValid } from "../geometry/arc";
 import { lineLength, type LineGeometry } from "../geometry/lineGeometry";
-import type { Node, NodeId, Section, SectionId } from "./types";
+import type { Node, NodeId, RoadProfile, Section, SectionId } from "./types";
 import type { Vec2 } from "../geometry/point";
 
 /** Either an existing node, or a position at which to create one. */
@@ -52,7 +52,7 @@ export class RoadNetwork {
     from: Endpoint,
     to: Endpoint,
     centerlineGeometry: LineGeometry,
-    width: number,
+    profile: RoadProfile,
   ): Section {
     const fromPosition = this.requirePosition(from);
     const toPosition = this.requirePosition(to);
@@ -76,7 +76,7 @@ export class RoadNetwork {
       to: toId,
       centerlineGeometry,
       length: lineLength(fromPosition, toPosition, centerlineGeometry),
-      width,
+      profile,
     };
     this.sections.set(id, section);
     this.attach(fromId, id);

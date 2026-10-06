@@ -13,7 +13,7 @@ import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { type NodeId } from "./types";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -30,7 +30,7 @@ function build(
 ): NodeId | null {
   return buildPlan(
     network,
-    planSection(network, from, to, STRAIGHT, TEST_ROAD_WIDTH_METERS),
+    planSection(network, from, to, STRAIGHT, TEST_ROAD_PROFILE),
   );
 }
 
@@ -43,13 +43,7 @@ function buildArc(
 ): NodeId | null {
   return buildPlan(
     network,
-    planSection(
-      network,
-      from,
-      to,
-      { kind: "arc", via },
-      TEST_ROAD_WIDTH_METERS,
-    ),
+    planSection(network, from, to, { kind: "arc", via }, TEST_ROAD_PROFILE),
   );
 }
 
@@ -161,6 +155,24 @@ describe("planning and building a section", () => {
     expect(nodeCount(network)).toBe(5);
   });
 
+  it("shares each road's profile among the pieces it is cut into", () => {
+    const network = new RoadNetwork();
+    const wide = { ...TEST_ROAD_PROFILE, lanesPerDirection: 2 };
+    buildPlan(
+      network,
+      planSection(network, vec(0, 0), vec(10, 0), STRAIGHT, wide),
+    );
+    build(network, vec(5, -5), vec(5, 5));
+
+    const sections = [...network.allSections()];
+    const isAlongX = (from: NodeId, to: NodeId) =>
+      positionOf(network, from).z === 0 && positionOf(network, to).z === 0;
+    expect(sections).toHaveLength(4);
+    for (const { from, to, profile } of sections) {
+      expect(profile).toBe(isAlongX(from, to) ? wide : TEST_ROAD_PROFILE);
+    }
+  });
+
   it("returns the node at the far end, wherever the section was cut", () => {
     const network = new RoadNetwork();
     build(network, vec(0, 0), vec(10, 0));
@@ -241,7 +253,7 @@ describe("planning and building a section", () => {
       vec(0, 0),
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
     expect(cutPoints(network, plan)).toEqual([vec(5, 0)]);
@@ -273,7 +285,7 @@ describe("planning and building a section", () => {
       vec(0, 0),
       vec(8, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -293,7 +305,7 @@ describe("planning and building a section", () => {
       vec(0, 0),
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
     applySectionPlan(network, plan);
@@ -312,7 +324,7 @@ describe("planning and building a section", () => {
       vec(0, 0),
       vec(0.4, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     expect(plan.buildable).toBe(true);
   });
@@ -331,7 +343,7 @@ describe("planning and building a section", () => {
       corner,
       vec(5, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(plan.buildable).toBe(false);
@@ -351,7 +363,7 @@ describe("planning and building an arc", () => {
         kind: "arc",
         via: vec(5, 2),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
     applySectionPlan(network, plan);
@@ -378,7 +390,7 @@ describe("planning and building an arc", () => {
         kind: "arc",
         via: vec(5, 0),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(plan.buildable).toBe(false);
@@ -400,7 +412,7 @@ describe("planning and building an arc", () => {
         kind: "arc",
         via: vec(-6, 0),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(plan.buildable).toBe(false);
@@ -489,7 +501,7 @@ describe("planning and building an arc", () => {
       vec(-5, 3),
       vec(15, 3),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     expect(cutPoints(network, plan)).toHaveLength(2);
 
@@ -580,7 +592,7 @@ describe("starting or ending on a road", () => {
       vec(4, 0.005),
       vec(4, 6),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     expect(cutPoints(network, plan)).toEqual([vec(4, 0.005)]);
 
@@ -599,7 +611,7 @@ describe("starting or ending on a road", () => {
       vec(4, 6),
       vec(4, 0.005),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     expect(cutPoints(network, plan)).toEqual([vec(4, 0.005)]);
 

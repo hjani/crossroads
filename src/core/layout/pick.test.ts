@@ -3,9 +3,9 @@ import { pick } from "./pick";
 import { RoadLayout } from "./RoadLayout";
 import { RoadNetwork } from "../network/RoadNetwork";
 import type { Vec2 } from "../geometry/point";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
-const HALF_WIDTH_METERS = TEST_ROAD_WIDTH_METERS / 2;
+const HALF_WIDTH_METERS = TEST_ROAD_PROFILE.width / 2;
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -46,7 +46,7 @@ describe("pick", () => {
         kind: "arc",
         via: vec(10, 10),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const layout = new RoadLayout(network);
 
@@ -103,7 +103,7 @@ describe("pick", () => {
       east.from,
       onCircle(center, R, Math.PI / 2),
       { kind: "arc", via: onCircle(center, R, Math.PI / 4) },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const layout = new RoadLayout(network);
 

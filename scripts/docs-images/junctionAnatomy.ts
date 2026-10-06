@@ -1,3 +1,4 @@
+import { ONE_LANE_PROFILE } from "../../src/input/SectionSettings";
 import { STRAIGHT } from "../../src/core/geometry/lineGeometry";
 import { distance, lerp, type Vec2 } from "../../src/core/geometry/point";
 import { RoadLayout } from "../../src/core/layout/RoadLayout";
@@ -27,7 +28,6 @@ import {
  * joined at corners, and one over it, joined round.
  */
 
-const WIDTH = 8;
 const LEGS = [0, 55, 125];
 const TEXT = 1.05;
 
@@ -37,13 +37,13 @@ export function junctionAnatomy(): string {
     { x: 0, z: 0 },
     toward(LEGS[0], 30),
     STRAIGHT,
-    WIDTH,
+    ONE_LANE_PROFILE,
   );
   const node = first.from;
   const sections = [
     first,
     ...LEGS.slice(1).map((degrees) =>
-      network.addSection(node, toward(degrees, 30), STRAIGHT, WIDTH),
+      network.addSection(node, toward(degrees, 30), STRAIGHT, ONE_LANE_PROFILE),
     ),
   ];
   const layout = new RoadLayout(network);
@@ -148,10 +148,10 @@ ${notes
 /**
  * Where the curb on the counterclockwise side of the leg at `first` crosses
  * the curb on the clockwise side of the leg at `second`: straight legs from
- * the origin, each edge `WIDTH / 2` beside its centerline.
+ * the origin, each edge `ONE_LANE_PROFILE.width / 2` beside its centerline.
  */
 function edgesCrossing(first: number, second: number): Vec2 {
-  const half = WIDTH / 2;
+  const half = ONE_LANE_PROFILE.width / 2;
   const p1 = toward(first + 90, half);
   const d1 = toward(first, 1);
   const p2 = toward(second - 90, half);

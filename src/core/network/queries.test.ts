@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sectionDirectionLeavingNode, sectionRadius } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
 import type { Vec2 } from "../geometry/point";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -44,7 +44,7 @@ describe("sectionDirectionLeavingNode", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expectDirection(
@@ -80,7 +80,7 @@ describe("sectionRadius", () => {
         kind: "arc",
         via: vec(10, 10),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(sectionRadius(network, arc)).toBeCloseTo(10);

@@ -10,8 +10,12 @@
 
 - **Node**: an exact position on the XZ ground plane. Knows which sections
   meet at it.
-- **Section**: an edge between two nodes, plus its centerline geometry and
-  its length along that centerline.
+- **Section**: an edge between two nodes, plus its centerline geometry, its
+  length along that centerline and its road profile.
+- **Road profile**: the road across its width — how wide it is, and how many
+  lanes run each way.
+  - Read-only → sections may share an instance: the pieces of a cut section
+    can keep the profile it had.
 - **Geometry**: how a section runs between its nodes: straight, or a
   circular arc.
 - Nodes and sections have stable ids, valid for the element's lifetime.

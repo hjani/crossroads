@@ -4,7 +4,7 @@ import { RoadNetwork } from "../network/RoadNetwork";
 import { roadwayOf, type Roadway } from "./roadway";
 import type { NodeId, Section } from "../network/types";
 import type { Vec2 } from "../geometry/point";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -61,7 +61,7 @@ describe("roadwayOf", () => {
     const { outline } = roadwayOf(network, road, setbacksOf(network, road));
 
     expect(outline.section).toBe(road.id);
-    expect(outline.widthMeters).toBe(TEST_ROAD_WIDTH_METERS);
+    expect(outline.widthMeters).toBe(TEST_ROAD_PROFILE.width);
   });
 
   it("comes out negative where its setbacks overlap", () => {
@@ -96,7 +96,7 @@ describe("roadwayOf", () => {
         kind: "arc",
         via: vec(10, 10),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     addStraight(network, arc.from, vec(-20, 20));
     const s = new Junction(network, arc.from).setbackOf(arc.id);

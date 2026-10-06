@@ -12,7 +12,7 @@ import { RoadNetwork } from "../network/RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 import type { NodeId } from "../network/types";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, profileOfWidth, TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -40,7 +40,7 @@ function isBuildable(network: RoadNetwork, plan: SectionPlan): boolean {
 
 /** Plans, checks and builds a straight section. */
 function build(network: RoadNetwork, from: Vec2, to: Vec2): void {
-  const plan = planSection(network, from, to, STRAIGHT, TEST_ROAD_WIDTH_METERS);
+  const plan = planSection(network, from, to, STRAIGHT, TEST_ROAD_PROFILE);
   assert(plan.buildable);
   assert(check(network, plan));
   applySectionPlan(network, plan);
@@ -50,7 +50,7 @@ function build(network: RoadNetwork, from: Vec2, to: Vec2): void {
 function isRefused(network: RoadNetwork, from: Vec2, to: Vec2): boolean {
   return !isBuildable(
     network,
-    planSection(network, from, to, STRAIGHT, TEST_ROAD_WIDTH_METERS),
+    planSection(network, from, to, STRAIGHT, TEST_ROAD_PROFILE),
   );
 }
 
@@ -70,7 +70,7 @@ describe("verifyClearance", () => {
       vec(-50, 0),
       vec(100, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -96,7 +96,7 @@ describe("verifyClearance", () => {
       short.from,
       vec(0, 50),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -112,7 +112,7 @@ describe("verifyClearance", () => {
       vec(-8, 0),
       vec(-8, -40),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -184,7 +184,7 @@ describe("verifyClearance", () => {
         kind: "arc",
         via: vec(6, 0),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -205,7 +205,7 @@ describe("verifyClearance", () => {
           kind: "arc",
           via: vec(0, z),
         },
-        TEST_ROAD_WIDTH_METERS,
+        TEST_ROAD_PROFILE,
       );
 
     expect(isBuildable(network, planBulgingTo(-7))).toBe(false);
@@ -223,7 +223,7 @@ describe("verifyClearance", () => {
         kind: "arc",
         via: vec(0, 7),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const planBulgingTo = (z: number): SectionPlan =>
       planSection(
@@ -234,7 +234,7 @@ describe("verifyClearance", () => {
           kind: "arc",
           via: vec(0, z),
         },
-        TEST_ROAD_WIDTH_METERS,
+        TEST_ROAD_PROFILE,
       );
 
     expect(isBuildable(network, planBulgingTo(0))).toBe(false);
@@ -261,11 +261,11 @@ describe("verifyClearance", () => {
     // circle no longer reaches the node. At 40° the junction is still some
     // 15 m across, well inside the size limit.
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(100, 0), STRAIGHT, 16);
+    network.addSection(vec(0, 0), vec(100, 0), STRAIGHT, profileOfWidth(16));
     const leavingAt = (degrees: number) => {
       const angle = (degrees * Math.PI) / 180;
       const end = vec(100 * Math.cos(angle), 100 * Math.sin(angle));
-      return planSection(network, vec(0, 0), end, STRAIGHT, 4);
+      return planSection(network, vec(0, 0), end, STRAIGHT, profileOfWidth(4));
     };
 
     expect(isBuildable(network, leavingAt(40))).toBe(false);
@@ -280,7 +280,7 @@ describe("verifyClearance", () => {
       vec(-20, 0),
       vec(40, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -327,7 +327,7 @@ describe("verifyClearance's violating parts", () => {
       vec(-50, 0),
       vec(87, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -348,7 +348,7 @@ describe("verifyClearance's violating parts", () => {
       vec(6, -20),
       vec(6, 20),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -371,7 +371,7 @@ describe("verifyClearance's violating parts", () => {
       vec(-60, 5),
       vec(60, 5),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -392,7 +392,7 @@ describe("verifyClearance's violating parts", () => {
         kind: "arc",
         via: vec(0, -7),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -412,7 +412,7 @@ describe("verifyClearance's violating parts", () => {
       vec(-50, 0),
       vec(100, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 

@@ -1,3 +1,4 @@
+import { ONE_LANE_PROFILE } from "../../src/input/SectionSettings";
 import { STRAIGHT } from "../../src/core/geometry/lineGeometry";
 import type { Vec2 } from "../../src/core/geometry/point";
 import { RoadLayout } from "../../src/core/layout/RoadLayout";
@@ -30,7 +31,6 @@ import {
  * turns away from it.
  */
 
-const WIDTH = 8;
 const ARC_RADIUS = 64;
 const DETAIL_METERS = 6;
 
@@ -47,13 +47,18 @@ export function junctionTessellation(): string {
     { x: 0, z: 0 },
     toward(12, 40),
     STRAIGHT,
-    WIDTH,
+    ONE_LANE_PROFILE,
   );
   const node = first.from;
-  network.addSection(node, toward(101, 40), STRAIGHT, WIDTH);
-  network.addSection(node, toward(192, 40), STRAIGHT, WIDTH);
+  network.addSection(node, toward(101, 40), STRAIGHT, ONE_LANE_PROFILE);
+  network.addSection(node, toward(192, 40), STRAIGHT, ONE_LANE_PROFILE);
   const arc = arcLeaving(93, ARC_RADIUS);
-  network.addSection(node, arc(45), { kind: "arc", via: arc(22.5) }, WIDTH);
+  network.addSection(
+    node,
+    arc(45),
+    { kind: "arc", via: arc(22.5) },
+    ONE_LANE_PROFILE,
+  );
 
   const layout = new RoadLayout(network);
   const outline = layout.junctionAt(node).outline();

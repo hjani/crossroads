@@ -3,7 +3,7 @@ import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { type NodeId, type SectionId } from "./types";
 import type { Vec2 } from "../geometry/point";
-import { TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -34,7 +34,7 @@ describe("section length", () => {
       vec(0, 0),
       vec(3, 4),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(section.length).toBeCloseTo(5);
@@ -51,7 +51,7 @@ describe("section length", () => {
         kind: "arc",
         via: vec(10, 10),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(section.length).toBeCloseTo(10 * Math.PI);
@@ -65,7 +65,7 @@ describe("removing a section", () => {
       vec(0, 0),
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     network.removeSection(section.id);
@@ -80,9 +80,9 @@ describe("removing a section", () => {
       vec(0, 0),
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
-    network.addSection(first.to, vec(20, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(first.to, vec(20, 0), STRAIGHT, TEST_ROAD_PROFILE);
 
     network.removeSection(first.id);
 
@@ -92,7 +92,7 @@ describe("removing a section", () => {
 
   it("ignores an unknown id", () => {
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT, TEST_ROAD_PROFILE);
     const version = network.version;
 
     network.removeSection(99 as SectionId);
@@ -109,7 +109,7 @@ describe("removing a node", () => {
       vec(0, 0),
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     network.removeNode(section.from);
@@ -124,12 +124,12 @@ describe("removing a node", () => {
       vec(0, 0),
       vec(5, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const center = first.to;
-    network.addSection(center, vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
-    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
-    network.addSection(center, vec(5, 5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(center, vec(10, 0), STRAIGHT, TEST_ROAD_PROFILE);
+    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_PROFILE);
+    network.addSection(center, vec(5, 5), STRAIGHT, TEST_ROAD_PROFILE);
 
     network.removeNode(center);
 
@@ -143,19 +143,19 @@ describe("removing a node", () => {
       vec(0, 0),
       vec(5, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const center = first.to;
     const east = network.addSection(
       center,
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
-    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_PROFILE);
 
     // Only the east arm's far end has a road of its own to hold it.
-    network.addSection(east.to, vec(20, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(east.to, vec(20, 0), STRAIGHT, TEST_ROAD_PROFILE);
 
     network.removeNode(center);
 
@@ -169,9 +169,9 @@ describe("removing a node", () => {
       vec(0, 0),
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
-    network.addSection(first.from, first.to, STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(first.from, first.to, STRAIGHT, TEST_ROAD_PROFILE);
 
     network.removeNode(first.from);
 
@@ -185,11 +185,11 @@ describe("removing a node", () => {
       vec(0, 0),
       vec(5, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const center = first.to;
-    network.addSection(center, vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
-    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(center, vec(10, 0), STRAIGHT, TEST_ROAD_PROFILE);
+    network.addSection(center, vec(5, -5), STRAIGHT, TEST_ROAD_PROFILE);
     const version = network.version;
 
     network.removeNode(center);
@@ -199,7 +199,7 @@ describe("removing a node", () => {
 
   it("ignores an unknown id", () => {
     const network = new RoadNetwork();
-    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT, TEST_ROAD_WIDTH_METERS);
+    network.addSection(vec(0, 0), vec(10, 0), STRAIGHT, TEST_ROAD_PROFILE);
     const version = network.version;
 
     network.removeNode(99 as NodeId);
@@ -216,14 +216,9 @@ describe("sectionsAt", () => {
       vec(0, 0),
       vec(10, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
-    network.addSection(
-      first.from,
-      vec(0, 10),
-      STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
-    );
+    network.addSection(first.from, vec(0, 10), STRAIGHT, TEST_ROAD_PROFILE);
 
     const answered = network.sectionsAt(first.from);
     network.removeSection(first.id);
@@ -252,7 +247,7 @@ describe("building an arc", () => {
         kind: "arc",
         via,
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(section.centerlineGeometry).toEqual({ kind: "arc", via });
@@ -268,7 +263,7 @@ describe("building an arc", () => {
         kind: "arc",
         via,
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(layout(network)).toEqual(["(1,0)-(0,1)"]);
@@ -286,7 +281,7 @@ describe("building an arc", () => {
           kind: "arc",
           via: vec(5, 0),
         },
-        TEST_ROAD_WIDTH_METERS,
+        TEST_ROAD_PROFILE,
       ),
     ).toThrow();
   });
@@ -303,7 +298,7 @@ describe("building an arc", () => {
           kind: "arc",
           via: vec(5, 0),
         },
-        TEST_ROAD_WIDTH_METERS,
+        TEST_ROAD_PROFILE,
       ),
     ).toThrow();
 

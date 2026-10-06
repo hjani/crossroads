@@ -1,3 +1,4 @@
+import { ONE_LANE_PROFILE } from "../../src/input/SectionSettings";
 import { arcPolyline } from "../../src/core/geometry/arc";
 import { STRAIGHT } from "../../src/core/geometry/lineGeometry";
 import type { Vec2 } from "../../src/core/geometry/point";
@@ -33,7 +34,6 @@ import {
  * leaving the node that way.
  */
 
-const WIDTH = 8;
 const RAY_METERS = 13;
 /** The tool's circles are in pixels; here at a size that reads. */
 const CAPTURE_METERS = 6;
@@ -50,9 +50,9 @@ export function smartArc(): string {
     { x: 0, z: 0 },
     toward(0, 30),
     STRAIGHT,
-    WIDTH,
+    ONE_LANE_PROFILE,
   ).from;
-  network.addSection(node, toward(125, 30), STRAIGHT, WIDTH);
+  network.addSection(node, toward(125, 30), STRAIGHT, ONE_LANE_PROFILE);
   const layout = new RoadLayout(network);
   const origin = { x: 0, z: 0 };
 

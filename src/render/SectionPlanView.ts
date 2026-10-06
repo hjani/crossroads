@@ -160,7 +160,7 @@ export class SectionPlanView {
         previous,
         position,
         piece.centerlineGeometry,
-        plan.width,
+        plan.profile.width,
       )) {
         coordinates.push(point.x, LAYER.SURFACE_DECORATION, point.z);
       }

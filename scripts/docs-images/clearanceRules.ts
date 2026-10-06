@@ -1,3 +1,4 @@
+import { ONE_LANE_PROFILE } from "../../src/input/SectionSettings";
 import { STRAIGHT } from "../../src/core/geometry/lineGeometry";
 import type { Vec2 } from "../../src/core/geometry/point";
 import { RoadLayout } from "../../src/core/layout/RoadLayout";
@@ -12,7 +13,6 @@ import { dimension, HIGHLIGHT, MUTED, panel, picture, squareAt } from "./svg";
  * roadway.
  */
 
-const WIDTH = 8;
 const TEXT_METERS = 1.6;
 
 export function clearanceRules(): string {
@@ -47,12 +47,17 @@ function betweenJunctions(): string {
     { x: -30, z: 0 },
     { x: -7, z: 0 },
     STRAIGHT,
-    WIDTH,
+    ONE_LANE_PROFILE,
   ).to;
-  const b = network.addSection(a, { x: 7, z: 0 }, STRAIGHT, WIDTH).to;
-  network.addSection(b, { x: 30, z: 0 }, STRAIGHT, WIDTH);
-  network.addSection(a, { x: -7, z: -30 }, STRAIGHT, WIDTH);
-  network.addSection(b, { x: 7, z: 30 }, STRAIGHT, WIDTH);
+  const b = network.addSection(
+    a,
+    { x: 7, z: 0 },
+    STRAIGHT,
+    ONE_LANE_PROFILE,
+  ).to;
+  network.addSection(b, { x: 30, z: 0 }, STRAIGHT, ONE_LANE_PROFILE);
+  network.addSection(a, { x: -7, z: -30 }, STRAIGHT, ONE_LANE_PROFILE);
+  network.addSection(b, { x: 7, z: 30 }, STRAIGHT, ONE_LANE_PROFILE);
   const layout = new RoadLayout(network);
   const [ra, rb] = [radiusAt(layout, a), radiusAt(layout, b)];
   const pa = network.getNode(a).position;
@@ -77,11 +82,16 @@ function junctionAndRoadway(): string {
     { x: -30, z: -8 },
     { x: 0, z: -8 },
     STRAIGHT,
-    WIDTH,
+    ONE_LANE_PROFILE,
   ).to;
-  network.addSection(n, { x: 30, z: -8 }, STRAIGHT, WIDTH);
-  network.addSection(n, { x: 0, z: -30 }, STRAIGHT, WIDTH);
-  network.addSection({ x: -30, z: 6 }, { x: 30, z: 6 }, STRAIGHT, WIDTH);
+  network.addSection(n, { x: 30, z: -8 }, STRAIGHT, ONE_LANE_PROFILE);
+  network.addSection(n, { x: 0, z: -30 }, STRAIGHT, ONE_LANE_PROFILE);
+  network.addSection(
+    { x: -30, z: 6 },
+    { x: 30, z: 6 },
+    STRAIGHT,
+    ONE_LANE_PROFILE,
+  );
   const layout = new RoadLayout(network);
   const p = network.getNode(n).position;
   return (
@@ -94,12 +104,17 @@ function junctionAndRoadway(): string {
 /** A straight road, and an arc bulging toward it. */
 function betweenRoadways(): string {
   const network = new RoadNetwork();
-  network.addSection({ x: -30, z: -6 }, { x: 30, z: -6 }, STRAIGHT, WIDTH);
+  network.addSection(
+    { x: -30, z: -6 },
+    { x: 30, z: -6 },
+    STRAIGHT,
+    ONE_LANE_PROFILE,
+  );
   network.addSection(
     { x: -24, z: 16 },
     { x: 24, z: 16 },
     { kind: "arc", via: { x: 0, z: 6 } },
-    WIDTH,
+    ONE_LANE_PROFILE,
   );
   const layout = new RoadLayout(network);
   return (

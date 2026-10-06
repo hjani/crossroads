@@ -63,8 +63,8 @@ export class StraightSectionTool implements Tool {
     private readonly settings: SectionSettings,
     private readonly settingsPanel: SectionSettingsPanel,
   ) {
-    this.startMark = new JunctionHighlight(settings.width);
-    this.landingMark = new JunctionHighlight(settings.width);
+    this.startMark = new JunctionHighlight(settings.profile.width);
+    this.landingMark = new JunctionHighlight(settings.profile.width);
     this.unsubscribeSettingsChanged = settingsPanel.onSettingsChanged(() =>
       this.afterSettingsChange(),
     );
@@ -158,8 +158,8 @@ export class StraightSectionTool implements Tool {
    * the aim stays as it was.
    */
   afterSettingsChange(): void {
-    this.startMark.setRoadWidth(this.settings.width);
-    this.landingMark.setRoadWidth(this.settings.width);
+    this.startMark.setRoadWidth(this.settings.profile.width);
+    this.landingMark.setRoadWidth(this.settings.profile.width);
     this.redraw();
   }
 
@@ -227,7 +227,7 @@ export class StraightSectionTool implements Tool {
       endpointFrom(this.pending),
       endpointFrom(end),
       STRAIGHT,
-      this.settings.width,
+      this.settings.profile,
     );
     return plan.sectionPlan.pieces.length === 0 ? null : plan;
   }

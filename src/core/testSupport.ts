@@ -1,15 +1,26 @@
 import { STRAIGHT } from "./geometry/lineGeometry";
 import type { Endpoint, RoadNetwork } from "./network/RoadNetwork";
-import type { Section } from "./network/types";
+import type { RoadProfile, Section } from "./network/types";
 
-/** How wide the tests build a road, in meters, unless a test says otherwise. */
-export const TEST_ROAD_WIDTH_METERS = 8;
+/** The road the tests build, unless a test says otherwise. */
+export const TEST_ROAD_PROFILE: RoadProfile = {
+  width: 8,
+  lanesPerDirection: 1,
+};
 
-/** Adds a straight section, `TEST_ROAD_WIDTH_METERS` wide. */
+/**
+ * `TEST_ROAD_PROFILE`, `width` meters wide: for tests where only the width
+ * matters.
+ */
+export function profileOfWidth(width: number): RoadProfile {
+  return { ...TEST_ROAD_PROFILE, width };
+}
+
+/** Adds a straight section with `TEST_ROAD_PROFILE`. */
 export function addStraight(
   network: RoadNetwork,
   from: Endpoint,
   to: Endpoint,
 ): Section {
-  return network.addSection(from, to, STRAIGHT, TEST_ROAD_WIDTH_METERS);
+  return network.addSection(from, to, STRAIGHT, TEST_ROAD_PROFILE);
 }

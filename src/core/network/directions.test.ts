@@ -11,7 +11,7 @@ import { distance, type Vec2 } from "../geometry/point";
 import { RoadNetwork } from "./RoadNetwork";
 import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
 import { type NodeId, type SectionId } from "./types";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -80,7 +80,7 @@ describe("continuingDirectionsAt", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expectDirections(continuingDirectionsAt(network, section.to), [vec(0, -1)]);
@@ -142,7 +142,7 @@ describe("bisectorDirectionsAt", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     addStraight(network, arc.from, vec(-10, 0));
 
@@ -185,7 +185,7 @@ describe("perpendicularDirectionsAt", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expectDirectionsInAnyOrder(perpendicularDirectionsAt(network, arc.from), [
@@ -239,7 +239,7 @@ describe("midSectionDirectionsAt", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     const half = 0.5;
     const root3Half = Math.sqrt(3) / 2;

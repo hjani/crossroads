@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { nearestPointOnSection, nearestSection } from "./queries";
 import { RoadNetwork } from "./RoadNetwork";
 import type { Vec2 } from "../geometry/point";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -48,7 +48,7 @@ describe("nearestSection", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     expect(nearestSection(network, vec(5, 6), 2)?.id).toBe(section.id);
@@ -96,7 +96,7 @@ describe("nearestPointOnSection", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     const point = nearestPointOnSection(network, section, vec(13, 6));
@@ -113,7 +113,7 @@ describe("nearestPointOnSection", () => {
         kind: "arc",
         via: vec(5, 5),
       },
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
 
     // Below the chord, where the half circle never runs.

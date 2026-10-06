@@ -5,7 +5,7 @@ import { RoadNetwork } from "../network/RoadNetwork";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 import type { NodeId } from "../network/types";
-import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
+import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
   return { x, z };
@@ -20,7 +20,7 @@ describe("speculateLayout", () => {
       vec(-50, 0),
       vec(50, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -58,7 +58,7 @@ describe("speculateLayout", () => {
       vec(-50, 0),
       vec(50, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -75,7 +75,7 @@ describe("speculateLayout", () => {
       existing.to,
       vec(50, 50),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
@@ -92,7 +92,7 @@ describe("speculateLayout", () => {
       vec(100, 0),
       vec(200, 0),
       STRAIGHT,
-      TEST_ROAD_WIDTH_METERS,
+      TEST_ROAD_PROFILE,
     );
     assert(plan.buildable);
 
