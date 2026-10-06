@@ -1,8 +1,11 @@
+import { arcCircle, circleThrough, nearestPointOnArc } from "../geometry/arc";
 import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
 import {
   distance,
   isSamePoint,
+  lerp,
   SAME_POINT_METERS,
+  unitDirection,
   type Vec2,
 } from "../geometry/point";
 import type { RoadNetwork } from "../network/RoadNetwork";
@@ -12,8 +15,11 @@ import {
   edgeCrossings,
   edgeOf,
   edgePointAt,
+  isWithinEdge,
   legsAt,
+  nearestOnEdge,
   setbackThrough,
+  type Edge,
   type Leg,
 } from "./junctionLeg";
 import type { JunctionOutline, OutlineEdgeKind, OutlinePiece } from "./outline";
@@ -27,6 +33,11 @@ interface Gap {
   readonly join: GapJoin;
   /** How far back it sets each of its two legs, in meters. */
   readonly setbacks: { readonly first: number; readonly second: number };
+  /**
+   * Whether its join keeps the node inside the junction. Only a round join
+   * between two widths can leave it out (`slidRound`).
+   */
+  readonly coversNode: boolean;
 }
 
 /** How a junction's outline crosses a gap. */
@@ -37,18 +48,23 @@ type GapJoin =
    */
   | { readonly kind: "corner"; readonly point: Vec2 }
   /**
-   * Round the circle about the node whose radius is the wider road's `w/2`,
-   * from `leaving` on the first leg's edge through `via` to `entering` on
-   * the second's (`roundGap`).
+   * Off the first leg's edge at `leaving`, then along `path` to its last
+   * point, where it meets the second leg's edge (`roundGap`). An empty path
+   * meets it at `leaving` itself.
    */
   | {
       readonly kind: "round";
       readonly leaving: Vec2;
-      readonly via: Vec2;
-      readonly entering: Vec2;
+      readonly path: readonly PathPiece[];
     }
   /** Straight from one roadway's end to the next. */
   | { readonly kind: "straight" };
+
+/** A point on a round join's path, and how the path arrives there. */
+interface PathPiece {
+  readonly point: Vec2;
+  readonly geometry: LineGeometry;
+}
 
 /**
  * The junction at a node: where the roads meeting there stop being roadways,
@@ -106,9 +122,8 @@ export class Junction {
    *
    * - `corner`: back along this leg's edge to the corner point, then out
    *   along the next leg's edge to that leg's right edge point
-   * - `round`: back along this leg's edge to where it meets the circle about
-   *   the node (`roundJoinEnd`), round that circle to where the next leg's
-   *   edge meets it, then out along that edge
+   * - `round`: back along this leg's edge to where the join leaves it, along
+   *   the join's path, then out along the next leg's edge
    * - `straight`: straight across to the next leg's right edge point
    *
    * Pieces of no length are left out, so a leg whose edge point already is
@@ -132,24 +147,54 @@ export class Junction {
   }
 
   /**
-   * The farthest outline point from the node. Let `N` be the node, `X` a
-   * piece's point:
+   * Whether the node lies inside the junction (`docs/road-layout.md`,
+   * Joins). The outline is drawn either way; a network whose junction leaves
+   * its node out is the clearing step's to refuse.
+   */
+  coversNode(): boolean {
+    return this.gaps.every((gap) => gap.coversNode);
+  }
+
+  /**
+   * The farthest outline point from the node. Let `N` be the node:
    *
-   *     R = max |NX|
+   * - straight piece: the distance from `N` is convex along a segment →
+   *   greatest at an end
+   * - arc piece, on a circle about `O`: the distance from `N` is greatest at
+   *   the circle's point straight out from `O` away from `N`, and falls off
+   *   either way round from it → greatest there if the arc reaches it, else
+   *   at an end. Toward the mirror of `N` through `O` is that way out, and
+   *   `nearestPointOnArc` gives that point, or an end where the arc stops
+   *   short of it:
    *
-   * - straight piece: `|NX|` is convex along a segment → greatest at an end
-   * - round join: on a circle about `N` → no farther than its ends
-   * - arc along a leg's edge: farther inside than at its ends only if it
-   *   runs past the far side of its circle → a setback over half that
-   *   circle, not accounted for
+   *       far = nearestPointOnArc(2O − N)
+   *
+   *   → the pieces' own points cover the ends; only `far` is new
    * - `R ≥ w/2`: each leg's cut is on the ring, its ends `√(s² + (w/2)²)`
    *   from `N`
    */
   private buildBoundingRadius(): number {
+    const { pieces } = this.junctionOutline;
     return Math.max(
-      ...this.junctionOutline.pieces.map((piece) =>
-        distance(this.at, piece.point),
-      ),
+      ...pieces.map((piece, index) => {
+        const end = distance(this.at, piece.point);
+        const geometry = piece.incomingGeometry;
+        if (geometry.kind !== "arc") {
+          return end;
+        }
+
+        const from = pieces[(index + pieces.length - 1) % pieces.length].point;
+        const circle = arcCircle(from, piece.point, geometry.via);
+        if (circle === null) {
+          return end;
+        }
+        const mirror = {
+          x: 2 * circle.center.x - this.at.x,
+          z: 2 * circle.center.z - this.at.z,
+        };
+        const far = nearestPointOnArc(mirror, from, piece.point, geometry.via);
+        return Math.max(end, distance(this.at, far));
+      }),
     );
   }
 
@@ -190,12 +235,14 @@ export class Junction {
           break;
 
         case "round": {
-          const { leaving, via, entering } = join;
+          const { leaving, path } = join;
           add(leaving, alongEdge(leg, 1, previous, leaving), "curb");
-          add(entering, { kind: "arc", via }, "curb");
+          for (const { point, geometry } of path) {
+            add(point, geometry, "curb");
+          }
           add(
             nextEdgePoint,
-            alongEdge(nextLeg, -1, entering, nextEdgePoint),
+            alongEdge(nextLeg, -1, previous, nextEdgePoint),
             "curb",
           );
           break;
@@ -236,6 +283,8 @@ const HALF_TURN_TOLERANCE_RADIANS = 1e-9;
 const UNJOINED_GAP: Gap = {
   join: { kind: "straight" },
   setbacks: { first: 0, second: 0 },
+  // Already an error, logged with its reason where it arose.
+  coversNode: true,
 };
 
 /** The gap after each leg, in the same order as the legs. */
@@ -257,10 +306,31 @@ function gapsAround(node: NodeId, at: Vec2, legs: readonly Leg[]): Gap[] {
 }
 
 /**
- * A gap joined round (`docs/road-layout.md`, Junction): along the circle
- * about the node whose radius `r` is the wider road's `w/2`, between the two
- * ends `roundJoinEnd` finds. Null where that arc would run backwards — a gap
- * only a corner can join.
+ * A gap joined round (`docs/road-layout.md`, Joins): round the circle about
+ * the node where the widths are equal (`roundAboutNode`), round a circle slid
+ * along the wider road where they differ (`slidRound`). Null where only a
+ * corner can join the gap.
+ *
+ * Widths count as equal within `SAME_POINT_METERS`: curbs that close are the
+ * same place.
+ */
+function roundGap(
+  node: NodeId,
+  at: Vec2,
+  first: Leg,
+  second: Leg,
+  gap: number,
+): Gap | null {
+  return Math.abs(first.halfWidth - second.halfWidth) <= SAME_POINT_METERS
+    ? roundAboutNode(node, at, first, second, gap)
+    : slidRound(node, at, first, second, gap);
+}
+
+/**
+ * A gap between two equal widths joined round: along the circle about the
+ * node whose radius `r` is the roads' `w/2`, between the two ends
+ * `roundJoinEnd` finds. Null where that arc would run backwards — a gap only a
+ * corner can join.
  *
  * Let `N` be the node, `α₁` the first leg's angle, `ψ` the gap, and `φ₁`,
  * `φ₂` how far each end lies round from its own leg's direction, toward the
@@ -276,18 +346,12 @@ function gapsAround(node: NodeId, at: Vec2, legs: readonly Leg[]): Gap[] {
  *       m = α₁ + (φ₁ + ψ − φ₂)/2
  *       via = N + r·(cos m, sin m)
  *
- * What follows:
- *
- * - equal widths: both ends touch the circle square to their roads →
- *   `φ₁ = φ₂ = π/2` → span `ψ − π`, and `m` is the gap's bisector
- *   (`docs/ideas/junction-polygon.md`, "Round"). `ψ = π`: no arc. `ψ = 2π`
- *   (a dead end): the half circle capping the road.
- * - no jump from a corner: a gap turns from corner to round where `P`
- *   reaches `N` on the wider road. `P` is then that road's edge point at no
- *   setback, which lies on the circle → it is where the narrower road's edge
- *   crosses the circle, `X` → both joins end that road through one point.
+ * What follows: both ends touch the circle square to their roads →
+ * `φ₁ = φ₂ = π/2` → span `ψ − π`, and `m` is the gap's bisector
+ * (`docs/ideas/junction-polygon.md`, "Round"). `ψ = π`: no arc. `ψ = 2π` (a
+ * dead end): the half circle capping the road.
  */
-function roundGap(
+function roundAboutNode(
   node: NodeId,
   at: Vec2,
   first: Leg,
@@ -308,17 +372,293 @@ function roundGap(
   }
 
   const middle = first.angle + (leavingTurn + gap - enteringTurn) / 2;
+  const via = {
+    x: at.x + radius * Math.cos(middle),
+    z: at.z + radius * Math.sin(middle),
+  };
   return {
     join: {
       kind: "round",
       leaving: leaving.point,
-      via: {
-        x: at.x + radius * Math.cos(middle),
-        z: at.z + radius * Math.sin(middle),
-      },
-      entering: entering.point,
+      path: [{ point: entering.point, geometry: { kind: "arc", via } }],
     },
     setbacks: { first: leaving.setback, second: entering.setback },
+    coversNode: true,
+  };
+}
+
+/**
+ * A gap between two widths joined round (`docs/road-layout.md`, Joins): a
+ * circle of the wider road's half-width, slid along that road's centerline
+ * away from the node until it touches a line `ℓ` — the narrower road's curb,
+ * or the `T–X` piece (`touchedLine`). Null where it would have to slide
+ * behind the node: a gap only a corner can join.
+ *
+ * Let `N` be the node, `r` the wider road's half-width, `T` its edge point
+ * beside `N` on the gap's side, `X` where the narrower road's curb crosses
+ * the circle about `N` with radius `r` (`roundJoinEnd`), and `O` the slid
+ * circle's center:
+ *
+ * - `O` is `r` from the wider road's curb → on that road's centerline
+ * - `O` is `r` from `ℓ`, on the road's side → on `ℓ` shifted `r` toward the
+ *   road
+ * - so `O` is where the two cross, the first crossing ahead of `N`, and the
+ *   slide `s` is how far along the wider road that is:
+ *
+ *       O = centerline ∩ (ℓ shifted by r)
+ *       s = setbackThrough(O)
+ *
+ * - the circle touches the wider road's curb square across from `O`, at the
+ *   edge point at `s`, and `ℓ` at the point of `ℓ` nearest `O`
+ *
+ * What follows:
+ *
+ * - with two straights, `W` and `w` the widths, `β` the gap less a half turn
+ *   and `β₁ = arccos(w/W)`, this comes out as
+ *
+ *       s = r·tan((β₁ + β)/4)        touching the T–X piece
+ *       s = (W − w)/(2·sin β)       touching the curb
+ *
+ *   Neither is computed: the one crossing gives both, on arc legs too.
+ * - as `X` → `T`, where a corner turns round, `s` → 0 → no jump from the
+ *   corner
+ * - where `ℓ` turns from the `T–X` piece to the curb, the curb runs through
+ *   `T`, so the swing is nothing and the two are one line → no jump
+ * - the narrower road ends through `X`, or through where the circle touches
+ *   its curb if that is further out → its roadway's end doesn't jump there
+ *   either
+ * - the node lies inside the junction exactly when it lies inside the
+ *   circle, `|O − N| ≤ r` (`coversNode`). With two straights it falls out
+ *   where `s > r`: bends sharper than `180° − arcsin(1 − w/W)`. The outline
+ *   is drawn all the same; the clearing step refuses it
+ */
+function slidRound(
+  node: NodeId,
+  at: Vec2,
+  first: Leg,
+  second: Leg,
+  gap: number,
+): Gap | null {
+  // The gap lies on the first leg's +1 side and on the second's −1 side.
+  const widerFirst = first.halfWidth > second.halfWidth;
+  const [wider, widerSide, narrower, narrowerSide] = widerFirst
+    ? [first, 1, second, -1]
+    : [second, -1, first, 1];
+  const radius = wider.halfWidth;
+
+  const x = roundJoinEnd(node, at, narrower, narrowerSide, radius);
+  const centerline = edgeOf(at, wider, widerSide, 0);
+  if (x === null || centerline === null) {
+    return UNJOINED_GAP;
+  }
+  const t = edgePointAt(at, wider, widerSide, 0);
+  const onCurb = gap > Math.PI && isWithinEdge(at, narrower, narrowerSide, t);
+
+  const ordered = (leaving: Vec2, path: readonly PathPiece[]): GapJoin =>
+    widerFirst
+      ? { kind: "round", leaving, path }
+      : { kind: "round", ...reversed(leaving, path) };
+  const setbacks = (slide: number, narrowerSetback: number) =>
+    widerFirst
+      ? { first: slide, second: narrowerSetback }
+      : { first: narrowerSetback, second: slide };
+
+  if (!onCurb && isSamePoint(t, x.point)) {
+    // X has reached T, where a corner turns round: nothing to slide into.
+    return {
+      join: ordered(t, []),
+      setbacks: setbacks(0, x.setback),
+      coversNode: true,
+    };
+  }
+
+  const touched = touchedLine(node, at, narrower, narrowerSide, radius, {
+    t,
+    x: x.point,
+    onCurb,
+  });
+  if (touched === null) {
+    return UNJOINED_GAP;
+  }
+
+  const ahead = edgeCrossings(centerline, touched.shifted)
+    .map((point) => ({ point, slide: setbackThrough(at, wider, point) }))
+    .filter((center) => center.slide >= -SAME_POINT_METERS);
+  if (ahead.length === 0) {
+    return null;
+  }
+  const center = ahead.reduce((best, crossing) =>
+    crossing.slide < best.slide ? crossing : best,
+  );
+  const slide = Math.max(0, center.slide);
+
+  const onWider = edgePointAt(at, wider, widerSide, slide);
+  const onLine = nearestOnEdge(touched.line, center.point);
+  const round = along(
+    { kind: "circle", circle: { center: center.point, radius } },
+    onWider,
+    onLine,
+  );
+  const coversNode = distance(at, center.point) <= radius + SAME_POINT_METERS;
+
+  if (touched.isCurb) {
+    const touching = setbackThrough(at, narrower, onLine);
+    return {
+      join: ordered(onWider, [{ point: onLine, geometry: round }]),
+      setbacks: setbacks(slide, Math.max(x.setback, touching)),
+      coversNode,
+    };
+  }
+  return {
+    join: ordered(onWider, [
+      { point: onLine, geometry: round },
+      { point: x.point, geometry: along(touched.line, onLine, x.point) },
+    ]),
+    setbacks: setbacks(slide, x.setback),
+    coversNode,
+  };
+}
+
+/**
+ * The line a round join's slid circle touches (`slidRound`), and that line
+ * shifted `r` toward the road, where the circle's center lies.
+ */
+interface TouchedLine {
+  /** What the circle touches, and the outline runs along. */
+  readonly line: Edge;
+  /** `line` moved `r` toward the road. */
+  readonly shifted: Edge;
+  /** Whether `line` is the narrower road's own curb. */
+  readonly isCurb: boolean;
+}
+
+/**
+ * The line a round join's slid circle touches, as `docs/road-layout.md`
+ * (Joins) picks it, with `r` the wider road's half-width, `T` its edge point
+ * beside the node and `X` the narrower curb's on the circle about the node.
+ * Null, with the error logged, for an arc too tight to have that line.
+ *
+ * Let `N` be the node, `w/2` the narrower road's half-width, `σ` its `side`,
+ * and for an arc `C` its center, `ρ` its curb's radius and `τ` the way it
+ * turns:
+ *
+ * - `onCurb` (a gap over a half turn, `T` no farther toward the gap than the
+ *   narrower curb carried on past `N`, `isWithinEdge`): that road's curb.
+ *   Moved `r` toward the road, it lies `w/2 − r` off the centerline, on the
+ *   same side → `edgeOf` at that offset
+ *   - one-sided on purpose: past a bend of `180° − β₁` on two straights, `T`
+ *     is no longer on the narrower road at all, but beyond its far curb —
+ *     and the curb has swung past `T`, not back
+ * - otherwise the `T–X` piece, the curb swung about `X` until it runs
+ *   through `T`:
+ *   - straight: the line through `T` and `X`, shifted toward `N`. `N` is the
+ *     center of the circle both lie on, and the piece spans under half of it
+ *     → `N` is never on the line, and is on the road's side of it
+ *   - arc: the circle of radius `ρ` through `T` and `X` (`circleThrough`)
+ *     with its center on the same side of `T–X` as `C`. Moved toward the
+ *     road the way the curb's own radius moves toward the centerline
+ *     (`R − σ·τ·w/2` in `edgeOf`):
+ *
+ *         ρ' = ρ + σ·τ·r
+ */
+function touchedLine(
+  node: NodeId,
+  at: Vec2,
+  narrower: Leg,
+  side: number,
+  radius: number,
+  { t, x, onCurb }: { t: Vec2; x: Vec2; onCurb: boolean },
+): TouchedLine | null {
+  if (onCurb) {
+    const line = edgeOf(at, narrower, side);
+    const shifted = edgeOf(at, narrower, side, narrower.halfWidth - radius);
+    if (line === null || shifted === null) {
+      logBendsTooTightly(node, narrower);
+      return null;
+    }
+    return { line, shifted, isCurb: true };
+  }
+
+  if (narrower.arc === null) {
+    const direction = unitDirection(t, x);
+    // The normal toward N: (−d.z, d.x), turned round if N is the other way.
+    const toward =
+      Math.sign((at.z - t.z) * direction.x - (at.x - t.x) * direction.z) || 1;
+    return {
+      line: { kind: "line", through: t, direction },
+      shifted: {
+        kind: "line",
+        through: {
+          x: t.x - toward * radius * direction.z,
+          z: t.z + toward * radius * direction.x,
+        },
+        direction,
+      },
+      isCurb: false,
+    };
+  }
+
+  const curb = edgeOf(at, narrower, side);
+  if (curb === null || curb.kind !== "circle") {
+    logBendsTooTightly(node, narrower);
+    return null;
+  }
+  const { center, radius: curbRadius } = curb.circle;
+  // The side of T–X the curb's center lies on: +1 counterclockwise of it.
+  const centerSide =
+    Math.sign(
+      (x.x - t.x) * (center.z - t.z) - (x.z - t.z) * (center.x - t.x),
+    ) || 1;
+  const swung = circleThrough(t, x, curbRadius, centerSide);
+  const shiftedRadius = curbRadius + side * narrower.arc.turn * radius;
+  if (swung === null || shiftedRadius <= 0) {
+    logBendsTooTightly(node, narrower);
+    return null;
+  }
+  return {
+    line: { kind: "circle", circle: swung },
+    shifted: {
+      kind: "circle",
+      circle: { center: swung.center, radius: shiftedRadius },
+    },
+    isCurb: false,
+  };
+}
+
+/**
+ * How a round join runs along `line` from `from` to `to`: straight, or the
+ * shorter way round its circle, through the point of it halfway between —
+ * as `alongEdge` does for a leg's own edge.
+ */
+function along(line: Edge, from: Vec2, to: Vec2): LineGeometry {
+  if (line.kind === "line") {
+    return STRAIGHT;
+  }
+  const { center, radius } = line.circle;
+  const out = unitDirection(center, lerp(from, to, 0.5));
+  return {
+    kind: "arc",
+    via: { x: center.x + radius * out.x, z: center.z + radius * out.z },
+  };
+}
+
+/**
+ * A round join's path walked the other way: from its last point back to
+ * `leaving`. Each piece's geometry still joins the same two points, so only
+ * which point it arrives at changes.
+ */
+function reversed(
+  leaving: Vec2,
+  path: readonly PathPiece[],
+): { leaving: Vec2; path: PathPiece[] } {
+  const points = [leaving, ...path.map((piece) => piece.point)];
+  const last = points.length - 1;
+  return {
+    leaving: points[last],
+    path: path.map((_, index) => ({
+      point: points[last - 1 - index],
+      geometry: path[last - 1 - index].geometry,
+    })),
   };
 }
 
@@ -408,7 +748,7 @@ function turnFrom(at: Vec2, leg: Leg, side: number, point: Vec2): number {
 function logBendsTooTightly(node: NodeId, leg: Leg): void {
   console.error(
     `Node ${node}: section ${leg.section.id} bends too tightly for a ` +
-      `${leg.section.width} m road (radius ${leg.arc?.circle.radius.toFixed(2)} m); ` +
+      `${leg.section.profile.width} m road (radius ${leg.arc?.circle.radius.toFixed(2)} m); ` +
       `not set back`,
   );
 }
@@ -529,5 +869,6 @@ function gapBetween(
       first: Math.max(0, nearest.first),
       second: Math.max(0, nearest.second),
     },
+    coversNode: true,
   };
 }

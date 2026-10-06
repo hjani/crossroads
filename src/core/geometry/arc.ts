@@ -83,6 +83,55 @@ export function isArcValid(from: Vec2, to: Vec2, via: Vec2): boolean {
 }
 
 /**
+ * The circle of radius `radius` through `a` and `b` whose center lies on
+ * `side` of the chord from `a` to `b` (+1 counterclockwise of it, −1
+ * clockwise), or null where there is none.
+ *
+ * Let `d = b − a`, `m` the chord's midpoint, `n = (−d.z, d.x)/|d|` the unit
+ * normal on its counterclockwise side, `r = radius` and `σ = side`.
+ *
+ * - The center is `r` from both points → on the chord's perpendicular
+ *   bisector, the line through `m` along `n`.
+ * - Pythagoras in the right triangle center, `m`, `a`, whose side along the
+ *   chord is `|d|/2`:
+ *
+ *       h = √(r² − (|d|/2)²)
+ *
+ *       center = m + σ·h·n
+ *
+ * Returns null when:
+ * - `|d|/2 > r`: the points are more than a diameter apart.
+ * - `a = b`: every circle of radius `r` through the point would do.
+ *
+ * `|d|/2 = r` puts the center at `m`, on neither side, and `σ` no longer
+ * matters.
+ */
+export function circleThrough(
+  a: Vec2,
+  b: Vec2,
+  radius: number,
+  side: number,
+): ArcCircle | null {
+  const chordX = b.x - a.x;
+  const chordZ = b.z - a.z;
+  const chord = Math.hypot(chordX, chordZ);
+  const squaredOff = radius * radius - (chord * chord) / 4;
+  if (chord === 0 || squaredOff < 0) {
+    return null;
+  }
+
+  // σ·h·n, with n = (−d.z, d.x)/|d|
+  const step = (side * Math.sqrt(squaredOff)) / chord;
+  return {
+    center: {
+      x: a.x + chordX / 2 - chordZ * step,
+      z: a.z + chordZ / 2 + chordX * step,
+    },
+    radius,
+  };
+}
+
+/**
  * Finds the arc that starts at `from`, leaves it in `direction`, and ends at
  * `to`. Returns the arc's midpoint, to be used as its `via`.
  *

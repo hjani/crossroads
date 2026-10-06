@@ -255,6 +255,23 @@ describe("verifyClearance", () => {
     expect(isRefused(network, vec(0, 0), leavingAt(25))).toBe(false);
   });
 
+  it("refuses a junction leaving its node out", () => {
+    // A 4 m road leaving the end of a 16 m one: past a bend of
+    // 180° − arcsin(1 − w/W) = 131.4°, a gap under 48.6°, the round join's
+    // circle no longer reaches the node. At 40° the junction is still some
+    // 15 m across, well inside the size limit.
+    const network = new RoadNetwork();
+    network.addSection(vec(0, 0), vec(100, 0), STRAIGHT, 16);
+    const leavingAt = (degrees: number) => {
+      const angle = (degrees * Math.PI) / 180;
+      const end = vec(100 * Math.cos(angle), 100 * Math.sin(angle));
+      return planSection(network, vec(0, 0), end, STRAIGHT, 4);
+    };
+
+    expect(isBuildable(network, leavingAt(40))).toBe(false);
+    expect(isBuildable(network, leavingAt(55))).toBe(true);
+  });
+
   it("leaves the real network as it was, and its plan still applicable", () => {
     const network = twoRoads(20);
     const version = network.version;

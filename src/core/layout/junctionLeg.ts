@@ -94,42 +94,54 @@ export function legsAt(network: RoadNetwork, node: NodeId): Leg[] {
  * A leg's edge on its `side` (+1 counterclockwise, −1 clockwise), or null for
  * the inner edge of an arc too tight to have one. `at` is the node's position.
  *
- * Let `N = at`, `w/2` the leg's half-width, `σ = side`, `d` the leg's
- * direction, and for an arc `R` its radius and `τ` the way it turns:
+ * `offset` puts the line elsewhere than the curb: 0 is the centerline, and a
+ * negative offset lies across it, on the other side.
  *
- * - straight: the line through `N + σ·(w/2)·(−d.z, d.x)`, along `d`
+ * Let `N = at`, `h = offset` (the half-width `w/2` by default), `σ = side`,
+ * `d` the leg's direction, and for an arc `R` its radius and `τ` the way it
+ * turns:
+ *
+ * - straight: the line through `N + σ·h·(−d.z, d.x)`, along `d`
  * - arc: the circle around the arc's center with radius
  *
- *       R − σ·τ·w/2
+ *       R − σ·τ·h
  *
  *   → the inner edge on the side the arc turns to; none where that is ≤ 0
  */
-export function edgeOf(at: Vec2, leg: Leg, side: number): Edge | null {
-  const { direction, arc, halfWidth } = leg;
+export function edgeOf(
+  at: Vec2,
+  leg: Leg,
+  side: number,
+  offset = leg.halfWidth,
+): Edge | null {
+  const { direction, arc } = leg;
   if (arc === null) {
     return {
       kind: "line",
       through: {
-        x: at.x - side * halfWidth * direction.z,
-        z: at.z + side * halfWidth * direction.x,
+        x: at.x - side * offset * direction.z,
+        z: at.z + side * offset * direction.x,
       },
       direction,
     };
   }
 
-  const radius = edgeRadiusOf(arc, side, halfWidth);
+  const radius = edgeRadiusOf(arc, side, offset);
   return radius > 0
     ? { kind: "circle", circle: { center: arc.circle.center, radius } }
     : null;
 }
 
-/** The radius of an arc leg's `side` edge: `R − σ·τ·w/2`. */
+/**
+ * The radius of the circle `offset` off an arc leg's centerline on its
+ * `side`: `R − σ·τ·h`, the edge at `h = w/2`.
+ */
 function edgeRadiusOf(
   arc: NonNullable<Leg["arc"]>,
   side: number,
-  halfWidth: number,
+  offset: number,
 ): number {
-  return arc.circle.radius - side * arc.turn * halfWidth;
+  return arc.circle.radius - side * arc.turn * offset;
 }
 
 /**
@@ -254,6 +266,68 @@ export function edgeCrossings(a: Edge, b: Edge): Vec2[] {
   };
   const crossing = lineCrossing(a.through, aNext, b.through, bNext);
   return crossing === null ? [] : [crossing.point];
+}
+
+/**
+ * The point of a whole edge nearest `point` — where a circle about `point`
+ * touches the edge, if one does.
+ *
+ * - line through `A` along the unit `d`: the foot of the perpendicular,
+ *   `A + ((P − A)·d)·d`
+ * - circle about `O` with radius `r`: straight out from `O` toward `P`,
+ *   `O + r·unitDirection(O, P)`
+ */
+export function nearestOnEdge(edge: Edge, point: Vec2): Vec2 {
+  if (edge.kind === "line") {
+    const { through, direction } = edge;
+    const along =
+      (point.x - through.x) * direction.x + (point.z - through.z) * direction.z;
+    return {
+      x: through.x + along * direction.x,
+      z: through.z + along * direction.z,
+    };
+  }
+
+  const { center, radius } = edge.circle;
+  const out = unitDirection(center, point);
+  return { x: center.x + radius * out.x, z: center.z + radius * out.z };
+}
+
+/**
+ * Whether `point` lies no farther toward a leg's `side` (+1 counterclockwise,
+ * −1 clockwise) than its edge there, the edge carried on past both ends of
+ * the section: on that edge, or anywhere on the road's side of it, past the
+ * centerline and the other edge included. `at` is the node's position.
+ *
+ * How far `point` lies off the centerline toward `side`, with `N = at`,
+ * `P = point`, `σ = side`, `d` the leg's direction, and for an arc `O` its
+ * center, `R` its radius and `τ` the way it turns:
+ *
+ * - straight: along the normal `σ·(−d.z, d.x)`:
+ *
+ *       h = σ·(d × (P − N))
+ *
+ * - arc: toward `σ` the radius shrinks by `σ·τ` per meter (the edge at
+ *   `R − σ·τ·w/2`, `edgeOf`):
+ *
+ *       h = σ·τ·(R − |P − O|)
+ *
+ * - no farther than the edge: `h ≤ w/2`
+ */
+export function isWithinEdge(
+  at: Vec2,
+  leg: Leg,
+  side: number,
+  point: Vec2,
+): boolean {
+  const { direction, arc, halfWidth } = leg;
+  const off =
+    arc === null
+      ? side * (direction.x * (point.z - at.z) - direction.z * (point.x - at.x))
+      : side *
+        arc.turn *
+        (arc.circle.radius - distance(arc.circle.center, point));
+  return off <= halfWidth;
 }
 
 /**

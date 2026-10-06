@@ -77,8 +77,11 @@ export function verifyClearance(
     }
   }
   for (const id of changedNodes) {
-    const radius = speculativeLayout.junctionAt(id).boundingRadius();
-    if (radius > MAX_JUNCTION_RADIUS_METERS) {
+    const junction = speculativeLayout.junctionAt(id);
+    if (
+      junction.boundingRadius() > MAX_JUNCTION_RADIUS_METERS ||
+      !junction.coversNode()
+    ) {
       violatingNodes.add(id);
     }
   }

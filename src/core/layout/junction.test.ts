@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
+import { pointOnArc } from "../geometry/arc";
 import { STRAIGHT } from "../geometry/lineGeometry";
 import { type SectionId } from "../network/types";
-import { distance, type Vec2 } from "../geometry/point";
+import { distance, SAME_POINT_METERS, type Vec2 } from "../geometry/point";
+import { nearestPointOnSegment } from "../geometry/segment";
 import { addStraight, TEST_ROAD_WIDTH_METERS } from "../testSupport";
 
 function vec(x: number, z: number): Vec2 {
@@ -262,22 +264,28 @@ describe("Junction", () => {
   it("joins round a gap too wide for a corner where the widths differ", () => {
     // Two straights: the corner sets the wider road back by
     // (d + r·cos ψ)/sin ψ, behind the node for ψ > arccos(−d/r) = 120°. So
-    // the 150° gap goes round the circle of radius r: the wider road's edge
-    // only touches it, the narrower one's crosses it √(r² − d²) along.
+    // the 150° gap goes round, and so does the 210° one on the other side:
+    // a 30° bend, under β₁ = arccos(d/r) = 60°, so on both sides the slid
+    // circle touches the T–X piece. The wider road takes the longer slide,
+    // the outside's r·tan((β₁ + β)/4) at β = 30°; the narrower one ends at
+    // X, √(r² − d²) along.
     const { junction, wide, narrow } = wideAndNarrow((5 * Math.PI) / 6);
 
-    expect(junction.setbackOf(wide)).toBeCloseTo(0);
+    expect(junction.setbackOf(wide)).toBeCloseTo(8 * Math.tan(Math.PI / 8));
     expect(junction.setbackOf(narrow)).toBeCloseTo(Math.sqrt(48));
   });
 
   it("doesn't jump where a gap turns from corner to round", () => {
     // Either side of 120°: the corner's setbacks (d + r·cos ψ)/sin ψ → 0 and
-    // (r + d·cos ψ)/sin ψ → √(r² − d²), the round join's.
+    // (r + d·cos ψ)/sin ψ → √(r² − d²), the round join's. The 240° gap on
+    // the other side is at β₁ = 60° then, where the slid circle turns from
+    // the T–X piece to the curb: r·tan(β₁/2) either way, which the wider road
+    // takes as the longer.
     const corner = wideAndNarrow((2 * Math.PI) / 3 - 1e-6);
     const round = wideAndNarrow((2 * Math.PI) / 3 + 1e-6);
 
     for (const { junction, wide, narrow } of [corner, round]) {
-      expect(junction.setbackOf(wide)).toBeCloseTo(0);
+      expect(junction.setbackOf(wide)).toBeCloseTo(8 * Math.tan(Math.PI / 6));
       expect(junction.setbackOf(narrow)).toBeCloseTo(Math.sqrt(48));
     }
   });
@@ -350,12 +358,14 @@ describe("Junction.outline", () => {
     expectPoints(viasOf(junction), [onCircle(vec(0, 0), 4, (5 * Math.PI) / 4)]);
   });
 
-  it("rounds a bend between two widths off with the wider road's circle", () => {
+  it("rounds a bend between two widths off with a circle slid along the wider road", () => {
     // A 16 m road east, an 8 m one north. The narrow gap's corner is (4, 8):
-    // east set back 4, north 8. The 270° gap goes round the circle of radius
-    // 8: from where north's edge x = −4 crosses it, at (−4, √48) — 120°
-    // round — to where east's edge touches it at (0, −8) — 270° round —
-    // through the angle halfway between, 195°.
+    // east set back 4, north 8. On the 270° side north, carried on past the
+    // node, covers east's T at (0, −8), so the circle of radius 8 slides
+    // along east until it touches north's curb x = −4: centered on x = 4,
+    // where that curb moved 8 toward the road crosses east's centerline. It
+    // touches east's curb at (4, −8), north's at (−4, 0) beside the node,
+    // and runs between them through 225° round its center.
     const network = new RoadNetwork();
     const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
     network.addSection(east.from, vec(0, 20), STRAIGHT, 8);
@@ -365,13 +375,142 @@ describe("Junction.outline", () => {
     expectPoints(cornersOf(junction), [
       vec(4, 8),
       vec(-4, 8),
-      vec(-4, Math.sqrt(48)),
-      vec(0, -8),
+      vec(-4, 0),
       vec(4, -8),
     ]);
-    expectPoints(viasOf(junction), [
-      onCircle(vec(0, 0), 8, (195 * Math.PI) / 180),
+    expectPoints(viasOf(junction), [onCircle(vec(4, 0), 8, (5 * Math.PI) / 4)]);
+  });
+
+  it("tapers a straight join between two widths alike on both sides", () => {
+    // A 16 m road east, an 8 m one west. On each side the circle of radius 8
+    // slides along east until it touches the T–X piece: from T beside the
+    // node to X, where west's curb crosses the circle about the node √48
+    // along. That piece drops 4 over √48, a 30° corner at T, which the circle
+    // rounds off by sliding 8·tan 15° — and touches the piece as far from T.
+    const network = new RoadNetwork();
+    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+    const west = network.addSection(east.from, vec(-20, 0), STRAIGHT, 8);
+
+    const junction = new Junction(network, east.from);
+
+    const slide = 8 * Math.tan(Math.PI / 12);
+    const touch = vec(
+      -slide * Math.cos(Math.PI / 6),
+      8 - slide * Math.sin(Math.PI / 6),
+    );
+    expect(junction.setbackOf(east.id)).toBeCloseTo(slide);
+    expect(junction.setbackOf(west.id)).toBeCloseTo(Math.sqrt(48));
+    expectPoints(cornersOf(junction), [
+      vec(slide, 8),
+      touch,
+      vec(-Math.sqrt(48), 4),
+      vec(-Math.sqrt(48), -4),
+      vec(touch.x, -touch.z),
+      vec(slide, -8),
     ]);
+    expectPoints(viasOf(junction), [
+      onCircle(vec(slide, 0), 8, (105 * Math.PI) / 180),
+      onCircle(vec(slide, 0), 8, (255 * Math.PI) / 180),
+    ]);
+  });
+
+  it("runs the narrower curb on past the node to where the circle touches it", () => {
+    // A 16 m road east, an 8 m one leaving at 105°: a 75° bend, past
+    // β₁ = 60°, so on the 255° side the circle touches the narrower road's
+    // curb. It slides (W − w)/(2·sin 75°) along east and touches the curb
+    // square across from its center — which lies behind the node along the
+    // narrower road, so that curb runs on past the node into the junction.
+    const angle = (105 * Math.PI) / 180;
+    const network = new RoadNetwork();
+    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+    network.addSection(east.from, onCircle(vec(0, 0), 20, angle), STRAIGHT, 8);
+
+    const junction = new Junction(network, east.from);
+
+    const slide = 4 / Math.sin((75 * Math.PI) / 180);
+    const touch = vec(slide - 8 * Math.sin(angle), 8 * Math.cos(angle));
+    expect(junction.setbackOf(east.id)).toBeCloseTo(slide);
+    expect(
+      cornersOf(junction).some((corner) => distance(corner, touch) < 1e-6),
+    ).toBe(true);
+    expect(touch.x * Math.cos(angle) + touch.z * Math.sin(angle)).toBeLessThan(
+      0,
+    );
+  });
+
+  it("keeps touching the narrower curb on a bend sharper than 180° − β₁", () => {
+    // A 16 m road east, an 8 m one leaving at 55°: a 125° bend. East's T on
+    // the 305° side, (0, −8), lies past the narrower road's far curb by then,
+    // but the curb has long swung past T: the circle still touches it,
+    // centered (W − w)/(2·sin 125°) along east.
+    const network = new RoadNetwork();
+    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+    network.addSection(
+      east.from,
+      onCircle(vec(0, 0), 20, (55 * Math.PI) / 180),
+      STRAIGHT,
+      8,
+    );
+
+    const junction = new Junction(network, east.from);
+
+    const center = vec(4 / Math.sin((125 * Math.PI) / 180), 0);
+    const vias = viasOf(junction);
+    expect(vias).toHaveLength(1);
+    expect(distance(center, vias[0])).toBeCloseTo(8);
+  });
+
+  it("doesn't jump where either gap of a bend between two widths switches", () => {
+    // An 8 m road leaving a 16 m one 120° round: its narrow gap is where a
+    // corner turns round, its wide one where the circle turns from the T–X
+    // piece to the curb (β₁ = 60°). Either side of that, the same outline.
+    const cornersAt = (angle: number) => {
+      const network = new RoadNetwork();
+      const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+      network.addSection(
+        east.from,
+        onCircle(vec(0, 0), 20, angle),
+        STRAIGHT,
+        8,
+      );
+      return cornersOf(new Junction(network, east.from));
+    };
+
+    expectPoints(
+      cornersAt((2 * Math.PI) / 3 - 1e-6),
+      cornersAt((2 * Math.PI) / 3 + 1e-6),
+    );
+  });
+
+  it("swings a curved narrower curb about X, so nothing jumps at the switch", () => {
+    // A 16 m road east, and an 8 m one curving clockwise on the 30 m circle
+    // about (−24, 18). Its curb on the wide side, 26 from that center, runs
+    // through east's T at (0, 8): the switch. Past it the circle touches that
+    // curb, centered 26 + 8 from the curb's center on east's centerline;
+    // short of it, the T–X piece swung about X is that same curb. Turning the
+    // curved road a hair either way gives the same slide.
+    const center = vec(-24, 18);
+    const slideAt = (turned: number) => {
+      const turn = (p: Vec2) =>
+        onCircle(
+          vec(0, 0),
+          Math.hypot(p.x, p.z),
+          Math.atan2(p.z, p.x) + turned,
+        );
+      const network = new RoadNetwork();
+      const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, 16);
+      network.addSection(
+        east.from,
+        turn(onCircle(center, 30, -Math.PI / 2)),
+        { kind: "arc", via: turn(onCircle(center, 30, -Math.PI / 3)) },
+        8,
+      );
+      return new Junction(network, east.from).setbackOf(east.id);
+    };
+
+    const slide = Math.sqrt(34 * 34 - 18 * 18) - 24;
+    expect(slideAt(-1e-6)).toBeCloseTo(slide);
+    expect(slideAt(1e-6)).toBeCloseTo(slide);
   });
 
   it("runs back along an edge where the other gap set the road back further", () => {
@@ -529,5 +668,138 @@ describe("Junction.boundingRadius", () => {
     const junction = new Junction(network, east.from);
 
     expect(junction.boundingRadius()).toBeCloseTo(8);
+  });
+});
+
+describe("Junction between two widths, across every bend", () => {
+  /** Road widths, wider first; the last pair are equal. */
+  const pairs = [
+    [16, 8],
+    [16, 4],
+    [12, 8],
+    [8, 8],
+  ] as const;
+
+  /** A `wide` road east and a `narrow` one leaving `degrees` round from it. */
+  function junctionAt(wide: number, narrow: number, degrees: number): Junction {
+    const network = new RoadNetwork();
+    const east = network.addSection(vec(0, 0), vec(20, 0), STRAIGHT, wide);
+    network.addSection(
+      east.from,
+      onCircle(vec(0, 0), 20, (degrees * Math.PI) / 180),
+      STRAIGHT,
+      narrow,
+    );
+    return new Junction(network, east.from);
+  }
+
+  /**
+   * The outline as a polygon, each arc cut into 64 chords: at most a few
+   * millimeters inside it, under `SAME_POINT_METERS`, so a node right on an
+   * arc still counts as on it.
+   */
+  function polygonOf(junction: Junction): Vec2[] {
+    const { pieces } = junction.outline();
+    return pieces.flatMap((piece, index) => {
+      const geometry = piece.incomingGeometry;
+      if (geometry.kind !== "arc") {
+        return [piece.point];
+      }
+      const from = pieces[(index + pieces.length - 1) % pieces.length].point;
+      return Array.from({ length: 64 }, (_, step) =>
+        pointOnArc(from, piece.point, geometry.via, (step + 1) / 64),
+      );
+    });
+  }
+
+  /**
+   * Whether `point` lies inside `polygon`, counting crossings of a ray toward
+   * +x — or on its boundary, within `SAME_POINT_METERS`.
+   */
+  function covers(polygon: readonly Vec2[], point: Vec2): boolean {
+    let crossings = 0;
+    for (const [index, a] of polygon.entries()) {
+      const b = polygon[(index + 1) % polygon.length];
+      if (
+        distance(point, nearestPointOnSegment(point, a, b)) <= SAME_POINT_METERS
+      ) {
+        return true;
+      }
+      if (a.z > point.z !== b.z > point.z) {
+        const x = a.x + ((point.z - a.z) / (b.z - a.z)) * (b.x - a.x);
+        if (x > point.x) {
+          crossings++;
+        }
+      }
+    }
+    return crossings % 2 === 1;
+  }
+
+  it("says whether it covers its node just as its outline does, logging nothing", () => {
+    // The node falls out on bends sharper than 180° − arcsin(1 − w/W), where
+    // the slid circle no longer reaches it; a failed join would cut the
+    // outline straight across, past it. An empty ring is a straight join of
+    // equal widths, with nothing to cover.
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const disagreeing: string[] = [];
+    try {
+      for (const [wide, narrow] of pairs) {
+        for (let degrees = 10; degrees <= 350; degrees += 0.5) {
+          const junction = junctionAt(wide, narrow, degrees);
+          const polygon = polygonOf(junction);
+          const covered = polygon.length === 0 || covers(polygon, vec(0, 0));
+          if (covered !== junction.coversNode()) {
+            disagreeing.push(`${wide} m and ${narrow} m at ${degrees}°`);
+          }
+        }
+      }
+      expect(disagreeing).toEqual([]);
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it("covers its node up to a bend of 180° − arcsin(1 − w/W)", () => {
+    // 16 m and 4 m: arcsin(3/4) = 48.6°, so up to a 131.4° bend — a road
+    // leaving 48.6° round from the other.
+    expect(junctionAt(16, 4, 50).coversNode()).toBe(true);
+    expect(junctionAt(16, 4, 47).coversNode()).toBe(false);
+    expect(junctionAt(16, 4, 313).coversNode()).toBe(false);
+    expect(junctionAt(16, 4, 310).coversNode()).toBe(true);
+  });
+
+  it("doesn't jump where a gap switches between corner, T–X piece and curb", () => {
+    // Two straights switch at 180° − β₁ (a corner turns round, and the other
+    // gap's circle turns from the T–X piece to the curb), at 180° (each side
+    // turns from inside to outside), and at 180° + β₁, the same mirrored. A
+    // ring may start at another leg either side of a switch, so `after` is
+    // turned to start where `before` does before they are compared.
+    const cornersOf = (junction: Junction) =>
+      junction.outline().pieces.map((piece) => piece.point);
+    const startingNear = (ring: readonly Vec2[], start: Vec2) => {
+      const nearest = ring.reduce(
+        (best, point, index) =>
+          distance(point, start) < distance(ring[best], start) ? index : best,
+        0,
+      );
+      return [...ring.slice(nearest), ...ring.slice(0, nearest)];
+    };
+    for (const [wide, narrow] of pairs.filter(([w, n]) => n < w)) {
+      const beta = (Math.acos(narrow / wide) * 180) / Math.PI;
+      for (const degrees of [180 - beta, 180, 180 + beta]) {
+        const label = `${wide} m and ${narrow} m at ${degrees.toFixed(2)}°`;
+        const before = cornersOf(junctionAt(wide, narrow, degrees - 1e-4));
+        const after = startingNear(
+          cornersOf(junctionAt(wide, narrow, degrees + 1e-4)),
+          before[0],
+        );
+
+        expect(after.length, label).toBe(before.length);
+        before.forEach((point, index) =>
+          expect(distance(point, after[index]), label).toBeLessThan(0.01),
+        );
+      }
+    }
   });
 });

@@ -119,6 +119,7 @@ Layouts that don't overlap but no real road would have. Measured in the
 same step, on the same changed parts.
 
 - A junction's bounding circle: `R ≤ 25 m`.
+- A junction covers its node (`docs/road-layout.md`, Joins).
 - A roadway: length ≥ 30 m.
 - A curved roadway: radius ≥ 10 m.
 - Parts the edit doesn't change are not measured again.

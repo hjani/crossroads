@@ -7,6 +7,7 @@ import {
   arcLength,
   arcPolyline,
   arcViaLeaving,
+  circleThrough,
   nearestPointsBetweenArcs,
   nearestPointsBetweenSegmentAndArc,
   pointOnArc,
@@ -34,7 +35,7 @@ function expectAt(point: Vec2, x: number, z: number): void {
 }
 
 /** The circle, or a failure saying so rather than one about null. */
-function circleThrough(from: Vec2, to: Vec2, via: Vec2): ArcCircle {
+function circleOn(from: Vec2, to: Vec2, via: Vec2): ArcCircle {
   const circle = arcCircle(from, to, via);
   if (circle === null) {
     throw new Error("expected a circle through the three positions");
@@ -44,21 +45,21 @@ function circleThrough(from: Vec2, to: Vec2, via: Vec2): ArcCircle {
 
 describe("arcCircle", () => {
   it("finds the circle three positions lie on", () => {
-    const circle = circleThrough(east, north, northeast);
+    const circle = circleOn(east, north, northeast);
 
     expectAt(circle.center, 0, 0);
     expect(circle.radius).toBeCloseTo(1);
   });
 
   it("finds the same circle whichever side the via is", () => {
-    const circle = circleThrough(east, north, southwest);
+    const circle = circleOn(east, north, southwest);
 
     expectAt(circle.center, 0, 0);
     expect(circle.radius).toBeCloseTo(1);
   });
 
   it("finds the same circle whichever end is first", () => {
-    const circle = circleThrough(north, east, northeast);
+    const circle = circleOn(north, east, northeast);
 
     expectAt(circle.center, 0, 0);
     expect(circle.radius).toBeCloseTo(1);
@@ -67,11 +68,7 @@ describe("arcCircle", () => {
   it("stays exact far from the world origin", () => {
     // A half circle on the diagonal, shifted a kilometer out. Squaring
     // positions that size is what measuring from `from` avoids.
-    const circle = circleThrough(
-      vec(1001, 1000),
-      vec(1000, 1001),
-      vec(1000, 1000),
-    );
+    const circle = circleOn(vec(1001, 1000), vec(1000, 1001), vec(1000, 1000));
 
     expectAt(circle.center, 1000.5, 1000.5);
     expect(circle.radius).toBeCloseTo(Math.SQRT1_2);
@@ -88,6 +85,62 @@ describe("arcCircle", () => {
   it("is null for a via sitting on an end", () => {
     expect(arcCircle(east, north, east)).toBeNull();
     expect(arcCircle(east, north, north)).toBeNull();
+  });
+});
+
+/** The circle, or a failure saying so rather than one about null. */
+function circleOfRadius(
+  a: Vec2,
+  b: Vec2,
+  radius: number,
+  side: number,
+): ArcCircle {
+  const circle = circleThrough(a, b, radius, side);
+  if (circle === null) {
+    throw new Error("expected a circle of that radius through both points");
+  }
+  return circle;
+}
+
+describe("circleThrough", () => {
+  it("puts the center on the side asked for", () => {
+    // A 6 m chord in a circle of radius 5: the center is √(25 − 9) = 4 off
+    // the chord's midpoint, counterclockwise (+z) or clockwise of it.
+    const left = circleOfRadius(vec(-3, 0), vec(3, 0), 5, 1);
+    const right = circleOfRadius(vec(-3, 0), vec(3, 0), 5, -1);
+
+    expectAt(left.center, 0, 4);
+    expectAt(right.center, 0, -4);
+    expect(left.radius).toBe(5);
+  });
+
+  it("lands the center a radius from both points at any angle", () => {
+    const a = vec(1, 1);
+    const b = vec(4, 5);
+
+    const circle = circleOfRadius(a, b, 10, -1);
+
+    expect(distance(circle.center, a)).toBeCloseTo(10);
+    expect(distance(circle.center, b)).toBeCloseTo(10);
+    // Clockwise of the chord: (b − a) × (center − a) < 0.
+    const cross =
+      (b.x - a.x) * (circle.center.z - a.z) -
+      (b.z - a.z) * (circle.center.x - a.x);
+    expect(cross).toBeLessThan(0);
+  });
+
+  it("puts the center on the chord for points a diameter apart", () => {
+    const circle = circleOfRadius(vec(-5, 0), vec(5, 0), 5, 1);
+
+    expectAt(circle.center, 0, 0);
+  });
+
+  it("is null for points more than a diameter apart", () => {
+    expect(circleThrough(vec(-6, 0), vec(6, 0), 5, 1)).toBeNull();
+  });
+
+  it("is null for one point given twice", () => {
+    expect(circleThrough(vec(2, 3), vec(2, 3), 5, 1)).toBeNull();
   });
 });
 
@@ -667,7 +720,7 @@ describe("arcPolyline", () => {
   });
 
   it("keeps every chord within the tolerance asked for", () => {
-    const circle = circleThrough(east, north, northeast);
+    const circle = circleOn(east, north, northeast);
 
     for (const tolerance of [0.5, 0.1, 0.01, 0.0001]) {
       expect(
