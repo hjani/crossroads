@@ -50,8 +50,9 @@ Two pieces end to end, tangent where they meet: the join `J`.
     those applies to it as it is.
   - Reversed → the pieces swap, nothing else changes → symmetric, like an
     arc.
-- More is stored than the shape needs → tangency at `J` is not built in,
-  it is a rule (below).
+- More is stored than the shape needs → tangency at `J` is not built in:
+  the biarc is made tangent, and nothing checks it.
+  - A kink at `J` only looks worse: no rule or query depends on it.
 - Length: the two pieces' added up.
 - `J` from the ends and their directions alone: both pieces' tangent lengths
   `d` equal.
@@ -71,7 +72,6 @@ Two pieces end to end, tangent where they meet: the join `J`.
 - An arc's third position is not in line with its ends: no circle through
   them → no arc to build.
 - A biarc:
-  - its pieces are tangent at `J`, up to rounding
   - `J` is on neither end → each piece has a length
     - a join on an end leaves one arc → stored as that arc
   - each piece follows the arc rule above

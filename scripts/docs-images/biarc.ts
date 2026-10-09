@@ -86,7 +86,7 @@ export function biarc(): string {
     label({ x: from.x - 5, z: from.z }, "t0", 0, -1.4) +
     label(to, "P1", -0.8, -0.4, "end") +
     label({ x: to.x, z: to.z + 5 }, "t1", 0.8, -0.6) +
-    label(q0, "Q0", -0.4, 1.4, "end") +
+    label(q0, "Q0", 0, -1.4, "middle") +
     label(q1, "Q1", 0.8, 0) +
     label(join, "J", -0.4, 1.4, "end");
 

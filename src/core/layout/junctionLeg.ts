@@ -4,7 +4,11 @@ import {
   lineCircleCrossings,
   type ArcCircle,
 } from "../geometry/arc";
-import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
+import {
+  primitivesOf,
+  STRAIGHT,
+  type LineGeometry,
+} from "../geometry/lineGeometry";
 import {
   angleOf,
   distance,
@@ -427,8 +431,6 @@ function curvatureOf(leg: Leg): number {
 
 function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
   const direction = sectionDirectionLeavingNode(network, section, node);
-  const from = network.getNode(section.from).position;
-  const to = network.getNode(section.to).position;
   const straight = {
     section,
     direction,
@@ -436,12 +438,20 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
     halfWidth: section.profile.width / 2,
     arc: null,
   };
-  if (section.centerlineGeometry.kind === "straight") {
+
+  // Of a biarc, only the piece meeting the node (`docs/road-layout.md`,
+  // Junction): the first at its start, the last at its end.
+  const pieces = primitivesOf(
+    network.getNode(section.from).position,
+    network.getNode(section.to).position,
+    section.centerlineGeometry,
+  );
+  const piece = section.from === node ? pieces[0] : pieces[pieces.length - 1];
+  if (piece.geometry.kind === "straight") {
     return straight;
   }
 
-  const { via } = section.centerlineGeometry;
-  const circle = arcCircle(from, to, via);
+  const circle = arcCircle(piece.from, piece.to, piece.geometry.via);
   if (circle === null) {
     // In line with its ends: the arc functions read it as a straight too.
     return straight;

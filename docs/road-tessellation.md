@@ -22,8 +22,12 @@
   by both.
   - Each arc's outer edge sets its own step → the two pieces' quads may
     differ in size.
+- A slice's two ends keep their curbs all along the road → no twist, at a
+  biarc's `J` too.
+  - An S-shaped biarc bends both ways → ends named by inner and outer edge
+    would swap curbs at `J`.
 
-![A straight roadway as one quad, an arc roadway as quads between slices along its radii](images/roadway-tessellation.svg)
+![A straight roadway as one quad, an arc roadway as quads between slices along its radii, and an S-shaped biarc roadway as its two arcs' quads, sharing the slice at J](images/roadway-tessellation.svg)
 
 ## Junctions
 

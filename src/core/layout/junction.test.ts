@@ -120,6 +120,41 @@ describe("Junction", () => {
     );
   });
 
+  it("sets a biarc back by its piece meeting the node, at either end", () => {
+    // The arc above as a biarc's piece, from the node to the join (−R, R),
+    // with a straight on west from there.
+    const R = 20;
+    const center = vec(-R, 0);
+    const join = onCircle(center, R, Math.PI / 2);
+    const arc = { kind: "arc", via: onCircle(center, R, Math.PI / 4) } as const;
+    const far = vec(-2 * R, R);
+    const h = Math.sqrt(R * R + R * TEST_ROAD_PROFILE.width);
+
+    // The node at the biarc's start, then at its end.
+    for (const atEnd of [false, true]) {
+      const network = new RoadNetwork();
+      const east = addStraight(network, vec(0, 0), vec(40, 0));
+      const biarc = network.addSection(
+        atEnd ? far : east.from,
+        atEnd ? east.from : far,
+        {
+          kind: "biarc",
+          biarc: atEnd
+            ? { join, first: STRAIGHT, second: arc }
+            : { join, first: arc, second: STRAIGHT },
+        },
+        TEST_ROAD_PROFILE,
+      );
+
+      const junction = new Junction(network, east.from);
+
+      expect(junction.setbackOf(east.id)).toBeCloseTo(h - R);
+      expect(junction.setbackOf(biarc.id)).toBeCloseTo(
+        R * Math.atan2(TEST_ROAD_PROFILE.width / 2, h),
+      );
+    }
+  });
+
   it("sets two arcs bending away from each other back alike", () => {
     // Mirror images across the line x = z: one leaves east and bends south,
     // around (0, −R); the other leaves north and bends west, around (−R, 0).

@@ -1,5 +1,5 @@
 import { arcCircle } from "../geometry/arc";
-import type { LineGeometry } from "../geometry/lineGeometry";
+import { primitivesOf, type LineGeometry } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 import {
   applySectionPlan,
@@ -115,7 +115,8 @@ export function changedOrViolatingParts(plan: RoadPlan): {
 }
 
 /**
- * Whether this geometry is suitable for creating a Roadway at all.
+ * Whether this geometry is suitable for creating a Roadway at all: every arc
+ * among its primitives bends wider than half the road.
  */
 function allowsRoadway(
   from: Vec2,
@@ -123,8 +124,10 @@ function allowsRoadway(
   geometry: LineGeometry,
   width: number,
 ): boolean {
-  if (geometry.kind !== "arc") return true;
+  return primitivesOf(from, to, geometry).every((piece) => {
+    if (piece.geometry.kind !== "arc") return true;
 
-  const circle = arcCircle(from, to, geometry.via);
-  return circle === null || circle.radius > width / 2;
+    const circle = arcCircle(piece.from, piece.to, piece.geometry.via);
+    return circle === null || circle.radius > width / 2;
+  });
 }

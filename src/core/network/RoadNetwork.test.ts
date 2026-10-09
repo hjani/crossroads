@@ -307,3 +307,53 @@ describe("building an arc", () => {
     expect(network.version).toBe(version);
   });
 });
+
+describe("building a biarc", () => {
+  // A U-turn of radius 10 around (0, 10): two quarter circles, joined at
+  // (10, 10).
+  const uTurn = {
+    kind: "biarc",
+    biarc: {
+      join: vec(10, 10),
+      first: {
+        kind: "arc",
+        via: vec(10 * Math.SQRT1_2, 10 - 10 * Math.SQRT1_2),
+      },
+      second: {
+        kind: "arc",
+        via: vec(10 * Math.SQRT1_2, 10 + 10 * Math.SQRT1_2),
+      },
+    },
+  } as const;
+
+  it("keeps its join and pieces, and measures both", () => {
+    const network = new RoadNetwork();
+
+    const section = network.addSection(
+      vec(0, 0),
+      vec(0, 20),
+      uTurn,
+      TEST_ROAD_PROFILE,
+    );
+
+    expect(section.centerlineGeometry).toEqual(uTurn);
+    expect(section.length).toBeCloseTo(10 * Math.PI);
+  });
+
+  it("refuses one whose join is on an end, creating nothing", () => {
+    const network = new RoadNetwork();
+
+    expect(() =>
+      network.addSection(
+        vec(0, 0),
+        vec(20, 0),
+        {
+          kind: "biarc",
+          biarc: { join: vec(0, 0), first: STRAIGHT, second: STRAIGHT },
+        },
+        TEST_ROAD_PROFILE,
+      ),
+    ).toThrow();
+    expect(nodeCount(network)).toBe(0);
+  });
+});

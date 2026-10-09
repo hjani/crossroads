@@ -1,6 +1,21 @@
 import { arcViaLeaving } from "./arc";
-import { STRAIGHT, type LineGeometry } from "./lineGeometry";
-import { isSamePoint, lerp, type Vec2 } from "./point";
+import type { Crossing } from "./crossing";
+import {
+  isLineGeometryValid,
+  lineCrossings,
+  lineDirectionAt,
+  lineFractionAt,
+  lineLength,
+  nearestPointOnLine,
+  nearestPointsBetweenLines,
+  pointOnLine,
+  STRAIGHT,
+  trimPrimitive,
+  type LineGeometry,
+  type PrimitiveLine,
+  type PrimitiveLineGeometry,
+} from "./lineGeometry";
+import { distance, isSamePoint, lerp, type Vec2 } from "./point";
 
 /**
  * Biarcs as plane geometry: two pieces end to end, tangent where they meet,
@@ -8,13 +23,238 @@ import { isSamePoint, lerp, type Vec2 } from "./point";
  * in another, smooth at both ends. See `docs/road-network.md`, Biarcs.
  */
 
-/** Two pieces end to end, tangent at `join`. */
+/** Two pieces end to end, meeting at `join`. */
 export interface Biarc {
   readonly join: Vec2;
   /** From the start to `join`. */
-  readonly first: LineGeometry;
+  readonly first: PrimitiveLineGeometry;
   /** From `join` to the end. */
-  readonly second: LineGeometry;
+  readonly second: PrimitiveLineGeometry;
+}
+
+/**
+ * Whether a biarc can run from `from` to `to`: its join on neither end, so
+ * each piece has a length, and each piece valid on its own. Tangency at the
+ * join is not checked (`docs/road-network.md`, Biarcs).
+ */
+export function isBiarcValid(from: Vec2, to: Vec2, biarc: Biarc): boolean {
+  const { join, first, second } = biarc;
+  return (
+    !isSamePoint(join, from) &&
+    !isSamePoint(join, to) &&
+    isLineGeometryValid(from, join, first) &&
+    isLineGeometryValid(join, to, second)
+  );
+}
+
+/** How long a biarc runs from `from` to `to`, in meters: both pieces. */
+export function biarcLength(from: Vec2, to: Vec2, biarc: Biarc): number {
+  return (
+    lineLength(from, biarc.join, biarc.first) +
+    lineLength(biarc.join, to, biarc.second)
+  );
+}
+
+/** A biarc's two pieces with their own ends, first to second. */
+export function biarcPrimitives(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+): readonly [PrimitiveLine, PrimitiveLine] {
+  return [
+    { from, to: biarc.join, geometry: biarc.first },
+    { from: biarc.join, to, geometry: biarc.second },
+  ];
+}
+
+/**
+ * A biarc with `s₁` meters cut off its start and `s₂` off its end: each cut
+ * off the piece at that end, the join kept (`docs/road-layout.md`).
+ *
+ * A cut longer than its piece runs that piece backwards, past the join.
+ */
+export function trimBiarc(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  s1: number,
+  s2: number,
+): { readonly from: Vec2; readonly to: Vec2; readonly biarc: Biarc } {
+  const first = trimPrimitive(from, biarc.join, biarc.first, s1, 0);
+  const second = trimPrimitive(biarc.join, to, biarc.second, 0, s2);
+  return {
+    from: first.from,
+    to: second.to,
+    biarc: {
+      join: biarc.join,
+      first: first.geometry,
+      second: second.geometry,
+    },
+  };
+}
+
+/**
+ * The point a fraction `t` of the way along a biarc, 0 at `from` and 1 at
+ * `to`, by length (`joinFraction`).
+ */
+export function pointOnBiarc(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  t: number,
+): Vec2 {
+  const { piece, along } = pieceAt(from, to, biarc, t);
+  return pointOnLine(piece.from, piece.to, piece.geometry, along);
+}
+
+/**
+ * Which way a biarc is heading a fraction `t` of the way along it, by length
+ * (`joinFraction`), as a unit vector. At the join, the way the first piece
+ * arrives.
+ */
+export function biarcDirectionAt(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  t: number,
+): Vec2 {
+  const { piece, along } = pieceAt(from, to, biarc, t);
+  return lineDirectionAt(piece.from, piece.to, piece.geometry, along);
+}
+
+/**
+ * Where along a biarc a place falls, 0 at `from` and 1 at `to`, by length
+ * (`joinFraction`): read on the piece whose nearest point is nearer. A place
+ * off the biarc reads as the nearest place on it.
+ */
+export function biarcFractionAt(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  place: Vec2,
+): number {
+  const m = joinFraction(from, to, biarc);
+  const [first, second] = biarcPrimitives(from, to, biarc);
+  const t1 = lineFractionAt(first.from, first.to, first.geometry, place);
+  const t2 = lineFractionAt(second.from, second.to, second.geometry, place);
+  const onFirst = pointOnLine(first.from, first.to, first.geometry, t1);
+  const onSecond = pointOnLine(second.from, second.to, second.geometry, t2);
+  return distance(place, onFirst) <= distance(place, onSecond)
+    ? alongWhole(m, 0, t1)
+    : alongWhole(m, 1, t2);
+}
+
+/**
+ * The point on a biarc nearest `point`: the nearer of its two pieces'
+ * nearest points. A point past either end gives that end.
+ */
+export function nearestPointOnBiarc(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  point: Vec2,
+): Vec2 {
+  const [first, second] = biarcPrimitives(from, to, biarc).map((piece) =>
+    nearestPointOnLine(piece.from, piece.to, piece.geometry, point),
+  );
+  return distance(point, first) <= distance(point, second) ? first : second;
+}
+
+/**
+ * The point on a biarc and on another line nearest each other, whichever
+ * shape the other runs in, the biarc's first: the nearer of its two pieces'
+ * pairs.
+ */
+export function nearestPointsBetweenBiarcAndLine(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  otherFrom: Vec2,
+  otherTo: Vec2,
+  other: LineGeometry,
+): readonly [Vec2, Vec2] {
+  const [first, second] = biarcPrimitives(from, to, biarc).map((piece) =>
+    nearestPointsBetweenLines(
+      piece.from,
+      piece.to,
+      piece.geometry,
+      otherFrom,
+      otherTo,
+      other,
+    ),
+  );
+  return distance(...first) <= distance(...second) ? first : second;
+}
+
+/**
+ * Where a biarc meets another line, whichever shape the other runs in, with
+ * `alongA` measured along the biarc by length (`joinFraction`). In no
+ * particular order.
+ *
+ * Each piece is met on its own → a line through the join meets the biarc
+ * there twice, once per piece.
+ */
+export function biarcCrossings(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  otherFrom: Vec2,
+  otherTo: Vec2,
+  other: LineGeometry,
+): Crossing[] {
+  const m = joinFraction(from, to, biarc);
+  return biarcPrimitives(from, to, biarc).flatMap((piece, index) =>
+    lineCrossings(
+      piece.from,
+      piece.to,
+      piece.geometry,
+      otherFrom,
+      otherTo,
+      other,
+    ).map((crossing) => ({
+      ...crossing,
+      alongA: alongWhole(m, index, crossing.alongA),
+    })),
+  );
+}
+
+/**
+ * Where the join falls along a biarc, as a fraction of its length.
+ *
+ * Fractions along a biarc are by length, as along an arc. With `L₁`, `L₂`
+ * the two pieces' lengths:
+ *
+ *     m = L₁ / (L₁ + L₂)
+ *
+ * - `t` of the whole, `t ≤ m`: `t₁ = t/m` along the first piece
+ * - `t` of the whole, `t > m`: `t₂ = (t − m)/(1 − m)` along the second
+ * - back again (`alongWhole`): `t = m·t₁`, or `t = m + (1 − m)·t₂`
+ *
+ * A valid biarc's pieces both have a length → `0 < m < 1`, and neither
+ * division is by zero.
+ */
+function joinFraction(from: Vec2, to: Vec2, biarc: Biarc): number {
+  const first = lineLength(from, biarc.join, biarc.first);
+  return first / (first + lineLength(biarc.join, to, biarc.second));
+}
+
+/** The piece `t` of the whole falls on, and how far along that piece. */
+function pieceAt(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  t: number,
+): { readonly piece: PrimitiveLine; readonly along: number } {
+  const m = joinFraction(from, to, biarc);
+  const [first, second] = biarcPrimitives(from, to, biarc);
+  return t <= m
+    ? { piece: first, along: t / m }
+    : { piece: second, along: (t - m) / (1 - m) };
+}
+
+/** `t` along piece `index` (0 the first), as a fraction of the whole. */
+function alongWhole(m: number, index: number, t: number): number {
+  return index === 0 ? m * t : m + (1 - m) * t;
 }
 
 /**
@@ -123,7 +363,7 @@ function pieceLeaving(
   from: Vec2,
   direction: Vec2,
   to: Vec2,
-): LineGeometry | null {
+): PrimitiveLineGeometry | null {
   const via = arcViaLeaving(from, direction, to);
   if (via === null) {
     return null;

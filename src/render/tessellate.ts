@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { arcCircle, arcPolyline } from "../core/geometry/arc";
+import { arcCircle, arcDirectionAt, arcPolyline } from "../core/geometry/arc";
 import {
   difference,
   distance,
@@ -11,7 +11,12 @@ import {
   type Vec2,
 } from "../core/geometry/point";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
-import type { LineGeometry } from "../core/geometry/lineGeometry";
+import {
+  lineLength,
+  primitivesOf,
+  type LineGeometry,
+  type PrimitiveLine,
+} from "../core/geometry/lineGeometry";
 import type { Section } from "../core/network/types";
 import type {
   JunctionOutline,
@@ -44,7 +49,7 @@ const ARC_SAG_METERS = 0.05;
  * The positions a section's centerline is drawn along: its two ends for a
  * straight, and enough points to pass for the curve for an arc.
  *
- * Where the two kinds stop differing. Everything past here works on points,
+ * Where the kinds stop differing. Everything past here works on points,
  * so an arc costs a drawing no more than a straight with a lot of ends.
  *
  * Named for the line it draws: a ribbon is a second drawing of a section
@@ -63,8 +68,8 @@ export function centerline(
 
 /**
  * The positions any line is drawn along, between two ends: the ends
- * themselves for a straight, and enough points to pass for the curve for an
- * arc.
+ * themselves for a straight, enough points to pass for the curve for an
+ * arc, and both pieces' for a biarc, the join once.
  *
  * Named for what it makes rather than for what it draws, because it draws
  * several things: a section's centerline through `centerline`, a stretch of
@@ -82,9 +87,14 @@ export function polylineBetween(
   to: Vec2,
   lineGeometry: LineGeometry,
 ): readonly Vec2[] {
-  return lineGeometry.kind === "arc"
-    ? arcPolyline(from, to, lineGeometry.via, ARC_SAG_METERS)
-    : [from, to];
+  return primitivesOf(from, to, lineGeometry).flatMap((piece, index) => {
+    const points =
+      piece.geometry.kind === "arc"
+        ? arcPolyline(piece.from, piece.to, piece.geometry.via, ARC_SAG_METERS)
+        : [piece.from, piece.to];
+    // Every piece after the first starts where the one before it ends.
+    return index === 0 ? points : points.slice(1);
+  });
 }
 
 /**
@@ -483,8 +493,9 @@ export function tessellateRibbon(
 /**
  * A cut straight across a ribbon, from one edge to the other.
  *
- * `edgeA` is on the same edge in every slice of a section, so the ribbon
- * between two slices doesn't twist. `along` is as on `RibbonVertex`.
+ * `edgeA` is a quarter turn clockwise of the heading in every slice, so the
+ * ribbon between two slices doesn't twist — a biarc's join included.
+ * `along` is as on `RibbonVertex`.
  */
 interface RibbonSlice {
   readonly edgeA: Vec2;
@@ -496,34 +507,13 @@ interface RibbonSlice {
  * Slices across a ribbon, `widthMeters` wide, with a level of detail that the
  * edges stay within `ARC_SAG_METERS` of their curve.
  *
- * Each slice is `p ± (w/2)·n`: a centerline point `p`, the unit normal `n`
- * there, and `w = widthMeters`.
+ * A line in pieces (`primitivesOf`) is sliced piece by piece
+ * (`pieceSlices`), the slice at each join shared, and `along` is by length
+ * over the whole. For piece `j`, with `Lⱼ` its length, `L_before` the length
+ * of the pieces before it, `L` the line's, and `t` the slice's fraction
+ * along the piece:
  *
- * Straight: a slice at each end, with `n = (d.z, −d.x)`, where
- * `d = unitDirection(from, to)`.
- *
- * Arc, with center `c` and radius `r`:
- *
- * - a chord over the angle α is at most `ρ·(1 − cos(α/2))` away from a
- *   circle of radius ρ
- * - → grows with ρ, so the outer edge, at radius `r + w/2`, is the worst
- * - → break up the centerline with the tolerance scaled down by
- *   `r / (r + w/2)`:
- *
- *       ARC_SAG_METERS · r / (r + w/2)
- *
- * - every point is on the circle, so the normal is the radius direction:
- *
- *       n = unitDirection(c, p)
- *
- * - → always outward, so `edgeA` is always the outer edge
- * - `arcPolyline` steps the angle evenly, and arc length is `r · angle` →
- *   equal steps of length too → slice `i` of `k` chords is exactly at:
- *
- *       along = i / k
- *
- * A `via` in line with the ends has no circle → sliced as a straight, at
- * `along = 0` and `1`.
+ *     along = (L_before + t·Lⱼ) / L
  *
  * Ends at the same place → no slices, and an error logged.
  */
@@ -539,30 +529,101 @@ function ribbonSlicesBetween(
     );
     return [];
   }
-  if (centerlineGeometry.kind === "arc") {
-    const circle = arcCircle(from, to, centerlineGeometry.via);
+
+  const pieces = primitivesOf(from, to, centerlineGeometry);
+  const lengths = pieces.map((piece) =>
+    lineLength(piece.from, piece.to, piece.geometry),
+  );
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+
+  const slices: RibbonSlice[] = [];
+  let before = 0;
+  pieces.forEach((piece, j) => {
+    // Every piece after the first starts on the slice the one before ends on.
+    const own = pieceSlices(piece, widthMeters).slice(j === 0 ? 0 : 1);
+    for (const slice of own) {
+      slices.push({
+        ...slice,
+        along: (before + slice.along * lengths[j]) / total,
+      });
+    }
+    before += lengths[j];
+  });
+  return slices;
+}
+
+/**
+ * Slices across one piece of a ribbon, `along` from 0 to 1 over the piece
+ * alone.
+ *
+ * Straight: a slice at each end, square to `unitDirection(from, to)`.
+ *
+ * Arc, with radius `r` and `w = widthMeters`:
+ *
+ * - a chord over the angle α is at most `ρ·(1 − cos(α/2))` away from a
+ *   circle of radius ρ
+ * - → grows with ρ, so the outer edge, at radius `r + w/2`, is the worst
+ * - → break up the centerline with the tolerance scaled down by
+ *   `r / (r + w/2)`:
+ *
+ *       ARC_SAG_METERS · r / (r + w/2)
+ *
+ * - `arcPolyline` steps the angle evenly, and arc length is `r · angle` →
+ *   equal steps of length too → slice `i` of `k` chords is exactly at:
+ *
+ *       along = i / k
+ *
+ * - each slice square to the heading there (`arcDirectionAt` at `i / k`),
+ *   which is along the radius: `edgeA` the outer edge where the arc turns
+ *   counterclockwise, the inner where it turns clockwise
+ *
+ * A `via` in line with the ends has no circle → sliced as a straight.
+ */
+function pieceSlices(
+  piece: PrimitiveLine,
+  widthMeters: number,
+): readonly RibbonSlice[] {
+  const { from, to, geometry } = piece;
+  if (geometry.kind === "arc") {
+    const circle = arcCircle(from, to, geometry.via);
     if (circle !== null) {
       const sagMeters =
         (ARC_SAG_METERS * circle.radius) / (circle.radius + widthMeters / 2);
-      const points = arcPolyline(from, to, centerlineGeometry.via, sagMeters);
+      const points = arcPolyline(from, to, geometry.via, sagMeters);
       const k = points.length - 1;
       return points.map((p, i) =>
-        sliceAt(p, unitDirection(circle.center, p), widthMeters, i / k),
+        sliceAt(
+          p,
+          arcDirectionAt(from, to, geometry.via, i / k),
+          widthMeters,
+          i / k,
+        ),
       );
     }
   }
 
-  const d = unitDirection(from, to);
-  const n = { x: d.z, z: -d.x };
-  return [sliceAt(from, n, widthMeters, 0), sliceAt(to, n, widthMeters, 1)];
+  const heading = unitDirection(from, to);
+  return [
+    sliceAt(from, heading, widthMeters, 0),
+    sliceAt(to, heading, widthMeters, 1),
+  ];
 }
 
-/** The slice through `p` along the unit normal `n`: `p ± (w/2)·n`. */
-function sliceAt(p: Vec2, n: Vec2, w: number, along: number): RibbonSlice {
-  const h = w / 2;
+/**
+ * The slice through `p` square to the unit heading `h`: `p ± (w/2)·n`, with
+ * `n` a quarter turn clockwise of `h`
+ *
+ *     n = (h.z, −h.x)
+ *
+ * clockwise because `h × n = −1` (counterclockwise is `+`, as in
+ * `junctionLeg.ts`). `edgeA` is on the `+` side.
+ */
+function sliceAt(p: Vec2, h: Vec2, w: number, along: number): RibbonSlice {
+  const n = { x: h.z, z: -h.x };
+  const half = w / 2;
   return {
-    edgeA: { x: p.x + h * n.x, z: p.z + h * n.z },
-    edgeB: { x: p.x - h * n.x, z: p.z - h * n.z },
+    edgeA: { x: p.x + half * n.x, z: p.z + half * n.z },
+    edgeB: { x: p.x - half * n.x, z: p.z - half * n.z },
     along,
   };
 }

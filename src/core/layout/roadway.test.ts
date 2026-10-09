@@ -3,6 +3,7 @@ import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
 import { roadwayOf, type Roadway } from "./roadway";
 import type { NodeId, Section } from "../network/types";
+import { STRAIGHT } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 import { addStraight, TEST_ROAD_PROFILE } from "../testSupport";
 
@@ -121,6 +122,46 @@ describe("roadwayOf", () => {
         outline.centerlineGeometry.via,
         onCircle(center, R, startAngle / 2),
       );
+    }
+  });
+
+  it("cuts a biarc back on the piece at each end, keeping the join", () => {
+    // Around (−R, 0) from (0, 0), leaving north, to the join (−R, R); then a
+    // straight on west. A straight east at the start, a right-angle bend at
+    // the far end.
+    const R = 20;
+    const center = vec(-R, 0);
+    const join = onCircle(center, R, Math.PI / 2);
+    const network = new RoadNetwork();
+    const biarc = network.addSection(
+      vec(0, 0),
+      vec(-2 * R, R),
+      {
+        kind: "biarc",
+        biarc: {
+          join,
+          first: { kind: "arc", via: onCircle(center, R, Math.PI / 4) },
+          second: STRAIGHT,
+        },
+      },
+      TEST_ROAD_PROFILE,
+    );
+    addStraight(network, biarc.from, vec(40, 0));
+    addStraight(network, biarc.to, vec(-2 * R, R + 20));
+    const setbacks = setbacksOf(network, biarc);
+
+    const { length, outline } = roadwayOf(network, biarc, setbacks);
+
+    // Set back s₁ along the circle → turned s₁/R from the start; w/2 along
+    // the straight at the far end.
+    expect(setbacks.from).toBeGreaterThan(0);
+    expect(setbacks.to).toBeCloseTo(4);
+    expectPoint(outline.from, onCircle(center, R, setbacks.from / R));
+    expectPoint(outline.to, vec(-2 * R + 4, R));
+    expect(length).toBeCloseTo(biarc.length - setbacks.from - setbacks.to);
+    expect(outline.centerlineGeometry.kind).toBe("biarc");
+    if (outline.centerlineGeometry.kind === "biarc") {
+      expect(outline.centerlineGeometry.biarc.join).toEqual(join);
     }
   });
 });

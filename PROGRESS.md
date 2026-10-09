@@ -328,7 +328,7 @@ their join `J`, as one section.
 - [x] core: the biarc through two points and their directions, with tests
   - `J` chosen automatically
   - new picture: `biarc.svg`
-- [ ] biarc section type, laid out and drawn
+- [x] biarc section type, laid out and drawn
   - stored as `J` + two `LineGeometry`s, validated when added
   - length, nearest points, crossing detection
   - junction legs, setbacks, ribbon, dashes

@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { arcCircle, arcDirectionAt } from "./arc";
-import { biarcBetween, type Biarc } from "./biarc";
-import { STRAIGHT, type LineGeometry } from "./lineGeometry";
+import {
+  biarcBetween,
+  biarcDirectionAt,
+  biarcFractionAt,
+  biarcLength,
+  isBiarcValid,
+  nearestPointOnBiarc,
+  pointOnBiarc,
+  type Biarc,
+} from "./biarc";
+import {
+  lineCrossings,
+  lineLength,
+  nearestPointsBetweenLines,
+  STRAIGHT,
+  type LineGeometry,
+} from "./lineGeometry";
 import { unitDirection, type Vec2 } from "./point";
 
 function vec(x: number, z: number): Vec2 {
@@ -120,5 +135,155 @@ describe("biarcBetween", () => {
 
   it("is null for a zero direction", () => {
     expect(biarcBetween(origin, vec(0, 0), vec(40, 20), north)).toBeNull();
+  });
+});
+
+describe("isBiarcValid", () => {
+  it("accepts what biarcBetween makes", () => {
+    const to = vec(40, 20);
+    expect(isBiarcValid(origin, to, biarcOf(origin, east, to, north))).toBe(
+      true,
+    );
+  });
+
+  it("refuses a join on an end, or within a centimeter of one", () => {
+    const to = vec(40, 0);
+    const pieces = { first: STRAIGHT, second: STRAIGHT };
+    expect(isBiarcValid(origin, to, { join: origin, ...pieces })).toBe(false);
+    expect(isBiarcValid(origin, to, { join: vec(39.995, 0), ...pieces })).toBe(
+      false,
+    );
+  });
+
+  it("refuses a piece that is no arc", () => {
+    const biarc: Biarc = {
+      join: vec(20, 0),
+      first: { kind: "arc", via: vec(10, 0) },
+      second: STRAIGHT,
+    };
+    expect(isBiarcValid(origin, vec(40, 0), biarc)).toBe(false);
+  });
+
+  it("accepts a kink at the join: tangency is not checked", () => {
+    const biarc: Biarc = {
+      join: vec(20, 0),
+      first: STRAIGHT,
+      second: STRAIGHT,
+    };
+    expect(isBiarcValid(origin, vec(20, 20), biarc)).toBe(true);
+  });
+});
+
+describe("biarcLength", () => {
+  it("adds up both pieces", () => {
+    const to = vec(0, 20);
+    const uTurn = biarcOf(origin, east, to, west);
+    expect(biarcLength(origin, to, uTurn)).toBeCloseTo(10 * Math.PI);
+  });
+
+  it("is the distance for a straight in two pieces", () => {
+    const to = vec(40, 0);
+    expect(biarcLength(origin, to, biarcOf(origin, east, to, east))).toBe(40);
+  });
+});
+
+describe("along a biarc", () => {
+  // A U-turn around (0, 10), radius 10: two quarter circles of the same
+  // length, so the join at (10, 10) is halfway.
+  const to = vec(0, 20);
+  const uTurn = biarcOf(origin, east, to, west);
+  const uTurnGeometry: LineGeometry = { kind: "biarc", biarc: uTurn };
+  const diagonal = 10 * Math.SQRT1_2;
+
+  it("finds a point on either piece by length", () => {
+    expectAt(pointOnBiarc(origin, to, uTurn, 0.25), diagonal, 10 - diagonal);
+    expectAt(pointOnBiarc(origin, to, uTurn, 0.5), 10, 10);
+    expectAt(pointOnBiarc(origin, to, uTurn, 0.75), diagonal, 10 + diagonal);
+  });
+
+  it("heads the way each piece runs", () => {
+    expectAt(biarcDirectionAt(origin, to, uTurn, 0), 1, 0);
+    expectAt(biarcDirectionAt(origin, to, uTurn, 0.5), 0, 1);
+    expectAt(biarcDirectionAt(origin, to, uTurn, 1), -1, 0);
+  });
+
+  it("reads a place off the curve on the piece nearest it", () => {
+    // Out from the center, past each quarter's middle and past the join.
+    expect(biarcFractionAt(origin, to, uTurn, vec(20, -10))).toBeCloseTo(0.25);
+    expect(biarcFractionAt(origin, to, uTurn, vec(20, 10))).toBeCloseTo(0.5);
+    expect(biarcFractionAt(origin, to, uTurn, vec(20, 30))).toBeCloseTo(0.75);
+  });
+
+  it("puts the join where the first piece's share of the length ends", () => {
+    const end = vec(40, 20);
+    const biarc = biarcOf(origin, east, end, north);
+    const m =
+      lineLength(origin, biarc.join, biarc.first) /
+      biarcLength(origin, end, biarc);
+    expect(m).not.toBeCloseTo(0.5);
+    expectAt(pointOnBiarc(origin, end, biarc, m), biarc.join.x, biarc.join.z);
+    expect(biarcFractionAt(origin, end, biarc, biarc.join)).toBeCloseTo(m);
+  });
+
+  it("finds the nearest point on either piece, or an end", () => {
+    expectAt(nearestPointOnBiarc(origin, to, uTurn, vec(20, 10)), 10, 10);
+    expectAt(nearestPointOnBiarc(origin, to, uTurn, vec(-5, 25)), 0, 20);
+  });
+
+  it("is crossed on each piece, measured along the whole", () => {
+    // x = 5 meets the circle 60° either side of the join.
+    const along = lineCrossings(
+      origin,
+      to,
+      uTurnGeometry,
+      vec(5, -5),
+      vec(5, 25),
+      STRAIGHT,
+    )
+      .map((crossing) => crossing.alongA)
+      .sort((a, b) => a - b);
+    expect(along).toHaveLength(2);
+    expect(along[0]).toBeCloseTo(1 / 6);
+    expect(along[1]).toBeCloseTo(5 / 6);
+  });
+
+  it("is crossed the same, asked from the other line's side", () => {
+    const crossings = lineCrossings(
+      vec(5, -5),
+      vec(5, 25),
+      STRAIGHT,
+      origin,
+      to,
+      uTurnGeometry,
+    ).sort((a, b) => a.alongA - b.alongA);
+    expect(crossings).toHaveLength(2);
+    expect(crossings[0].alongA).toBeCloseTo((15 - Math.sqrt(75)) / 30);
+    expect(crossings[0].alongB).toBeCloseTo(1 / 6);
+    expect(crossings[1].alongA).toBeCloseTo((15 + Math.sqrt(75)) / 30);
+    expect(crossings[1].alongB).toBeCloseTo(5 / 6);
+  });
+
+  it("finds the nearest points to another line, from either side", () => {
+    // x = 20, level with the join.
+    const beside = [vec(20, 0), vec(20, 20)] as const;
+    const [onBiarc, onLine] = nearestPointsBetweenLines(
+      origin,
+      to,
+      uTurnGeometry,
+      ...beside,
+      STRAIGHT,
+    );
+    expectAt(onBiarc, 10, 10);
+    expectAt(onLine, 20, 10);
+
+    const [lineFirst, biarcSecond] = nearestPointsBetweenLines(
+      ...beside,
+      STRAIGHT,
+      origin,
+      to,
+      uTurnGeometry,
+    );
+    expectAt(lineFirst, 20, 10);
+    expectAt(biarcSecond, 10, 10);
   });
 });

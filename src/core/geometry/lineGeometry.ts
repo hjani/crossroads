@@ -12,6 +12,19 @@ import {
   subArcVia,
   trimArc,
 } from "./arc";
+import {
+  biarcCrossings,
+  biarcDirectionAt,
+  biarcFractionAt,
+  biarcLength,
+  biarcPrimitives,
+  isBiarcValid,
+  nearestPointOnBiarc,
+  nearestPointsBetweenBiarcAndLine,
+  pointOnBiarc,
+  trimBiarc,
+  type Biarc,
+} from "./biarc";
 import { fromTheOtherSide, type Crossing } from "./crossing";
 import { distance, lerp, unitDirection, type Vec2 } from "./point";
 import {
@@ -27,7 +40,10 @@ import {
  */
 
 /** How a line runs between two positions. */
-export type LineGeometry = StraightGeometry | ArcGeometry;
+export type LineGeometry = PrimitiveLineGeometry | BiarcGeometry;
+
+/** A line in one piece. */
+export type PrimitiveLineGeometry = StraightGeometry | ArcGeometry;
 
 export interface StraightGeometry {
   readonly kind: "straight";
@@ -62,8 +78,25 @@ export interface ArcGeometry {
 }
 
 /**
+ * Two pieces end to end, meeting at a join. See `Biarc`, and
+ * `docs/road-network.md`, Biarcs.
+ */
+export interface BiarcGeometry {
+  readonly kind: "biarc";
+  readonly biarc: Biarc;
+}
+
+/** A line in one piece, with its ends. */
+export interface PrimitiveLine {
+  readonly from: Vec2;
+  readonly to: Vec2;
+  readonly geometry: PrimitiveLineGeometry;
+}
+
+/**
  * Whether a line can run in a given shape between two positions: a straight
- * always can, an arc only with a `via` out of line with its ends.
+ * always can, an arc only with a `via` out of line with its ends, a biarc
+ * only with valid pieces (`isBiarcValid`).
  */
 export function isLineGeometryValid(
   from: Vec2,
@@ -75,6 +108,8 @@ export function isLineGeometryValid(
       return true;
     case "arc":
       return isArcValid(from, to, geometry.via);
+    case "biarc":
+      return isBiarcValid(from, to, geometry.biarc);
   }
 }
 
@@ -87,14 +122,37 @@ export function lineLength(
   to: Vec2,
   geometry: LineGeometry,
 ): number {
-  return geometry.kind === "arc"
-    ? arcLength(from, to, geometry.via)
-    : distance(from, to);
+  switch (geometry.kind) {
+    case "straight":
+      return distance(from, to);
+    case "arc":
+      return arcLength(from, to, geometry.via);
+    case "biarc":
+      return biarcLength(from, to, geometry.biarc);
+  }
+}
+
+/**
+ * A line as lines in one piece, end to end from `from` to `to`: the line
+ * itself, or a biarc's two pieces.
+ */
+export function primitivesOf(
+  from: Vec2,
+  to: Vec2,
+  geometry: LineGeometry,
+): readonly PrimitiveLine[] {
+  switch (geometry.kind) {
+    case "straight":
+    case "arc":
+      return [{ from, to, geometry }];
+    case "biarc":
+      return biarcPrimitives(from, to, geometry.biarc);
+  }
 }
 
 /**
  * The point a fraction `t` of the way along a line, 0 at `from` and 1 at
- * `to` — round the curve of an arc.
+ * `to` — by length, round the curve of an arc.
  */
 export function pointOnLine(
   from: Vec2,
@@ -107,6 +165,8 @@ export function pointOnLine(
       return lerp(from, to, t);
     case "arc":
       return pointOnArc(from, to, geometry.via, t);
+    case "biarc":
+      return pointOnBiarc(from, to, geometry.biarc, t);
   }
 }
 
@@ -126,6 +186,8 @@ export function lineFractionAt(
       return segmentFractionAt(place, from, to);
     case "arc":
       return arcFractionAt(from, to, geometry.via, place);
+    case "biarc":
+      return biarcFractionAt(from, to, geometry.biarc, place);
   }
 }
 
@@ -145,6 +207,8 @@ export function lineDirectionAt(
       return unitDirection(from, to);
     case "arc":
       return arcDirectionAt(from, to, geometry.via, t);
+    case "biarc":
+      return biarcDirectionAt(from, to, geometry.biarc, t);
   }
 }
 
@@ -168,6 +232,8 @@ export function subLineGeometry(
         kind: "arc",
         via: subArcVia(from, to, geometry.via, partFrom, partTo),
       };
+    case "biarc":
+      throw new Error("subLineGeometry: biarcs not supported yet");
   }
 }
 
@@ -182,6 +248,29 @@ export function trimLine(
   s1: number,
   s2: number,
 ): { readonly from: Vec2; readonly to: Vec2; readonly geometry: LineGeometry } {
+  switch (geometry.kind) {
+    case "straight":
+    case "arc":
+      return trimPrimitive(from, to, geometry, s1, s2);
+    case "biarc": {
+      const trimmed = trimBiarc(from, to, geometry.biarc, s1, s2);
+      return {
+        from: trimmed.from,
+        to: trimmed.to,
+        geometry: { kind: "biarc", biarc: trimmed.biarc },
+      };
+    }
+  }
+}
+
+/** `trimLine` for a line in one piece, which it stays. */
+export function trimPrimitive(
+  from: Vec2,
+  to: Vec2,
+  geometry: PrimitiveLineGeometry,
+  s1: number,
+  s2: number,
+): PrimitiveLine {
   switch (geometry.kind) {
     case "straight":
       return { ...trimSegment(from, to, s1, s2), geometry };
@@ -206,9 +295,14 @@ export function nearestPointOnLine(
   geometry: LineGeometry,
   point: Vec2,
 ): Vec2 {
-  return geometry.kind === "arc"
-    ? nearestPointOnArc(point, from, to, geometry.via)
-    : nearestPointOnSegment(point, from, to);
+  switch (geometry.kind) {
+    case "straight":
+      return nearestPointOnSegment(point, from, to);
+    case "arc":
+      return nearestPointOnArc(point, from, to, geometry.via);
+    case "biarc":
+      return nearestPointOnBiarc(from, to, geometry.biarc, point);
+  }
 }
 
 /**
@@ -223,37 +317,94 @@ export function nearestPointsBetweenLines(
   toB: Vec2,
   geometryB: LineGeometry,
 ): readonly [Vec2, Vec2] {
-  if (geometryA.kind === "arc" && geometryB.kind === "arc") {
-    return nearestPointsBetweenArcs(
-      fromA,
-      toA,
-      geometryA.via,
-      fromB,
-      toB,
-      geometryB.via,
-    );
+  switch (geometryA.kind) {
+    case "straight":
+      switch (geometryB.kind) {
+        case "straight":
+          return nearestPointsBetweenSegments(fromA, toA, fromB, toB);
+        case "arc":
+          return nearestPointsBetweenSegmentAndArc(
+            fromA,
+            toA,
+            fromB,
+            toB,
+            geometryB.via,
+          );
+        case "biarc":
+          return nearestPointsFromB(
+            fromA,
+            toA,
+            geometryA,
+            fromB,
+            toB,
+            geometryB,
+          );
+      }
+    case "arc":
+      switch (geometryB.kind) {
+        case "straight": {
+          // Measured from B's side, so the pair comes back B's point first.
+          const [onB, onA] = nearestPointsBetweenSegmentAndArc(
+            fromB,
+            toB,
+            fromA,
+            toA,
+            geometryA.via,
+          );
+          return [onA, onB];
+        }
+        case "arc":
+          return nearestPointsBetweenArcs(
+            fromA,
+            toA,
+            geometryA.via,
+            fromB,
+            toB,
+            geometryB.via,
+          );
+        case "biarc":
+          return nearestPointsFromB(
+            fromA,
+            toA,
+            geometryA,
+            fromB,
+            toB,
+            geometryB,
+          );
+      }
+    case "biarc":
+      return nearestPointsBetweenBiarcAndLine(
+        fromA,
+        toA,
+        geometryA.biarc,
+        fromB,
+        toB,
+        geometryB,
+      );
   }
-  if (geometryA.kind === "arc") {
-    // Measured from B's side, so the pair comes back B's point first.
-    const [onB, onA] = nearestPointsBetweenSegmentAndArc(
-      fromB,
-      toB,
-      fromA,
-      toA,
-      geometryA.via,
-    );
-    return [onA, onB];
-  }
-  if (geometryB.kind === "arc") {
-    return nearestPointsBetweenSegmentAndArc(
-      fromA,
-      toA,
-      fromB,
-      toB,
-      geometryB.via,
-    );
-  }
-  return nearestPointsBetweenSegments(fromA, toA, fromB, toB);
+}
+
+/**
+ * `nearestPointsBetweenLines` for a biarc `B`, measured from its side, so the
+ * pair comes back `B`'s point first and is turned around.
+ */
+function nearestPointsFromB(
+  fromA: Vec2,
+  toA: Vec2,
+  geometryA: LineGeometry,
+  fromB: Vec2,
+  toB: Vec2,
+  geometryB: BiarcGeometry,
+): readonly [Vec2, Vec2] {
+  const [onB, onA] = nearestPointsBetweenBiarcAndLine(
+    fromB,
+    toB,
+    geometryB.biarc,
+    fromA,
+    toA,
+    geometryA,
+  );
+  return [onA, onB];
 }
 
 /**
@@ -280,7 +431,8 @@ export function distanceBetweenLines(
  * The dispatch neither shape module can do: each answers for the shapes it
  * owns, and which pair is being asked about is the question left over. A
  * straight meeting an arc is one piece of math read from either end, so the
- * two mixed pairings share it and one of them turns the answer around.
+ * two mixed pairings share it and one of them turns the answer around. So
+ * does a biarc meeting anything.
  */
 export function lineCrossings(
   fromA: Vec2,
@@ -299,6 +451,15 @@ export function lineCrossings(
         }
         case "arc":
           return segmentArcCrossings(fromA, toA, fromB, toB, geometryB.via);
+        case "biarc":
+          return biarcCrossings(
+            fromB,
+            toB,
+            geometryB.biarc,
+            fromA,
+            toA,
+            geometryA,
+          ).map(fromTheOtherSide);
       }
     case "arc":
       switch (geometryB.kind) {
@@ -315,6 +476,17 @@ export function lineCrossings(
             toB,
             geometryB.via,
           );
+        case "biarc":
+          return biarcCrossings(
+            fromB,
+            toB,
+            geometryB.biarc,
+            fromA,
+            toA,
+            geometryA,
+          ).map(fromTheOtherSide);
       }
+    case "biarc":
+      return biarcCrossings(fromA, toA, geometryA.biarc, fromB, toB, geometryB);
   }
 }

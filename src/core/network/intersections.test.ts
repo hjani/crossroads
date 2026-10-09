@@ -654,3 +654,63 @@ describe("starting or ending on a road", () => {
     expect(nodeCount(network)).toBe(4);
   });
 });
+
+describe("a biarc in the network", () => {
+  // A U-turn around (0, 10), radius 10: two quarter circles joined at
+  // (10, 10).
+  const diagonal = 10 * Math.SQRT1_2;
+
+  function withUTurn(): RoadNetwork {
+    const network = new RoadNetwork();
+    network.addSection(
+      vec(0, 0),
+      vec(0, 20),
+      {
+        kind: "biarc",
+        biarc: {
+          join: vec(10, 10),
+          first: { kind: "arc", via: vec(diagonal, 10 - diagonal) },
+          second: { kind: "arc", via: vec(diagonal, 10 + diagonal) },
+        },
+      },
+      TEST_ROAD_PROFILE,
+    );
+    return network;
+  }
+
+  it("refuses a straight drawn across it, until a biarc can be cut", () => {
+    const network = withUTurn();
+    const plan = planSection(
+      network,
+      vec(5, -5),
+      vec(5, 25),
+      STRAIGHT,
+      TEST_ROAD_PROFILE,
+    );
+
+    expect(plan.buildable).toBe(false);
+    // Still says where it would have cut: once on each piece.
+    expect(pointsOf(plan).flatMap((point) => point.cuts)).toHaveLength(2);
+  });
+
+  it("refuses a straight ending on it", () => {
+    const network = withUTurn();
+    const plan = planSection(
+      network,
+      vec(30, 30),
+      vec(diagonal, 10 + diagonal),
+      STRAIGHT,
+      TEST_ROAD_PROFILE,
+    );
+
+    expect(plan.buildable).toBe(false);
+  });
+
+  it("still joins it at its node", () => {
+    const network = withUTurn();
+    const end = nearestNode(network, vec(0, 20), 0.01);
+    assert(end !== null);
+
+    expect(build(network, end.id, vec(0, 40))).not.toBeNull();
+  });
+});

@@ -112,8 +112,9 @@ export function pointsOf(plan: SectionPlan): PlannedPoint[] {
  * Works out what adding a section from `from` to `to` would build, without
  * building any of it.
  *
- * Unbuildable only where there is no section to build: an arc with no
- * circle, or ends in the same place. Whether the ground it would cover is
+ * Unbuildable where there is no section to build: an arc with no circle, or
+ * ends in the same place. Unbuildable too, for now, where it would cut a
+ * biarc: cutting one is not built yet. Whether the ground it would cover is
  * clear is the layout's to judge (`verifyClearance`). With nothing crossed,
  * the single piece is the whole section.
  */
@@ -169,9 +170,9 @@ export function planSection(
 
   const networkVersion = network.version;
   const [firstPiece, ...restPieces] = pieces;
-  if (firstPiece === undefined) {
+  if (firstPiece === undefined || cutsBiarc(network, points)) {
     // Everything merged into one point: the section begins and ends in the
-    // same place.
+    // same place. Or it would cut a biarc.
     return { buildable: false, networkVersion, start, pieces, profile };
   }
 
@@ -182,6 +183,18 @@ export function planSection(
     pieces: [firstPiece, ...restPieces],
     profile,
   };
+}
+
+/** Whether any point of the chain cuts a biarc. */
+function cutsBiarc(
+  network: RoadNetwork,
+  points: readonly PlannedPoint[],
+): boolean {
+  return points.some((point) =>
+    point.cuts.some(
+      (id) => network.getSection(id).centerlineGeometry.kind === "biarc",
+    ),
+  );
 }
 
 /**
