@@ -325,8 +325,6 @@ Wanted, but not part of a milestone yet.
 - [ ] rebuild only what changed in the road surface, and decide how the view
       learns what that is.
 - [ ] level of detail for arc tessellation
-- [ ] level of detail for the network: one way of drawing per zoom level,
-      not the wireframe drawn over the road surface and its marks
 - [ ] refuse a straight drawn between two points on the same straight road:
       both ends cut the road, and the new section lies on top of the piece
       between them. An arc does the same only if its control point lands on
@@ -354,6 +352,11 @@ Wanted, but not part of a milestone yet.
       exact one, with the boxes cached per part in `RoadLayout`
 - [ ] a refusal reason on `UnbuildableSectionPlan`, so a preview can say what
       the section conflicts with
+- [ ] `planSection`: plan an arc within 1 cm of its chord as a straight.
+- [ ] smart arc tool: an arc drawn from a junction welds onto another arc
+      leaving that junction
+- [ ] clearance: refuse roadways overlapping further out though their
+      sections share a node
 
 ## Deferred, probably to be dropped
 

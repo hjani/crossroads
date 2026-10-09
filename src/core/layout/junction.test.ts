@@ -3,7 +3,7 @@ import { Junction } from "./junction";
 import { RoadNetwork } from "../network/RoadNetwork";
 import { pointOnArc } from "../geometry/arc";
 import { STRAIGHT } from "../geometry/lineGeometry";
-import { type SectionId } from "../network/types";
+import { type NodeId, type SectionId } from "../network/types";
 import { distance, SAME_POINT_METERS, type Vec2 } from "../geometry/point";
 import { nearestPointOnSegment } from "../geometry/segment";
 import { addStraight, profileOfWidth, TEST_ROAD_PROFILE } from "../testSupport";
@@ -678,6 +678,186 @@ describe("Junction.outline", () => {
     expect(vias).toHaveLength(2);
     expect(distance(center, vias[0])).toBeCloseTo(R - 4);
     expectPoints([vias[1]], [onCircle(vec(0, 0), 4, (5 * Math.PI) / 4)]);
+  });
+
+  it("keeps the junction where an 8 m road curving through crosses a 16 m one", () => {
+    // Curves hugging the 16 m road's curb at a slight angle (60°, where one
+    // pair's gap is at the corner/round switch), and a short stretch of curb
+    // beside a crossing (35°): both once broke the pairs' outline apart.
+    for (const [radius, degrees] of [
+      [80, 60],
+      [50, 35],
+    ]) {
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const center = vec(0, radius);
+        const sweep = 40 / radius;
+        const network = new RoadNetwork();
+        const east = network.addSection(
+          vec(0, 0),
+          onCircle(center, radius, -Math.PI / 2 + sweep),
+          {
+            kind: "arc",
+            via: onCircle(center, radius, -Math.PI / 2 + sweep / 2),
+          },
+          profileOfWidth(8),
+        );
+        network.addSection(
+          east.from,
+          onCircle(center, radius, -Math.PI / 2 - sweep),
+          {
+            kind: "arc",
+            via: onCircle(center, radius, -Math.PI / 2 - sweep / 2),
+          },
+          profileOfWidth(8),
+        );
+        const angle = (degrees * Math.PI) / 180;
+        for (const turned of [angle, angle + Math.PI]) {
+          network.addSection(
+            east.from,
+            onCircle(vec(0, 0), 40, turned),
+            STRAIGHT,
+            profileOfWidth(16),
+          );
+        }
+
+        const junction = new Junction(network, east.from);
+
+        expect(junction.outline().pieces.length, `${degrees}°`).toBeGreaterThan(
+          0,
+        );
+        expect(junction.coversNode(), `${degrees}°`).toBe(true);
+        expect(errors, `${degrees}°`).not.toHaveBeenCalled();
+      } finally {
+        errors.mockRestore();
+      }
+    }
+  });
+
+  /**
+   * A crossing drawn in the app: a wide road and a narrow one, each curving
+   * through the node `at` on one circle, given by its center. Their four
+   * halves, in this order, each `length` long. Checks the setbacks the
+   * junction gives them, and that it covers its node without an error.
+   */
+  function expectCurvedCrossing(
+    at: Vec2,
+    wide: Vec2,
+    narrow: Vec2,
+    lengths: readonly number[],
+    setbacks: readonly number[],
+  ): void {
+    const roads = [
+      { center: wide, turn: 1, width: 16 },
+      { center: narrow, turn: 1, width: 8 },
+      { center: wide, turn: -1, width: 16 },
+      { center: narrow, turn: -1, width: 8 },
+    ];
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const network = new RoadNetwork();
+      let node: NodeId | null = null;
+      const ids = roads.map(({ center, turn, width }, i) => {
+        const radius = distance(center, at);
+        const start = Math.atan2(at.z - center.z, at.x - center.x);
+        const along = (meters: number) =>
+          onCircle(center, radius, start + (turn * meters) / radius);
+        const section = network.addSection(
+          node ?? at,
+          along(lengths[i]),
+          { kind: "arc", via: along(lengths[i] / 2) },
+          profileOfWidth(width),
+        );
+        node = section.from;
+        return section.id;
+      });
+
+      const junction = new Junction(network, node!);
+
+      setbacks.forEach((setback, i) =>
+        expect(junction.setbackOf(ids[i])).toBeCloseTo(setback, 1),
+      );
+      expect(junction.coversNode()).toBe(true);
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
+  }
+
+  it("keeps the junction of two curved roads where one is all but straight", () => {
+    // A 16 m road on a 48 km circle, an 8 m one on a 490 m circle. The 16 m
+    // road's curb, taken by three pairs as arcs through points nearly in
+    // line, once came out as three circles crossing each other along it,
+    // and the junction vanished.
+    expectCurvedCrossing(
+      vec(-89.80126486383242, -3.084981114643085),
+      vec(47882.144917352925, 135.0000000019214),
+      vec(209.3864522669023, 385.01963246049166),
+      [123.21, 317.44, 138.09, 191.34],
+      [11.05, 12.99, 11.5, 13.48],
+    );
+  });
+
+  it("doesn't take the far crossing of two curved curbs for a corner", () => {
+    // A 16 m road on a 593 m circle, an 8 m one on a 490 m circle, 140° apart
+    // on one side. Their curbs there cross behind the node on the 16 m road,
+    // and again 140° round the circles: taken as the corner, that set two
+    // roads back by over a kilometer.
+    expectCurvedCrossing(
+      vec(-70.05827607316405, -17.533624839480012),
+      vec(503.3333333333328, 135.00000000000009),
+      vec(209.38645226618002, 385.01963245630844),
+      [114.87, 292.97, 154.27, 215.81],
+      [15.6, 16.9, 15.61, 17.25],
+    );
+  });
+
+  it("crosses a 16 m road with an 8 m one at a shallow angle in four corners", () => {
+    // A 16 m road east–west, an 8 m one across it at 30°. Every curb runs
+    // straight on until it meets a curb of the other road: the 8 m road's
+    // near curb meets the 16 m road's past the node, at x = 8√3 − 8, and its
+    // far curb at x = 8√3 + 8, where the 16 m road's roadway ends. The 16 m
+    // road's two halves meet at (0, ±8), in line.
+    const network = new RoadNetwork();
+    const east = network.addSection(
+      vec(0, 0),
+      vec(40, 0),
+      STRAIGHT,
+      profileOfWidth(16),
+    );
+    const north = network.addSection(
+      east.from,
+      onCircle(vec(0, 0), 40, Math.PI / 6),
+      STRAIGHT,
+      profileOfWidth(8),
+    );
+    network.addSection(east.from, vec(-40, 0), STRAIGHT, profileOfWidth(16));
+    network.addSection(
+      east.from,
+      onCircle(vec(0, 0), 40, (7 * Math.PI) / 6),
+      STRAIGHT,
+      profileOfWidth(8),
+    );
+
+    const junction = new Junction(network, east.from);
+
+    const near = 8 * Math.sqrt(3) - 8;
+    const far = 8 * Math.sqrt(3) + 8;
+    const out = vec(8 * Math.sqrt(3) + 4, 8 + 4 * Math.sqrt(3));
+    expect(junction.setbackOf(east.id)).toBeCloseTo(far);
+    expect(junction.setbackOf(north.id)).toBeCloseTo(16 + 4 * Math.sqrt(3));
+    expectPoints(cornersOf(junction), [
+      vec(far, 8),
+      out,
+      vec(near, 8),
+      vec(0, 8),
+      vec(-far, 8),
+      vec(-far, -8),
+      vec(-out.x, -out.z),
+      vec(-near, -8),
+      vec(0, -8),
+      vec(far, -8),
+    ]);
   });
 });
 

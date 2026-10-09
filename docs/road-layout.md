@@ -58,7 +58,10 @@
 - Each gap is joined one of two ways:
   - corner: the two curbs on the gap's side cross ahead of the node on both
     roads, at `P` → both roads end square through `P` (1)
-    - arc curbs can cross twice → `P` is the crossing nearest the node
+    - arc curbs can cross twice → `P` is the crossing nearest the node,
+      leaving out one behind both roads
+      - behind the node on one road → no corner; the far crossing never
+        stands in for it
   - round, where they don't: below
 - Round join, between the wider road (`W` wide) and the narrower (`w`):
   - `X`: where the narrower road's curb crosses the circle about the node
@@ -111,6 +114,26 @@
     `180° − arcsin(1 − w/W)`).
   - The junction is drawn all the same, and says so; the clearing step
     refuses such a network (`docs/intersections.md`, Practical limits).
+
+### Three or more roads
+
+![A 16 m road crossed by an 8 m one at 30°. Panels 1 to 6: each pair of the four legs and the junction it makes alone — two neighbors 30° apart cornered far out, each road going on as a straight band, the two bends between widths. Panel 7: all six overlaid. Panel 8: the junction they make together, cut back to the roadways, with four corners](images/junction-pairs.svg)
+
+- Every two roads at the node get the junction they would make meeting
+  alone, by the rules above.
+- The junction covers what any of those covers (`docs/ring-union.md`).
+  - → a road going on past the node keeps its curb, though another road
+    lies between its two halves: a crossing is two bands, cornered where
+    their curbs cross
+  - two roads → one pair → the rules above, unchanged
+- Each pair runs along its roads past every setback; the outline of all of
+  them decides where the roadways begin:
+  - a road's setback: where the outline last leaves its curbs, the farther
+    of its two sides
+  - the narrower road's curb from where a round join's circle touches it
+    out to `X` counts as the join → that road still ends through `X`
+- An outline that loses a roadway's end has come out broken: the error is
+  logged, and the node is joined gap by gap instead.
 
 ## Roadway
 
