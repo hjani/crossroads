@@ -325,7 +325,7 @@ their join `J`, as one section.
 
 - [x] design notes: `road-network.md`, `road-layout.md`,
       `intersections.md`, `tools.md`
-- [ ] core: the biarc through two points and their directions, with tests
+- [x] core: the biarc through two points and their directions, with tests
   - `J` chosen automatically
   - new picture: `biarc.svg`
 - [ ] biarc section type, laid out and drawn

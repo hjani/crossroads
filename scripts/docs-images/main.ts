@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { biarc } from "./biarc";
 import { clearanceRules } from "./clearanceRules";
 import { junctionAnatomy } from "./junctionAnatomy";
 import { junctionJoins } from "./junctionJoins";
@@ -16,6 +17,7 @@ import { smartArc } from "./smartArc";
  */
 
 const PICTURES: Record<string, () => string> = {
+  "biarc.svg": biarc,
   "clearance-rules.svg": clearanceRules,
   "junction-anatomy.svg": junctionAnatomy,
   "junction-joins.svg": junctionJoins,

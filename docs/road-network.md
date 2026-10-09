@@ -53,6 +53,13 @@ Two pieces end to end, tangent where they meet: the join `J`.
 - More is stored than the shape needs → tangency at `J` is not built in,
   it is a rule (below).
 - Length: the two pieces' added up.
+- `J` from the ends and their directions alone: both pieces' tangent lengths
+  `d` equal.
+  - Each piece rounds off a corner, `Q0` or `Q1` → `J` is the midpoint of
+    `Q0–Q1`.
+  - Reversed → the same `J`.
+
+![A biarc from P0 heading east to P1 heading north: the first piece rounds off the corner Q0, the second the corner Q1, and J is the midpoint of Q0–Q1, all four stretches d long](images/biarc.svg)
 
 ## Rules
 
