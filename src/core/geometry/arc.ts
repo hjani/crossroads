@@ -306,6 +306,59 @@ export function arcLength(from: Vec2, to: Vec2, via: Vec2): number {
 }
 
 /**
+ * The arc `from`–`via`–`to` with `s₁` meters cut off its start and `s₂` off
+ * its end: its new ends, and a `via` between them.
+ *
+ * With `L` the arc's length and `p(t)` = `pointOnArc` — a fraction of the
+ * length is the same fraction of the angle, so the cuts are fractions
+ * `t₁ = s₁/L` and `t₂ = 1 − s₂/L`:
+ *
+ *     p(t₁)  →  p(t₂),  via p((t₁ + t₂)/2)
+ *
+ * - a new `via`: the old one can lie on the part cut away, and the arc
+ *   through it would then run the other way round the circle
+ * - `s₁ + s₂ > L` → `t₁ > t₂`, and the arc runs backwards
+ */
+export function trimArc(
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+  s1: number,
+  s2: number,
+): { readonly from: Vec2; readonly to: Vec2; readonly via: Vec2 } {
+  const length = arcLength(from, to, via);
+  const t1 = s1 / length;
+  const t2 = 1 - s2 / length;
+  return {
+    from: pointOnArc(from, to, via, t1),
+    to: pointOnArc(from, to, via, t2),
+    via: pointOnArc(from, to, via, (t1 + t2) / 2),
+  };
+}
+
+/**
+ * A `via` for the part of the arc `from`–`via`–`to` between two places on
+ * it: the point halfway along that part — halfway being the one place on an
+ * arc that is neither of its ends whatever the sweep.
+ *
+ * A place off the curve counts as where the arc reaches it
+ * (`arcFractionAt`).
+ */
+export function subArcVia(
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+  partFrom: Vec2,
+  partTo: Vec2,
+): Vec2 {
+  const middle =
+    (arcFractionAt(from, to, via, partFrom) +
+      arcFractionAt(from, to, via, partTo)) /
+    2;
+  return pointOnArc(from, to, via, middle);
+}
+
+/**
  * However many chords it takes, an arc is never split past this. Insurance
  * against a tolerance so fine, or a radius so large, that the count runs
  * away — at which point the arc is straight enough that nobody will see

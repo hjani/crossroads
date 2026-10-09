@@ -1,6 +1,5 @@
 import {
   arcCircle,
-  arcLength,
   circleCircleCrossings,
   lineCircleCrossings,
   type ArcCircle,
@@ -39,8 +38,6 @@ export interface Leg {
    * `inCounterclockwiseOrder` shifts it by whole turns.
    */
   readonly angle: number;
-  /** Along the centerline, in meters. */
-  readonly length: number;
   /** Half the road's width: from the centerline to either edge, in meters. */
   readonly halfWidth: number;
   /**
@@ -436,7 +433,6 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
     section,
     direction,
     angle: angleOf(direction),
-    length: distance(from, to),
     halfWidth: section.profile.width / 2,
     arc: null,
   };
@@ -457,9 +453,5 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
     direction.x * (circle.center.z - at.z) -
       direction.z * (circle.center.x - at.x),
   );
-  return {
-    ...straight,
-    length: arcLength(from, to, via),
-    arc: { circle, turn },
-  };
+  return { ...straight, arc: { circle, turn } };
 }

@@ -1,5 +1,8 @@
-import { isArcValid } from "../geometry/arc";
-import { lineLength, type LineGeometry } from "../geometry/lineGeometry";
+import {
+  isLineGeometryValid,
+  lineLength,
+  type LineGeometry,
+} from "../geometry/lineGeometry";
 import type { Node, NodeId, RoadProfile, Section, SectionId } from "./types";
 import type { Vec2 } from "../geometry/point";
 
@@ -44,8 +47,8 @@ export class RoadNetwork {
    * Creates a section, and a node for any endpoint given as a position.
    *
    * Throws if an endpoint names a node that does not exist, if both ends
-   * resolve to the same node, or if an arc's `via` is in line with them and
-   * so has no circle through it. Everything is checked before anything is
+   * resolve to the same node, or if the geometry can't run between them
+   * (`isLineGeometryValid`). Everything is checked before anything is
    * created, so a rejected call changes nothing.
    */
   addSection(
@@ -59,11 +62,10 @@ export class RoadNetwork {
     if (from === to && isNodeId(from)) {
       throw new Error(`Section would start and end at node ${from}`);
     }
-    if (
-      centerlineGeometry.kind === "arc" &&
-      !isArcValid(fromPosition, toPosition, centerlineGeometry.via)
-    ) {
-      throw new Error("Arc runs through a position in line with its ends");
+    if (!isLineGeometryValid(fromPosition, toPosition, centerlineGeometry)) {
+      throw new Error(
+        `No ${centerlineGeometry.kind} section can run between its ends`,
+      );
     }
 
     const fromId = this.resolve(from);

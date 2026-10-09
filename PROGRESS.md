@@ -402,7 +402,7 @@ Not blocking anything; do them when they start to bite.
 - [ ] weigh a `SectionEndPlacer` class over `sectionPointPlacement.ts`'s
       functions: network, layout and viewport are threaded through every
       call. `toolHelpers.ts` wants a real home in the same pass
-- [ ] weigh `crossing.ts` owning where two shapes meet, not just the
+- [x] weigh `crossing.ts` owning where two shapes meet, not just the
       `Crossing` it already holds, instead of each pairing sitting in the
       module whose shape it names — segment–segment in `segment.ts`, the two
       involving an arc in `arc.ts`, and the dispatch between them in

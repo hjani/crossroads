@@ -1,22 +1,13 @@
-import {
-  arcArcCrossings,
-  arcCircle,
-  arcDirectionAt,
-  arcFractionAt,
-  pointOnArc,
-  segmentArcCrossings,
-} from "../geometry/arc";
-import {
-  distance,
-  isSamePoint,
-  lerp,
-  unitDirection,
-  type Vec2,
-} from "../geometry/point";
-import { fromTheOtherSide, type Crossing } from "../geometry/crossing";
-import { segmentCrossing, segmentFractionAt } from "../geometry/segment";
+import { arcCircle } from "../geometry/arc";
+import { distance, isSamePoint, type Vec2 } from "../geometry/point";
 import { isNodeId, type Endpoint, type RoadNetwork } from "./RoadNetwork";
-import type { LineGeometry } from "../geometry/lineGeometry";
+import {
+  lineCrossings,
+  lineDirectionAt,
+  lineFractionAt,
+  pointOnLine,
+  type LineGeometry,
+} from "../geometry/lineGeometry";
 import type { Node, NodeId, Section, SectionId } from "./types";
 
 /**
@@ -117,9 +108,7 @@ export function nearestPointOnSection(
   const end = network.getNode(section.to).position;
   const t = sectionFractionAt(network, section, to);
 
-  return section.centerlineGeometry.kind === "arc"
-    ? pointOnArc(from, end, section.centerlineGeometry.via, t)
-    : lerp(from, end, t);
+  return pointOnLine(from, end, section.centerlineGeometry, t);
 }
 
 /**
@@ -135,9 +124,7 @@ export function sectionFractionAt(
   const from = network.getNode(section.from).position;
   const end = network.getNode(section.to).position;
 
-  return section.centerlineGeometry.kind === "arc"
-    ? arcFractionAt(from, end, section.centerlineGeometry.via, place)
-    : segmentFractionAt(place, from, end);
+  return lineFractionAt(from, end, section.centerlineGeometry, place);
 }
 
 /**
@@ -153,9 +140,7 @@ export function sectionDirectionAt(
   const from = network.getNode(section.from).position;
   const end = network.getNode(section.to).position;
 
-  return section.centerlineGeometry.kind === "arc"
-    ? arcDirectionAt(from, end, section.centerlineGeometry.via, t)
-    : unitDirection(from, end);
+  return lineDirectionAt(from, end, section.centerlineGeometry, t);
 }
 
 /**
@@ -267,7 +252,7 @@ export function crossingsAlong(
 
   const crossings: SectionCrossing[] = [];
   for (const section of network.allSections()) {
-    const met = shapesCrossing(
+    const met = lineCrossings(
       start,
       end,
       centerlineGeometry,
@@ -290,58 +275,6 @@ export function crossingsAlong(
 
   crossings.sort((left, right) => left.alongNew - right.alongNew);
   return crossings;
-}
-
-/**
- * Where a stretch of road running one shape meets a stretch running
- * another, with `alongA` measured along the first of them. In no
- * particular order.
- *
- * The dispatch neither shape module can do: each answers for the shapes it
- * owns, and which pair is being asked about is the question left over. A
- * straight meeting an arc is one piece of math read from either end, so the
- * two mixed pairings share it and one of them turns the answer around.
- */
-function shapesCrossing(
-  from: Vec2,
-  to: Vec2,
-  centerlineGeometry: LineGeometry,
-  otherFrom: Vec2,
-  otherTo: Vec2,
-  otherCenterlineGeometry: LineGeometry,
-): Crossing[] {
-  if (centerlineGeometry.kind === "arc") {
-    if (otherCenterlineGeometry.kind === "arc") {
-      return arcArcCrossings(
-        from,
-        to,
-        centerlineGeometry.via,
-        otherFrom,
-        otherTo,
-        otherCenterlineGeometry.via,
-      );
-    }
-    return segmentArcCrossings(
-      otherFrom,
-      otherTo,
-      from,
-      to,
-      centerlineGeometry.via,
-    ).map(fromTheOtherSide);
-  }
-
-  if (otherCenterlineGeometry.kind === "arc") {
-    return segmentArcCrossings(
-      from,
-      to,
-      otherFrom,
-      otherTo,
-      otherCenterlineGeometry.via,
-    );
-  }
-
-  const crossing = segmentCrossing(from, to, otherFrom, otherTo);
-  return crossing === null ? [] : [crossing];
 }
 
 /**

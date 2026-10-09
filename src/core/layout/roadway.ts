@@ -1,7 +1,5 @@
-import { pointOnArc } from "../geometry/arc";
-import { unitDirection, type Vec2 } from "../geometry/point";
+import { trimLine } from "../geometry/lineGeometry";
 import type { RoadNetwork } from "../network/RoadNetwork";
-import type { LineGeometry } from "../geometry/lineGeometry";
 import type { NodeId, RoadProfile, Section } from "../network/types";
 import type { RoadwayOutline } from "./outline";
 
@@ -34,6 +32,8 @@ export interface Roadway {
  * back the junctions at its two ends set it — `s₁` at `from` and `s₂` at
  * `to`, in meters along the centerline (`Junction.setbackOf`).
  *
+ * - the outline is the section's centerline with the setbacks cut away
+ *   (`trimLine`): a shorter line of the same kind
  * - a setback is measured along the centerline, whatever shape it takes, so
  *   the length is what is left of the section either way:
  *
@@ -49,12 +49,21 @@ export function roadwayOf(
 ): Roadway {
   const { from: s1, to: s2 } = setbacks;
   const length = section.length - s1 - s2;
+  const centerline = trimLine(
+    network.getNode(section.from).position,
+    network.getNode(section.to).position,
+    section.centerlineGeometry,
+    s1,
+    s2,
+  );
   return {
     length,
     outline: {
       kind: "roadway",
       section: section.id,
-      ...applySetbacks(network, section, s1, s2),
+      from: centerline.from,
+      to: centerline.to,
+      centerlineGeometry: centerline.geometry,
       widthMeters: section.profile.width,
     },
     profile: section.profile,
@@ -77,52 +86,4 @@ function crossingsOf(
   const crosses = (node: NodeId) =>
     network.sectionsAt(node).length >= CROSSING_MIN_SECTIONS;
   return { from: crosses(section.from), to: crosses(section.to) };
-}
-
-/**
- * A section's ends and shape with its two setbacks cut away: a shorter line
- * of the same kind.
- *
- * Straight, with `d = unitDirection(from, to)`:
- *
- *     from + s₁·d  →  to − s₂·d
- *
- * Arc, with `L = section.length` and `p(t)` = `pointOnArc` — a fraction of
- * the length is the same fraction of the angle, so the setbacks are
- * fractions `t₁ = s₁/L` and `t₂ = 1 − s₂/L`:
- *
- *     p(t₁)  →  p(t₂),  via p((t₁ + t₂)/2)
- *
- * - a new `via`: the old one can lie on the part cut away, and the arc
- *   through it would then run the other way round the circle
- */
-function applySetbacks(
-  network: RoadNetwork,
-  section: Section,
-  s1: number,
-  s2: number,
-): { from: Vec2; to: Vec2; centerlineGeometry: LineGeometry } {
-  const from = network.getNode(section.from).position;
-  const to = network.getNode(section.to).position;
-
-  if (section.centerlineGeometry.kind === "arc") {
-    const { via } = section.centerlineGeometry;
-    const t1 = s1 / section.length;
-    const t2 = 1 - s2 / section.length;
-    return {
-      from: pointOnArc(from, to, via, t1),
-      to: pointOnArc(from, to, via, t2),
-      centerlineGeometry: {
-        kind: "arc",
-        via: pointOnArc(from, to, via, (t1 + t2) / 2),
-      },
-    };
-  }
-
-  const d = unitDirection(from, to);
-  return {
-    from: { x: from.x + s1 * d.x, z: from.z + s1 * d.z },
-    to: { x: to.x - s2 * d.x, z: to.z - s2 * d.z },
-    centerlineGeometry: section.centerlineGeometry,
-  };
 }

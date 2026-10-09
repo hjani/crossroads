@@ -1,6 +1,6 @@
-import { arcCircle, arcFractionAt, pointOnArc } from "../geometry/arc";
-import { distance, lerp, type Vec2 } from "../geometry/point";
-import { segmentFractionAt } from "../geometry/segment";
+import { arcCircle } from "../geometry/arc";
+import { lineFractionAt, pointOnLine } from "../geometry/lineGeometry";
+import { distance, type Vec2 } from "../geometry/point";
 import type { NodeId, SectionId } from "../network/types";
 import type { Junction } from "./junction";
 import type { RoadLayout } from "./RoadLayout";
@@ -106,8 +106,8 @@ function inCircularSegment(a: Vec2, b: Vec2, v: Vec2, p: Vec2): boolean {
  * `w/2` of its centerline.
  *
  * Let `t` be where along the centerline the place nearest `p` falls
- * (`segmentFractionAt`, `arcFractionAt`), clamped to the ends, and `q` the
- * centerline point at `t`.
+ * (`lineFractionAt`), clamped to the ends, and `q` the centerline point at
+ * `t`.
  *
  * - the end cuts are square to the road: across a straight, along a radius
  *   of an arc
@@ -127,17 +127,11 @@ function inCircularSegment(a: Vec2, b: Vec2, v: Vec2, p: Vec2): boolean {
  */
 function roadwayContains(roadway: Roadway, p: Vec2): boolean {
   const { from, to, centerlineGeometry, widthMeters } = roadway.outline;
-  const t =
-    centerlineGeometry.kind === "arc"
-      ? arcFractionAt(from, to, centerlineGeometry.via, p)
-      : segmentFractionAt(p, from, to);
+  const t = lineFractionAt(from, to, centerlineGeometry, p);
   if (t <= 0 || t >= 1) {
     return false;
   }
 
-  const q =
-    centerlineGeometry.kind === "arc"
-      ? pointOnArc(from, to, centerlineGeometry.via, t)
-      : lerp(from, to, t);
+  const q = pointOnLine(from, to, centerlineGeometry, t);
   return distance(p, q) <= widthMeters / 2;
 }

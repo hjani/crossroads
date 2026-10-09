@@ -1,5 +1,12 @@
 import type { Crossing } from "./crossing";
-import { areParallel, clamp01, distance, lerp, type Vec2 } from "./point";
+import {
+  areParallel,
+  clamp01,
+  distance,
+  lerp,
+  unitDirection,
+  type Vec2,
+} from "./point";
 
 /**
  * Straight sections as plane geometry: where along one a position falls, and
@@ -44,6 +51,27 @@ export function segmentFractionAt(point: Vec2, from: Vec2, to: Vec2): number {
  */
 export function nearestPointOnSegment(point: Vec2, from: Vec2, to: Vec2): Vec2 {
   return lerp(from, to, segmentFractionAt(point, from, to));
+}
+
+/**
+ * The segment `from`–`to` with `s₁` meters cut off its start and `s₂` off its
+ * end. With `d = unitDirection(from, to)`:
+ *
+ *     from + s₁·d  →  to − s₂·d
+ *
+ * `s₁ + s₂` longer than the segment → it runs backwards.
+ */
+export function trimSegment(
+  from: Vec2,
+  to: Vec2,
+  s1: number,
+  s2: number,
+): { readonly from: Vec2; readonly to: Vec2 } {
+  const d = unitDirection(from, to);
+  return {
+    from: { x: from.x + s1 * d.x, z: from.z + s1 * d.z },
+    to: { x: to.x - s2 * d.x, z: to.z - s2 * d.z },
+  };
 }
 
 /**
