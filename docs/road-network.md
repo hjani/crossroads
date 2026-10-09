@@ -16,8 +16,8 @@
   lanes run each way.
   - Read-only → sections may share an instance: the pieces of a cut section
     can keep the profile it had.
-- **Geometry**: how a section runs between its nodes: straight, or a
-  circular arc.
+- **Geometry**: how a section runs between its nodes: straight, a circular
+  arc, or a biarc.
 - Nodes and sections have stable ids, valid for the element's lifetime.
 
 ### Arcs
@@ -36,6 +36,24 @@ An arc is fixed by a third position it passes through, between its ends.
   - → two sections have the same shape when their circles and ends agree,
     not when their stored points do.
 
+### Biarcs
+
+Two pieces end to end, tangent where they meet: the join `J`.
+
+- Each piece is a straight or an arc → the road runs smoothly end to end,
+  its curvature changing only at `J`.
+  - Why: a road leaving one direction and landing in another, smooth at
+    both ends. An arc can't: with its ends fixed, its one degree of freedom
+    matches a direction at one end only.
+- Stored: `J`, and each piece's own geometry: `from → J`, then `J → to`.
+  - → a piece is an ordinary straight or arc: every rule and query on
+    those applies to it as it is.
+  - Reversed → the pieces swap, nothing else changes → symmetric, like an
+    arc.
+- More is stored than the shape needs → tangency at `J` is not built in,
+  it is a rule (below).
+- Length: the two pieces' added up.
+
 ## Rules
 
 - A section joins two distinct, existing nodes.
@@ -45,6 +63,11 @@ An arc is fixed by a third position it passes through, between its ends.
     stored on it.
 - An arc's third position is not in line with its ends: no circle through
   them → no arc to build.
+- A biarc:
+  - its pieces are tangent at `J`, up to rounding
+  - `J` is on neither end → each piece has a length
+    - a join on an end leaves one arc → stored as that arc
+  - each piece follows the arc rule above
 - Two nodes may be joined by more than one section.
 - Removing a section keeps its end nodes, unless it was a node's last
   section.

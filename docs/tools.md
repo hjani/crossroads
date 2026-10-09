@@ -210,6 +210,34 @@ place.
 
 ![A node where two roads meet, with the directions it offers drawn as rays; the cursor leaves the capture circle, the nearest ray is picked, and the arc leaves the node that way to the far end](images/smart-arc.svg)
 
+## Placing a connector
+
+Why: a smart arc is one circle → its far end meets the road at whatever
+angle the circle gets there. A connector lands smoothly too, and gives up
+the single circle for it: a biarc (`docs/road-network.md`, Biarcs).
+
+- A tool of its own, beside the smart arc → each keeps one promise:
+  - smart arc: one true circle, landing at any angle
+  - connector: smooth at both ends, two arcs
+- The start: as the smart arc's.
+- Far end on open ground → nothing to land along → the smart arc's arc.
+- Far end welded onto a node or a road → it lands:
+  - the arrival direction: the cursor's heading over its last stretch of
+    movement, the moment the end welds → the nearest direction offered
+    there, as at a start
+    - the cursor's own heading, not one measured from the weld point: on a
+      road the weld point slides along under the cursor → every arrival
+      would read square to the road
+  - kept while the end stays welded to the same node or road; unwelding
+    drops it, welding elsewhere picks again
+  - planned at once → a click builds it
+- `J`: chosen by the tool, no input.
+- Refused where it would turn more than ¾ of a circle in all.
+- A click builds it, and its far end starts the next one, carrying on the
+  direction it arrived in → a run, as with the smart arc.
+- Cancel and the debug view: as the smart arc's. The debug view shows the
+  start's directions only.
+
 ## Inspect
 
 A tool like any other, and the one that builds nothing: it names what the
@@ -254,6 +282,7 @@ First to answer wins:
 - Node → its id, how many sections meet it.
 - Section → its id, its length, its roadway's length, its radius (a straight
   has none).
+  - A biarc: both radii, one per arc.
 - The panel is `docs/ui.md`'s; what is worth measuring is this tool's.
 
 **Deleting**
@@ -274,7 +303,8 @@ First to answer wins:
 - Escape: cancel the edit in progress.
 - Delete, Backspace: remove the selection.
 - Ctrl, held: place the point without rounding it; welding still applies.
-- C: smart arc, show the plan for every offered direction (debug view).
+- C: smart arc and connector, show the plan for every offered direction at
+  the start (debug view).
 - Middle button: unclaimed, kept for an orbiting camera later.
 - Panning works mid-edit: start a section, move the view, finish it.
 

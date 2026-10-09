@@ -18,6 +18,10 @@
   angles → a strip of quads, each symmetric about its middle.
   - The outer edge sets how fine: at a given angle step it strays furthest
     from its curve.
+- Biarc: each piece as its own straight or arc, with a slice at `J` shared
+  by both.
+  - Each arc's outer edge sets its own step → the two pieces' quads may
+    differ in size.
 
 ![A straight roadway as one quad, an arc roadway as quads between slices along its radii](images/roadway-tessellation.svg)
 

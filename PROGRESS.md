@@ -318,6 +318,37 @@ only for now.
 - [x] "two lanes" builds 2×2 lanes, marked by a fragment shader per lane
       layout; `state` becomes a `flat varying`
 
+### M13 — Connector
+
+A road that meets roads smoothly at both ends: a biarc, two arcs tangent at
+their join `J`, as one section.
+
+- [x] design notes: `road-network.md`, `road-layout.md`,
+      `intersections.md`, `tools.md`
+- [ ] core: the biarc through two points and their directions, with tests
+  - `J` chosen automatically
+  - new picture: `biarc.svg`
+- [ ] biarc section type, laid out and drawn
+  - stored as `J` + two `LineGeometry`s, validated when added
+  - length, nearest points, crossing detection
+  - junction legs, setbacks, ribbon, dashes
+  - seeded in `main.ts`
+  - picture: biarc panel in `roadway-tessellation.svg`
+- [ ] inspect a biarc: picking, both radii in the panel
+  - `sectionRadius` replaced by a section-pieces query
+- [ ] Connector tool: plan on weld, nothing built
+  - palette entry
+  - arrival direction recorded when the far end welds
+  - refused for now: crossing a road, welding onto a connector
+  - new picture: `connector.svg`
+- [ ] Connector tool: a click builds, the run continues
+- [ ] cutting a biarc: arc + biarc, or two arcs at `J`
+  - lifts the tool's temporary refusal
+- [ ] clearance for biarcs
+  - setback longer than the arc at its node → refused
+  - minimum radius on every arc
+  - picture: fourth panel in `clearance-rules.svg`
+
 ## Backlog
 
 Wanted, but not part of a milestone yet.

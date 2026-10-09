@@ -16,6 +16,8 @@
   a stated tolerance.
   - The tolerance is in meters, not pixels → the drawing follows from the
     network alone → rebuilt on an edit and on nothing else.
+- Biarc → its two pieces, each drawn as its own straight or arc, joined at
+  `J`.
 - Working out that shape is shared with anything else that draws a section.
   - A tool marking a section gets the same positions at the same tolerance
     → the mark follows the road instead of cutting across it.
