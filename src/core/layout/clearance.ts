@@ -3,7 +3,7 @@ import {
   nearestPointOnLine,
 } from "../geometry/lineGeometry";
 import { distance, SAME_POINT_METERS } from "../geometry/point";
-import { sectionRadius } from "../network/queries";
+import { sectionRadii } from "../network/queries";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, Section, SectionId } from "../network/types";
 import type { Junction } from "./junction";
@@ -63,10 +63,10 @@ export function verifyClearance(
 
   for (const id of changedSections) {
     // Read off the section, not its roadway: a roadway runs on its
-    // section's circle.
+    // section's circles.
     const section = speculativeNetwork.getSection(id);
-    const radius = sectionRadius(speculativeNetwork, section);
-    if (radius !== null && radius < MIN_ROADWAY_RADIUS_METERS) {
+    const radii = sectionRadii(speculativeNetwork, section);
+    if (radii.some((radius) => radius < MIN_ROADWAY_RADIUS_METERS)) {
       violatingSections.add(id);
     }
   }

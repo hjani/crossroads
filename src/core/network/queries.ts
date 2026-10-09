@@ -6,6 +6,7 @@ import {
   lineDirectionAt,
   lineFractionAt,
   pointOnLine,
+  primitivesOf,
   type LineGeometry,
 } from "../geometry/lineGeometry";
 import type { Node, NodeId, Section, SectionId } from "./types";
@@ -194,23 +195,21 @@ export function nodeWithin(
 }
 
 /**
- * The radius a section's centerline bends at, in meters, or null for a
- * straight — which has none, rather than an infinite one.
+ * The radii a section's centerline bends at, in meters, one per arc in the
+ * order they run from its `from` node: none for a straight, one for an arc,
+ * two for a biarc — fewer where a piece of it is straight.
  */
-export function sectionRadius(
-  network: RoadNetwork,
-  section: Section,
-): number | null {
-  if (section.centerlineGeometry.kind !== "arc") {
-    return null;
-  }
-
-  const circle = arcCircle(
+export function sectionRadii(network: RoadNetwork, section: Section): number[] {
+  const pieces = primitivesOf(
     network.getNode(section.from).position,
     network.getNode(section.to).position,
-    section.centerlineGeometry.via,
+    section.centerlineGeometry,
   );
-  return circle === null ? null : circle.radius;
+  return pieces.flatMap(({ from, to, geometry }) => {
+    const circle =
+      geometry.kind === "arc" ? arcCircle(from, to, geometry.via) : null;
+    return circle === null ? [] : [circle.radius];
+  });
 }
 
 /** Where an endpoint is, whether it names a node or carries a position. */

@@ -4,7 +4,7 @@ import type { RoadLayout } from "../core/layout/RoadLayout";
 import {
   nearestNode,
   nearestSection,
-  sectionRadius,
+  sectionRadii,
 } from "../core/network/queries";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
@@ -221,12 +221,19 @@ export class InspectTool implements Tool {
       ]);
     } else {
       const section = this.network.getSection(selected.id);
-      const radius = sectionRadius(this.network, section);
+      const radii = sectionRadii(this.network, section);
+      // A straight has no radius; a biarc's two are numbered from `from`.
+      const radiusRows: [string, string][] =
+        radii.length === 0
+          ? [["Radius", "n/a"]]
+          : radii.map((radius, index) => [
+              radii.length === 1 ? "Radius" : `Radius ${index + 1}`,
+              displayMeters(radius),
+            ]);
       this.panel.show(`Section ${section.id}`, [
         ["Length", displayMeters(section.length)],
         ["Roadway", displayMeters(this.layout.roadwayAlong(section.id).length)],
-        // A straight has no radius
-        ["Radius", radius === null ? "n/a" : displayMeters(radius)],
+        ...radiusRows,
       ]);
     }
   }

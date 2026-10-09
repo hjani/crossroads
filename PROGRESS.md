@@ -334,8 +334,8 @@ their join `J`, as one section.
   - junction legs, setbacks, ribbon, dashes
   - seeded in `main.ts`
   - picture: biarc panel in `roadway-tessellation.svg`
-- [ ] inspect a biarc: picking, both radii in the panel
-  - `sectionRadius` replaced by a section-pieces query
+- [x] inspect a biarc: picking, both radii in the panel
+  - `sectionRadius` replaced by `sectionRadii`, one per arc
 - [ ] Connector tool: plan on weld, nothing built
   - palette entry
   - arrival direction recorded when the far end welds
