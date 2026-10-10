@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { biarc } from "./biarc";
 import { clearanceRules } from "./clearanceRules";
 import { junctionAnatomy } from "./junctionAnatomy";
+import { junctionBiarc } from "./junctionBiarc";
 import { junctionJoins } from "./junctionJoins";
 import { junctionPairs } from "./junctionPairs";
 import { junctionTessellation } from "./junctionTessellation";
@@ -20,6 +21,7 @@ const PICTURES: Record<string, () => string> = {
   "biarc.svg": biarc,
   "clearance-rules.svg": clearanceRules,
   "junction-anatomy.svg": junctionAnatomy,
+  "junction-biarc.svg": junctionBiarc,
   "junction-joins.svg": junctionJoins,
   "junction-pairs.svg": junctionPairs,
   "junction-tessellation.svg": junctionTessellation,

@@ -122,12 +122,7 @@ same step, on the same changed parts.
 - A junction covers its node (`docs/road-layout.md`, Joins).
 - A roadway: length ≥ 30 m.
 - A curved roadway: radius ≥ 10 m.
-- A biarc roadway:
-  - radius ≥ 10 m, on each of its arcs
-  - each setback ends on the piece meeting its node, before `J`
-    - a junction sees only that piece (`docs/road-layout.md`, Junction) →
-      past `J`, its setbacks and corners are worked out on a road that
-      isn't there
+- A biarc roadway: radius ≥ 10 m, on each of its arcs.
 - Parts the edit doesn't change are not measured again.
 - Any of these → the plan cannot be built.
 
@@ -171,9 +166,9 @@ the grid pitch is fixed).
   - cut on one piece → that piece splits as an arc would, the other stays
     → an arc and a biarc
   - cut at `J`, within 1 cm → its two pieces, as they are
-  - the biarc half's piece at the cut: the arc leaving `J` along its
-    tangent there, to the node actually placed → still tangent at `J`; any
-    kink stays at the cut, as on an arc
+  - the biarc half keeps `J`, each piece cut as an arc is (not exactly the
+    same circle, above) → a node slightly off the road can leave a kink that
+    small at `J`
 
 ## Relationship to other modules
 

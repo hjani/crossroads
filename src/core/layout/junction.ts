@@ -17,6 +17,7 @@ import {
   edgeOf,
   edgePointAt,
   isWithinEdge,
+  legAlongSecondBiarcPiece,
   legsAt,
   nearestOnEdge,
   setbackThrough,
@@ -79,10 +80,11 @@ interface PathPiece {
  * - three or more: every two of them as if they met alone, all together
  *   (`pairedJunction`) — or, where that outline comes out broken, as for up
  *   to two roads
+ * - a biarc set back past its join: worked out once more, that road along
+ *   its second piece (`legAlongSecondBiarcPiece`)
  */
 export class Junction {
   private readonly at: Vec2;
-  private readonly legs: readonly Leg[];
   private readonly setbacks: ReadonlyMap<SectionId, number>;
   /** Whether the node lies inside the junction; see `coversNode`. */
   private readonly covers: boolean;
@@ -97,24 +99,34 @@ export class Junction {
     readonly node: NodeId,
   ) {
     this.at = network.getNode(node).position;
-    this.legs = legsAt(network, node);
-    const paired =
-      this.legs.length < 3 ? null : pairedJunction(node, this.at, this.legs);
-    if (paired === null) {
-      const gaps = gapsAround(node, this.at, this.legs);
-      this.setbacks = longestSetbacks(this.legs, gaps);
-      this.covers = gaps.every((gap) => gap.coversNode);
-      this.junctionOutline = this.buildOutline(gaps);
-    } else {
-      this.setbacks = paired.setbacks;
-      this.covers = paired.coversNode;
-      this.junctionOutline = {
-        kind: "junction",
+    const legs = legsAt(network, node);
+    const firstRun = junctionFromLegs(node, this.at, legs);
+
+    // A biarc set back past its join was measured on its first piece, where
+    // the road no longer runs: worked out once more along its second.
+    const rerunLegs = legs.map((leg) => {
+      const geometry = leg.section.centerlineGeometry;
+      if (geometry.kind !== "biarc") {
+        return leg;
+      }
+      const second = legAlongSecondBiarcPiece(
+        network,
+        leg,
         node,
-        center: this.at,
-        pieces: paired.pieces,
-      };
-    }
+        geometry.biarc,
+      );
+      const setback = firstRun.setbacks.get(leg.section.id) ?? 0;
+      return setback > second.distanceReference.distance ? second : leg;
+    });
+    const { setbacks, coversNode, outline } = rerunLegs.some(
+      (leg, index) => leg !== legs[index],
+    )
+      ? junctionFromLegs(node, this.at, rerunLegs)
+      : firstRun;
+
+    this.setbacks = setbacks;
+    this.covers = coversNode;
+    this.junctionOutline = outline;
     this.radius = this.buildBoundingRadius();
   }
 
@@ -218,78 +230,106 @@ export class Junction {
       }),
     );
   }
+}
 
-  /**
-   * Builds the outline of a junction of up to two roads from its gaps:
-   * `gaps[i]` is the gap after `legs[i]`, the last wrapping round to
-   * `legs[0]`.
-   */
-  private buildOutline(gaps: readonly Gap[]): JunctionOutline {
-    const pieces: OutlinePiece[] = [];
-    let previous = this.edgePointOf(this.legs[0], -1);
-    const add = (
-      point: Vec2,
-      incomingGeometry: LineGeometry,
-      edge: OutlineEdgeKind,
-    ): void => {
-      if (isSamePoint(previous, point)) {
-        return;
-      }
-      pieces.push({ point, incomingGeometry, edge });
-      previous = point;
-    };
-
-    this.legs.forEach((leg, index) => {
-      add(this.edgePointOf(leg, 1), STRAIGHT, "roadwayEnd");
-
-      const nextLeg = this.legs[(index + 1) % this.legs.length];
-      const nextEdgePoint = this.edgePointOf(nextLeg, -1);
-      const { join } = gaps[index];
-      switch (join.kind) {
-        case "straight":
-          add(nextEdgePoint, STRAIGHT, "curb");
-          break;
-
-        case "corner":
-          add(join.point, alongEdge(leg, 1, previous, join.point), "curb");
-          add(
-            nextEdgePoint,
-            alongEdge(nextLeg, -1, join.point, nextEdgePoint),
-            "curb",
-          );
-          break;
-
-        case "round": {
-          const { leaving, path } = join;
-          add(leaving, alongEdge(leg, 1, previous, leaving), "curb");
-          for (const { point, geometry } of path) {
-            add(point, geometry, "curb");
-          }
-          add(
-            nextEdgePoint,
-            alongEdge(nextLeg, -1, previous, nextEdgePoint),
-            "curb",
-          );
-          break;
-        }
-      }
-    });
-
+/**
+ * A junction worked out from its legs, as `Junction` describes: each road's
+ * setback, whether it covers the node, and its outline.
+ */
+function junctionFromLegs(
+  node: NodeId,
+  at: Vec2,
+  legs: readonly Leg[],
+): {
+  setbacks: ReadonlyMap<SectionId, number>;
+  coversNode: boolean;
+  outline: JunctionOutline;
+} {
+  const paired = legs.length < 3 ? null : pairedJunction(node, at, legs);
+  if (paired !== null) {
     return {
-      kind: "junction",
-      node: this.node,
-      center: this.at,
-      pieces,
+      setbacks: paired.setbacks,
+      coversNode: paired.coversNode,
+      outline: { kind: "junction", node, center: at, pieces: paired.pieces },
     };
   }
 
-  /**
-   * Where a leg's roadway ends on its `side` (+1 counterclockwise, −1
-   * clockwise), at the setback it ends up with.
-   */
-  private edgePointOf(leg: Leg, side: number): Vec2 {
-    return edgePointAt(this.at, leg, side, this.setbackOf(leg.section.id));
-  }
+  const gaps = gapsAround(node, at, legs);
+  const setbacks = longestSetbacks(legs, gaps);
+  return {
+    setbacks,
+    coversNode: gaps.every((gap) => gap.coversNode),
+    outline: outlineFromGaps(node, at, legs, gaps, setbacks),
+  };
+}
+
+/**
+ * The outline of a junction of up to two roads, from its gaps: `gaps[i]` is
+ * the gap after `legs[i]`, the last wrapping round to `legs[0]`.
+ */
+function outlineFromGaps(
+  node: NodeId,
+  at: Vec2,
+  legs: readonly Leg[],
+  gaps: readonly Gap[],
+  setbacks: ReadonlyMap<SectionId, number>,
+): JunctionOutline {
+  // Where a leg's roadway ends on its `side` (+1 counterclockwise, −1
+  // clockwise), at the setback it ends up with.
+  const edgePointOf = (leg: Leg, side: number): Vec2 =>
+    edgePointAt(leg, side, setbacks.get(leg.section.id) ?? 0);
+
+  const pieces: OutlinePiece[] = [];
+  let previous = edgePointOf(legs[0], -1);
+  const add = (
+    point: Vec2,
+    incomingGeometry: LineGeometry,
+    edge: OutlineEdgeKind,
+  ): void => {
+    if (isSamePoint(previous, point)) {
+      return;
+    }
+    pieces.push({ point, incomingGeometry, edge });
+    previous = point;
+  };
+
+  legs.forEach((leg, index) => {
+    add(edgePointOf(leg, 1), STRAIGHT, "roadwayEnd");
+
+    const nextLeg = legs[(index + 1) % legs.length];
+    const nextEdgePoint = edgePointOf(nextLeg, -1);
+    const { join } = gaps[index];
+    switch (join.kind) {
+      case "straight":
+        add(nextEdgePoint, STRAIGHT, "curb");
+        break;
+
+      case "corner":
+        add(join.point, alongEdge(leg, 1, previous, join.point), "curb");
+        add(
+          nextEdgePoint,
+          alongEdge(nextLeg, -1, join.point, nextEdgePoint),
+          "curb",
+        );
+        break;
+
+      case "round": {
+        const { leaving, path } = join;
+        add(leaving, alongEdge(leg, 1, previous, leaving), "curb");
+        for (const { point, geometry } of path) {
+          add(point, geometry, "curb");
+        }
+        add(
+          nextEdgePoint,
+          alongEdge(nextLeg, -1, previous, nextEdgePoint),
+          "curb",
+        );
+        break;
+      }
+    }
+  });
+
+  return { kind: "junction", node, center: at, pieces };
 }
 
 /** What a piece of a pair's ring is (`pairRing`). */
@@ -396,7 +436,7 @@ function pairedJunction(
     ) + Math.max(...legs.map((leg) => leg.halfWidth));
   const tags = pairTagsOf(legs.length);
   const union = unionOfRings(
-    pairs.map((pair) => pairRing(at, pair, reach, tags)),
+    pairs.map((pair) => pairRing(pair, reach, tags)),
     strongerTag,
   );
 
@@ -410,7 +450,7 @@ function pairedJunction(
           lost.push(leg.section.id);
           return 0;
         }
-        return setbackThrough(at, leg, point);
+        return setbackThrough(leg, point);
       }),
     ),
   );
@@ -425,7 +465,7 @@ function pairedJunction(
     setbacks: new Map(
       legs.map((leg, index) => [leg.section.id, setbacks[index]]),
     ),
-    pieces: trimmed(at, legs, union, setbacks),
+    pieces: trimmed(legs, union, setbacks),
     coversNode: pairs.some((pair) => pair.gaps.every((gap) => gap.coversNode)),
   };
 }
@@ -440,13 +480,12 @@ function pairedJunction(
  * node (`slidRound`) — a setback read off the edges keeps that.
  */
 function pairRing(
-  at: Vec2,
   pair: Pair,
   reach: number,
   tags: PairTags,
 ): RingPiece<PairTag>[] {
   const pieces: RingPiece<PairTag>[] = [];
-  let previous = edgePointAt(at, pair.legs[0], -1, reach);
+  let previous = edgePointAt(pair.legs[0], -1, reach);
   const add = (
     point: Vec2,
     incomingGeometry: LineGeometry,
@@ -469,14 +508,14 @@ function pairRing(
   ): void => {
     const leg = pair.legs[k];
     const edge = tags.edge(pair.indices[k], side);
-    const from = setbackThrough(at, leg, previous);
-    const end = setbackThrough(at, leg, to);
+    const from = setbackThrough(leg, previous);
+    const end = setbackThrough(leg, to);
     const inward = from > end;
     if (
       Math.min(from, end) + SAME_POINT_METERS < setback &&
       setback < Math.max(from, end) - SAME_POINT_METERS
     ) {
-      const cut = edgePointAt(at, leg, side, setback);
+      const cut = edgePointAt(leg, side, setback);
       add(cut, alongEdge(leg, side, previous, cut), inward ? edge : JOIN);
       add(to, alongEdge(leg, side, previous, to), inward ? JOIN : edge);
     } else {
@@ -485,7 +524,7 @@ function pairRing(
   };
 
   pair.legs.forEach((leg, k) => {
-    add(edgePointAt(at, leg, 1, reach), STRAIGHT, tags.end(pair.indices[k]));
+    add(edgePointAt(leg, 1, reach), STRAIGHT, tags.end(pair.indices[k]));
 
     const next = (k + 1) % 2;
     const nextLeg = pair.legs[next];
@@ -495,16 +534,16 @@ function pairRing(
         ? join.point
         : join.kind === "round"
           ? join.leaving
-          : edgePointAt(at, leg, 1, 0);
+          : edgePointAt(leg, 1, 0);
     alongCurb(k, 1, setbacks.first, leaving);
     if (join.kind === "round") {
       for (const { point, geometry } of join.path) {
         add(point, geometry, JOIN);
       }
     } else if (join.kind === "straight") {
-      add(edgePointAt(at, nextLeg, -1, 0), STRAIGHT, JOIN);
+      add(edgePointAt(nextLeg, -1, 0), STRAIGHT, JOIN);
     }
-    alongCurb(next, -1, setbacks.second, edgePointAt(at, nextLeg, -1, reach));
+    alongCurb(next, -1, setbacks.second, edgePointAt(nextLeg, -1, reach));
   });
   return pieces;
 }
@@ -549,7 +588,6 @@ function departure(
  * Neighboring stretches of one edge come out as one piece.
  */
 function trimmed(
-  at: Vec2,
   legs: readonly Leg[],
   outline: readonly RingPiece<PairTag>[],
   setbacks: readonly number[],
@@ -577,8 +615,8 @@ function trimmed(
     const setback = setbacks[tag.leg];
     if (tag.kind === "end") {
       stretches.push({
-        from: edgePointAt(at, leg, -1, setback),
-        to: edgePointAt(at, leg, 1, setback),
+        from: edgePointAt(leg, -1, setback),
+        to: edgePointAt(leg, 1, setback),
         geometry: STRAIGHT,
         tag,
       });
@@ -586,8 +624,8 @@ function trimmed(
     }
 
     const within = (point: Vec2): Vec2 =>
-      setbackThrough(at, leg, point) > setback
-        ? edgePointAt(at, leg, tag.side, setback)
+      setbackThrough(leg, point) > setback
+        ? edgePointAt(leg, tag.side, setback)
         : point;
     const start = within(from);
     const stop = within(piece.point);
@@ -795,12 +833,12 @@ function slidRound(
   const radius = wider.halfWidth;
 
   const x = roundJoinEnd(node, at, narrower, narrowerSide, radius);
-  const centerline = edgeOf(at, wider, widerSide, 0);
+  const centerline = edgeOf(wider, widerSide, 0);
   if (x === null || centerline === null) {
     return UNJOINED_GAP;
   }
-  const t = edgePointAt(at, wider, widerSide, 0);
-  const onCurb = gap > Math.PI && isWithinEdge(at, narrower, narrowerSide, t);
+  const t = edgePointAt(wider, widerSide, 0);
+  const onCurb = gap > Math.PI && isWithinEdge(narrower, narrowerSide, t);
 
   const ordered = (leaving: Vec2, path: readonly PathPiece[]): GapJoin =>
     widerFirst
@@ -830,7 +868,7 @@ function slidRound(
   }
 
   const ahead = edgeCrossings(centerline, touched.shifted)
-    .map((point) => ({ point, slide: setbackThrough(at, wider, point) }))
+    .map((point) => ({ point, slide: setbackThrough(wider, point) }))
     .filter((center) => center.slide >= -SAME_POINT_METERS);
   if (ahead.length === 0) {
     return null;
@@ -840,7 +878,7 @@ function slidRound(
   );
   const slide = Math.max(0, center.slide);
 
-  const onWider = edgePointAt(at, wider, widerSide, slide);
+  const onWider = edgePointAt(wider, widerSide, slide);
   const onLine = nearestOnEdge(touched.line, center.point);
   const round = along(
     { kind: "circle", circle: { center: center.point, radius } },
@@ -850,7 +888,7 @@ function slidRound(
   const coversNode = distance(at, center.point) <= radius + SAME_POINT_METERS;
 
   if (touched.isCurb) {
-    const touching = setbackThrough(at, narrower, onLine);
+    const touching = setbackThrough(narrower, onLine);
     return {
       join: ordered(onWider, [{ point: onLine, geometry: round }]),
       setbacks: setbacks(slide, Math.max(x.setback, touching)),
@@ -918,8 +956,8 @@ function touchedLine(
   { t, x, onCurb }: { t: Vec2; x: Vec2; onCurb: boolean },
 ): TouchedLine | null {
   if (onCurb) {
-    const line = edgeOf(at, narrower, side);
-    const shifted = edgeOf(at, narrower, side, narrower.halfWidth - radius);
+    const line = edgeOf(narrower, side);
+    const shifted = edgeOf(narrower, side, narrower.halfWidth - radius);
     if (line === null || shifted === null) {
       logBendsTooTightly(node, narrower);
       return null;
@@ -946,7 +984,7 @@ function touchedLine(
     };
   }
 
-  const curb = edgeOf(at, narrower, side);
+  const curb = edgeOf(narrower, side);
   if (curb === null || curb.kind !== "circle") {
     logBendsTooTightly(node, narrower);
     return null;
@@ -1046,10 +1084,10 @@ function roundJoinEnd(
   radius: number,
 ): { point: Vec2; setback: number } | null {
   if (leg.halfWidth >= radius) {
-    return { point: edgePointAt(at, leg, side, 0), setback: 0 };
+    return { point: edgePointAt(leg, side, 0), setback: 0 };
   }
 
-  const edge = edgeOf(at, leg, side);
+  const edge = edgeOf(leg, side);
   if (edge === null) {
     logBendsTooTightly(node, leg);
     return null;
@@ -1059,7 +1097,7 @@ function roundJoinEnd(
     kind: "circle",
     circle: { center: at, radius },
   })
-    .map((point) => ({ point, setback: setbackThrough(at, leg, point) }))
+    .map((point) => ({ point, setback: setbackThrough(leg, point) }))
     .filter((crossing) => crossing.setback >= -SAME_POINT_METERS);
   if (ahead.length === 0) {
     console.error(
@@ -1076,14 +1114,15 @@ function roundJoinEnd(
 }
 
 /**
- * How far round from a leg's direction, toward its `side` (+1
+ * How far round from the way a leg leaves the node, toward its `side` (+1
  * counterclockwise, −1 clockwise), a point lies about the node. With `N` the
- * node, `d` the leg's direction, `σ` the side and `v = point − N`:
+ * node, `d = (cos α, sin α)` from the leg's `angle` α, `σ` the side and
+ * `v = point − N`:
  *
  *     φ = atan2(σ·(d × v), d·v)
  */
 function turnFrom(at: Vec2, leg: Leg, side: number, point: Vec2): number {
-  const { direction } = leg;
+  const direction = { x: Math.cos(leg.angle), z: Math.sin(leg.angle) };
   const vx = point.x - at.x;
   const vz = point.z - at.z;
   return Math.atan2(
@@ -1174,8 +1213,8 @@ function gapBetween(
 ): Gap {
   const pair = `sections ${first.section.id} and ${second.section.id}`;
 
-  const firstEdge = edgeOf(at, first, 1);
-  const secondEdge = edgeOf(at, second, -1);
+  const firstEdge = edgeOf(first, 1);
+  const secondEdge = edgeOf(second, -1);
   for (const [leg, edge] of [
     [first, firstEdge],
     [second, secondEdge],
@@ -1193,8 +1232,8 @@ function gapBetween(
   const nearest = candidates
     .map((point) => ({
       point,
-      first: setbackThrough(at, first, point),
-      second: setbackThrough(at, second, point),
+      first: setbackThrough(first, point),
+      second: setbackThrough(second, point),
     }))
     .filter(
       (candidate) => isAhead(candidate.first) || isAhead(candidate.second),

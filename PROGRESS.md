@@ -336,18 +336,14 @@ their join `J`, as one section.
   - picture: biarc panel in `roadway-tessellation.svg`
 - [x] inspect a biarc: picking, both radii in the panel
   - `sectionRadius` replaced by `sectionRadii`, one per arc
+- [x] cutting a biarc: arc + biarc, or two arcs at `J`
+  - `subLineGeometry` for biarcs → `planSection` can plan a biarc at all
+  - lifts `planSection`'s refusal to cut one
 - [ ] Connector tool: plan on weld, nothing built
   - palette entry
   - arrival direction recorded when the far end welds
-  - refused for now: crossing a road, welding onto a connector
   - new picture: `connector.svg`
 - [ ] Connector tool: a click builds, the run continues
-- [ ] cutting a biarc: arc + biarc, or two arcs at `J`
-  - lifts the tool's temporary refusal
-- [ ] clearance for biarcs
-  - setback longer than the arc at its node → refused
-  - minimum radius on every arc
-  - picture: fourth panel in `clearance-rules.svg`
 
 ## Backlog
 
@@ -388,6 +384,11 @@ Wanted, but not part of a milestone yet.
       leaving that junction
 - [ ] clearance: refuse roadways overlapping further out though their
       sections share a node
+- [ ] a junction that fails to build fails the plan, and is displayed as
+      something not random, if possible. E.g. an arc crossing a straight
+      shallowly: on the gap just under 180°, the arc's curb bends away and
+      never crosses the straight's, and a round join starts only at 180° →
+      "never cross" logged, the gap left unjoined
 
 ## Deferred, probably to be dropped
 

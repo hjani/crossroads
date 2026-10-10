@@ -19,10 +19,20 @@
 - One per node, every node: a dead end and a 180° join too.
   - → a reader never special-cases a node by how many sections meet it.
 - Worked out from that node and the sections meeting it alone.
-  - Of a biarc, only the piece meeting the node, taken whole as a straight
-    or an arc → right only as far as that piece reaches: a setback past `J`
-    is the clearing step's to refuse (`docs/intersections.md`, Practical
-    limits).
+  - Of a biarc, the piece meeting the node, taken whole as a straight or an
+    arc → right only as far as that piece reaches.
+  - A biarc set back past `J` → worked out once more, that road taken as its
+    second piece, continued back from `J`.
+    - distances still along the road from the node: the first piece up to
+      `J`, then along the second
+    - → its roadway's end lies on the road, where the roadway begins
+    - a corner before `J` on its other side lies on the second piece
+      continued, a little off the road; the outline still meets every
+      roadway exactly
+    - the roads' order and gaps stay as the first time
+
+![Two panels on a biarc crossed by a straight before its join J. 1: the junction covers the whole first piece, from the node N to J, and the roadway begins on the second piece. 2: close to N, the second piece continued back from J misses N, and the junction's curb found on it runs off the road's own curb](images/junction-biarc.svg)
+
 - Roads of different widths may meet; each keeps its own width up to its
   roadway's end.
 
@@ -147,6 +157,8 @@
   - straight → the straight between the setbacks
   - arc → the same circle, between the setbacks
   - biarc → the same two pieces, each cut back at its own end, `J` kept
+    - a setback past `J` → that piece is gone, the rest cut off the other →
+      a straight or an arc
 - Ends square to the road, whether that end is set back or not.
 - Junctions and roadways cover the road with no overlap and no gap. A
   roadway's end is the border between the two.

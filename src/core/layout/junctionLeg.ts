@@ -4,10 +4,14 @@ import {
   lineCircleCrossings,
   type ArcCircle,
 } from "../geometry/arc";
+import { biarcPrimitives, type Biarc } from "../geometry/biarc";
 import {
+  lineDirectionAt,
+  lineLength,
   primitivesOf,
   STRAIGHT,
   type LineGeometry,
+  type PrimitiveLine,
 } from "../geometry/lineGeometry";
 import {
   angleOf,
@@ -35,11 +39,22 @@ import type { NodeId, Section } from "../network/types";
  */
 export interface Leg {
   readonly section: Section;
-  /** Unit vector, leaving the node. */
+  /**
+   * Where distances along the leg are measured from: `point`, on the road's
+   * centerline, `distance` meters along the road from the node. The node
+   * itself and 0, except on a biarc's second piece
+   * (`docs/road-layout.md`).
+   */
+  readonly distanceReference: {
+    readonly point: Vec2;
+    readonly distance: number;
+  };
+  /** Unit vector, leaving the reference point. */
   readonly direction: Vec2;
   /**
-   * `direction` as an angle. Only the differences between legs mean anything:
-   * `inCounterclockwiseOrder` shifts it by whole turns.
+   * The way the road leaves the node, as an angle. Only the differences
+   * between legs mean anything: `inCounterclockwiseOrder` shifts it by whole
+   * turns.
    */
   readonly angle: number;
   /** Half the road's width: from the centerline to either edge, in meters. */
@@ -92,15 +107,58 @@ export function legsAt(network: RoadNetwork, node: NodeId): Leg[] {
 }
 
 /**
+ * A biarc's leg as its second piece, counted from the node: the piece past
+ * the join `J`, taken whole, measured from `J`, which is the first piece's
+ * length along the road (`docs/road-layout.md`, Junction). `biarc` is the
+ * leg's section's.
+ *
+ * `angle` stays `leg`'s, leaving the node → the legs keep their order around
+ * it.
+ */
+export function legAlongSecondBiarcPiece(
+  network: RoadNetwork,
+  leg: Leg,
+  node: NodeId,
+  biarc: Biarc,
+): Leg {
+  const { section } = leg;
+  const [first, second] = biarcPrimitives(
+    network.getNode(section.from).position,
+    network.getNode(section.to).position,
+    biarc,
+  );
+  const leaving = section.from === node;
+  const near = leaving ? first : second;
+  const far = leaving ? second : first;
+  // The way the road runs at J, away from the node.
+  const along = lineDirectionAt(
+    far.from,
+    far.to,
+    far.geometry,
+    leaving ? 0 : 1,
+  );
+  return legAlongPiece(
+    section,
+    {
+      point: biarc.join,
+      distance: lineLength(near.from, near.to, near.geometry),
+    },
+    leaving ? along : { x: -along.x, z: -along.z },
+    leg.angle,
+    far,
+  );
+}
+
+/**
  * A leg's edge on its `side` (+1 counterclockwise, −1 clockwise), or null for
- * the inner edge of an arc too tight to have one. `at` is the node's position.
+ * the inner edge of an arc too tight to have one.
  *
  * `offset` puts the line elsewhere than the curb: 0 is the centerline, and a
  * negative offset lies across it, on the other side.
  *
- * Let `N = at`, `h = offset` (the half-width `w/2` by default), `σ = side`,
- * `d` the leg's direction, and for an arc `R` its radius and `τ` the way it
- * turns:
+ * Let `N` be the leg's reference point (`distanceReference`), `h = offset`
+ * (the half-width `w/2` by default), `σ = side`, `d` the leg's direction, and
+ * for an arc `R` its radius and `τ` the way it turns:
  *
  * - straight: the line through `N + σ·h·(−d.z, d.x)`, along `d`
  * - arc: the circle around the arc's center with radius
@@ -110,18 +168,18 @@ export function legsAt(network: RoadNetwork, node: NodeId): Leg[] {
  *   → the inner edge on the side the arc turns to; none where that is ≤ 0
  */
 export function edgeOf(
-  at: Vec2,
   leg: Leg,
   side: number,
   offset = leg.halfWidth,
 ): Edge | null {
-  const { direction, arc } = leg;
+  const { distanceReference, direction, arc } = leg;
   if (arc === null) {
+    const { point } = distanceReference;
     return {
       kind: "line",
       through: {
-        x: at.x - side * offset * direction.z,
-        z: at.z + side * offset * direction.x,
+        x: point.x - side * offset * direction.z,
+        z: point.z + side * offset * direction.x,
       },
       direction,
     };
@@ -148,11 +206,12 @@ function edgeRadiusOf(
 /**
  * Where the cut across a leg at `setback` meets its `side` edge (+1
  * counterclockwise, −1 clockwise) — one end of the roadway's end, and one
- * corner of the junction. `at` is the node's position.
+ * corner of the junction.
  *
- * Let `N = at`, `s = setback`, `w/2` the leg's half-width, `σ = side`, `d`
- * the leg's direction, and for an arc `O` its center, `R` its radius and `τ`
- * the way it turns:
+ * Let `N`, `s₀` be the leg's reference point and its distance from the node
+ * (`distanceReference`), `s = setback − s₀` how far past `N` the cut is,
+ * `w/2` the leg's half-width, `σ = side`, `d` the leg's direction, and for an
+ * arc `O` its center, `R` its radius and `τ` the way it turns:
  *
  * - straight: the cut is perpendicular to `d`, so the point is `s` along it
  *   and `w/2` to the side:
@@ -173,26 +232,23 @@ function edgeRadiusOf(
  * `w/2` has its ribbon folded over itself whatever we do here, and the
  * reflected point is where that fold is drawn.
  */
-export function edgePointAt(
-  at: Vec2,
-  leg: Leg,
-  side: number,
-  setback: number,
-): Vec2 {
-  const { direction, arc, halfWidth } = leg;
+export function edgePointAt(leg: Leg, side: number, setback: number): Vec2 {
+  const { distanceReference, direction, arc, halfWidth } = leg;
+  const { point } = distanceReference;
+  const along = setback - distanceReference.distance;
   if (arc === null) {
     return {
-      x: at.x + setback * direction.x - side * halfWidth * direction.z,
-      z: at.z + setback * direction.z + side * halfWidth * direction.x,
+      x: point.x + along * direction.x - side * halfWidth * direction.z,
+      z: point.z + along * direction.z + side * halfWidth * direction.x,
     };
   }
 
   const { center, radius } = arc.circle;
-  const turned = (arc.turn * setback) / radius;
+  const turned = (arc.turn * along) / radius;
   const sin = Math.sin(turned);
   const cos = Math.cos(turned);
-  const ux = at.x - center.x;
-  const uz = at.z - center.z;
+  const ux = point.x - center.x;
+  const uz = point.z - center.z;
   const scale = edgeRadiusOf(arc, side, halfWidth) / radius;
 
   return {
@@ -298,11 +354,12 @@ export function nearestOnEdge(edge: Edge, point: Vec2): Vec2 {
  * Whether `point` lies no farther toward a leg's `side` (+1 counterclockwise,
  * −1 clockwise) than its edge there, the edge carried on past both ends of
  * the section: on that edge, or anywhere on the road's side of it, past the
- * centerline and the other edge included. `at` is the node's position.
+ * centerline and the other edge included.
  *
- * How far `point` lies off the centerline toward `side`, with `N = at`,
- * `P = point`, `σ = side`, `d` the leg's direction, and for an arc `O` its
- * center, `R` its radius and `τ` the way it turns:
+ * How far `point` lies off the centerline toward `side`, with `N` the leg's
+ * reference point (`distanceReference`), `P = point`, `σ = side`, `d` the
+ * leg's direction, and for an arc `O` its center, `R` its radius and `τ` the
+ * way it turns:
  *
  * - straight: along the normal `σ·(−d.z, d.x)`:
  *
@@ -315,16 +372,14 @@ export function nearestOnEdge(edge: Edge, point: Vec2): Vec2 {
  *
  * - no farther than the edge: `h ≤ w/2`
  */
-export function isWithinEdge(
-  at: Vec2,
-  leg: Leg,
-  side: number,
-  point: Vec2,
-): boolean {
-  const { direction, arc, halfWidth } = leg;
+export function isWithinEdge(leg: Leg, side: number, point: Vec2): boolean {
+  const { distanceReference, direction, arc, halfWidth } = leg;
+  const reference = distanceReference.point;
   const off =
     arc === null
-      ? side * (direction.x * (point.z - at.z) - direction.z * (point.x - at.x))
+      ? side *
+        (direction.x * (point.z - reference.z) -
+          direction.z * (point.x - reference.x))
       : side *
         arc.turn *
         (arc.circle.radius - distance(arc.circle.center, point));
@@ -333,41 +388,46 @@ export function isWithinEdge(
 
 /**
  * How far along a leg's centerline its roadway ends, if the cut across it
- * passes through `point`; negative behind the node. `at` is the node's
- * position.
+ * passes through `point`; negative behind the node.
  *
- * A roadway ends with a cut straight across the road, square to it. Let
- * `N = at`, `P = point`, `d` the leg's direction, and for an arc `O` its
- * center, `R` its radius and `τ` the way it turns:
+ * A roadway ends with a cut straight across the road, square to it. Let `N`,
+ * `s₀` be the leg's reference point and its distance from the node
+ * (`distanceReference`), `P = point`, `d` the leg's direction, and for an arc
+ * `O` its center, `R` its radius and `τ` the way it turns:
  *
  * - straight: the cut is perpendicular to `d` → the setback is how far `P` is
  *   along `d`:
  *
- *       s = (P − N)·d
+ *       s = s₀ + (P − N)·d
  *
  * - arc: square to an arc means along a radius → the cut through `P` lies on
  *   the line from `O` through `P`. With `u = N − O`, `v = P − O`, and `θ` the
  *   turn from `u` to `v` in the arc's direction:
  *
  *       θ = τ·atan2(u × v, u·v)
- *       s = R·θ
+ *       s = s₀ + R·θ
  *
  *   `θ` is in `(−π, π]`: past a half turn counts as behind `N`. A setback that
  *   long would be more than half of any arc anyway.
  */
-export function setbackThrough(at: Vec2, leg: Leg, point: Vec2): number {
-  const { direction, arc } = leg;
+export function setbackThrough(leg: Leg, point: Vec2): number {
+  const { distanceReference, direction, arc } = leg;
+  const reference = distanceReference.point;
   if (arc === null) {
-    return (point.x - at.x) * direction.x + (point.z - at.z) * direction.z;
+    return (
+      distanceReference.distance +
+      (point.x - reference.x) * direction.x +
+      (point.z - reference.z) * direction.z
+    );
   }
 
   const { center, radius } = arc.circle;
-  const ux = at.x - center.x;
-  const uz = at.z - center.z;
+  const ux = reference.x - center.x;
+  const uz = reference.z - center.z;
   const vx = point.x - center.x;
   const vz = point.z - center.z;
   const turned = Math.atan2(ux * vz - uz * vx, ux * vx + uz * vz);
-  return radius * arc.turn * turned;
+  return distanceReference.distance + radius * arc.turn * turned;
 }
 
 /**
@@ -431,14 +491,6 @@ function curvatureOf(leg: Leg): number {
 
 function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
   const direction = sectionDirectionLeavingNode(network, section, node);
-  const straight = {
-    section,
-    direction,
-    angle: angleOf(direction),
-    halfWidth: section.profile.width / 2,
-    arc: null,
-  };
-
   // Of a biarc, only the piece meeting the node (`docs/road-layout.md`,
   // Junction): the first at its start, the last at its end.
   const pieces = primitivesOf(
@@ -447,6 +499,34 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
     section.centerlineGeometry,
   );
   const piece = section.from === node ? pieces[0] : pieces[pieces.length - 1];
+  return legAlongPiece(
+    section,
+    { point: network.getNode(node).position, distance: 0 },
+    direction,
+    angleOf(direction),
+    piece,
+  );
+}
+
+/**
+ * The leg of `section` along `piece`, taken whole, heading in `direction` at
+ * its reference point.
+ */
+function legAlongPiece(
+  section: Section,
+  distanceReference: Leg["distanceReference"],
+  direction: Vec2,
+  angle: number,
+  piece: PrimitiveLine,
+): Leg {
+  const straight = {
+    section,
+    distanceReference,
+    direction,
+    angle,
+    halfWidth: section.profile.width / 2,
+    arc: null,
+  };
   if (piece.geometry.kind === "straight") {
     return straight;
   }
@@ -458,7 +538,7 @@ function legOf(network: RoadNetwork, section: Section, node: NodeId): Leg {
   }
   // The arc turns toward its center: counterclockwise when the center lies
   // to the left of the direction, where d × (O − N) > 0.
-  const at = network.getNode(node).position;
+  const at = distanceReference.point;
   const turn = Math.sign(
     direction.x * (circle.center.z - at.z) -
       direction.z * (circle.center.x - at.x),

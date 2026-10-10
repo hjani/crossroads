@@ -8,6 +8,8 @@ import {
   isBiarcValid,
   nearestPointOnBiarc,
   pointOnBiarc,
+  subBiarc,
+  trimBiarc,
   type Biarc,
 } from "./biarc";
 import {
@@ -285,5 +287,111 @@ describe("along a biarc", () => {
     );
     expectAt(lineFirst, 20, 10);
     expectAt(biarcSecond, 10, 10);
+  });
+});
+
+describe("subBiarc", () => {
+  // The U-turn around (0, 10), radius 10, joined at (10, 10).
+  const to = vec(0, 20);
+  const uTurn = biarcOf(origin, east, to, west);
+  const join = vec(10, 10);
+
+  /** The place `degrees` round the U-turn from its start. */
+  function round(degrees: number): Vec2 {
+    const angle = (degrees * Math.PI) / 180;
+    return vec(10 * Math.sin(angle), 10 - 10 * Math.cos(angle));
+  }
+
+  /** Fails unless the piece is an arc on the U-turn's own circle. */
+  function expectOnUTurn(from: Vec2, to: Vec2, geometry: LineGeometry): void {
+    const circle =
+      geometry.kind === "arc" ? arcCircle(from, to, geometry.via) : null;
+    if (circle === null) {
+      throw new Error("expected an arc");
+    }
+    expectAt(circle.center, 0, 10);
+    expect(circle.radius).toBeCloseTo(10);
+  }
+
+  /** The biarc, or a failure saying so. */
+  function asBiarc(geometry: LineGeometry): Biarc {
+    if (geometry.kind !== "biarc") {
+      throw new Error("expected a biarc");
+    }
+    return geometry.biarc;
+  }
+
+  it("is an arc on the same circle for a part on one piece", () => {
+    const part = subBiarc(origin, to, uTurn, round(30), round(60));
+    expectOnUTurn(round(30), round(60), part);
+  });
+
+  it("is a biarc keeping the join for a part across it", () => {
+    const part = asBiarc(subBiarc(origin, to, uTurn, round(30), round(135)));
+    expectAt(part.join, 10, 10);
+    expectOnUTurn(round(30), part.join, part.first);
+    expectOnUTurn(part.join, round(135), part.second);
+  });
+
+  it("is the biarc as it was for the whole of it", () => {
+    const whole = asBiarc(subBiarc(origin, to, uTurn, origin, to));
+    expectAt(whole.join, 10, 10);
+    expectOnUTurn(origin, whole.join, whole.first);
+    expectOnUTurn(whole.join, to, whole.second);
+  });
+
+  it("is one piece's part for a part ending at the join", () => {
+    const part = subBiarc(origin, to, uTurn, round(30), join);
+    expectOnUTurn(round(30), join, part);
+  });
+
+  it("counts a place within a centimeter of the join as the join", () => {
+    expect(subBiarc(origin, to, uTurn, round(30), vec(10, 9.995)).kind).toBe(
+      "arc",
+    );
+    expect(subBiarc(origin, to, uTurn, vec(10, 10.005), round(135)).kind).toBe(
+      "arc",
+    );
+  });
+});
+
+describe("trimBiarc", () => {
+  // Two arcs of different radii: 113.6 m, then 17.3 m.
+  const end = vec(40, 20);
+  const biarc = biarcOf(origin, east, end, north);
+  const firstLength = lineLength(origin, biarc.join, biarc.first);
+  const secondLength = lineLength(biarc.join, end, biarc.second);
+  const length = firstLength + secondLength;
+
+  it("cuts each piece at its own end, keeping the join", () => {
+    const trimmed = trimBiarc(origin, end, biarc, 1, 1);
+    expect(trimmed.geometry.kind).toBe("biarc");
+    expect(lineLength(trimmed.from, trimmed.to, trimmed.geometry)).toBeCloseTo(
+      length - 2,
+    );
+  });
+
+  it("drops the first piece for a cut longer than it, the rest off the second", () => {
+    const s1 = firstLength + 2;
+    const trimmed = trimBiarc(origin, end, biarc, s1, 0);
+    const start = pointOnBiarc(origin, end, biarc, s1 / length);
+    expectAt(trimmed.from, start.x, start.z);
+    expectAt(trimmed.to, end.x, end.z);
+    expect(radiusOf(trimmed.from, trimmed.to, trimmed.geometry)).toBeCloseTo(
+      17.3,
+      1,
+    );
+  });
+
+  it("drops the second piece for a cut longer than it, the rest off the first", () => {
+    const s2 = secondLength + 2;
+    const trimmed = trimBiarc(origin, end, biarc, 0, s2);
+    const stop = pointOnBiarc(origin, end, biarc, (length - s2) / length);
+    expectAt(trimmed.from, 0, 0);
+    expectAt(trimmed.to, stop.x, stop.z);
+    expect(radiusOf(trimmed.from, trimmed.to, trimmed.geometry)).toBeCloseTo(
+      113.6,
+      1,
+    );
   });
 });

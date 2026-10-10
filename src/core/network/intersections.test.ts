@@ -11,7 +11,7 @@ import { segmentCrossing } from "../geometry/segment";
 import { nearestNode, positionOf } from "./queries";
 import type { Endpoint } from "./RoadNetwork";
 import { RoadNetwork } from "./RoadNetwork";
-import { STRAIGHT } from "../geometry/lineGeometry";
+import { STRAIGHT, type LineGeometry } from "../geometry/lineGeometry";
 import { type NodeId } from "./types";
 import { TEST_ROAD_PROFILE } from "../testSupport";
 
@@ -660,50 +660,92 @@ describe("a biarc in the network", () => {
   // (10, 10).
   const diagonal = 10 * Math.SQRT1_2;
 
+  const uTurn: LineGeometry = {
+    kind: "biarc",
+    biarc: {
+      join: vec(10, 10),
+      first: { kind: "arc", via: vec(diagonal, 10 - diagonal) },
+      second: { kind: "arc", via: vec(diagonal, 10 + diagonal) },
+    },
+  };
+
   function withUTurn(): RoadNetwork {
     const network = new RoadNetwork();
-    network.addSection(
-      vec(0, 0),
-      vec(0, 20),
-      {
-        kind: "biarc",
-        biarc: {
-          join: vec(10, 10),
-          first: { kind: "arc", via: vec(diagonal, 10 - diagonal) },
-          second: { kind: "arc", via: vec(diagonal, 10 + diagonal) },
-        },
-      },
-      TEST_ROAD_PROFILE,
-    );
+    network.addSection(vec(0, 0), vec(0, 20), uTurn, TEST_ROAD_PROFILE);
     return network;
   }
 
-  it("refuses a straight drawn across it, until a biarc can be cut", () => {
-    const network = withUTurn();
+  it("is planned on open ground as one piece, the biarc itself", () => {
     const plan = planSection(
-      network,
-      vec(5, -5),
-      vec(5, 25),
-      STRAIGHT,
+      new RoadNetwork(),
+      vec(0, 0),
+      vec(0, 20),
+      uTurn,
       TEST_ROAD_PROFILE,
     );
 
-    expect(plan.buildable).toBe(false);
-    // Still says where it would have cut: once on each piece.
-    expect(pointsOf(plan).flatMap((point) => point.cuts)).toHaveLength(2);
+    assert(plan.buildable);
+    expect(plan.pieces).toHaveLength(1);
+    const piece = plan.pieces[0].centerlineGeometry;
+    assert(piece.kind === "biarc");
+    expect(distance(piece.biarc.join, vec(10, 10))).toBeCloseTo(0);
   });
 
-  it("refuses a straight ending on it", () => {
-    const network = withUTurn();
+  it("is planned across a road as a biarc up to it and an arc after", () => {
+    // z = 15 meets the second piece at (√75, 15).
+    const network = new RoadNetwork();
+    build(network, vec(5, 15), vec(20, 15));
     const plan = planSection(
       network,
-      vec(30, 30),
-      vec(diagonal, 10 + diagonal),
-      STRAIGHT,
+      vec(0, 0),
+      vec(0, 20),
+      uTurn,
       TEST_ROAD_PROFILE,
     );
 
-    expect(plan.buildable).toBe(false);
+    assert(plan.buildable);
+    expect(plan.pieces.map((piece) => piece.centerlineGeometry.kind)).toEqual([
+      "biarc",
+      "arc",
+    ]);
+    expect(cutPoints(network, plan)).toHaveLength(1);
+    applySectionPlan(network, plan);
+    expect([...network.allSections()]).toHaveLength(4);
+  });
+
+  function kinds(network: RoadNetwork): string[] {
+    return [...network.allSections()]
+      .map((section) => section.centerlineGeometry.kind)
+      .sort();
+  }
+
+  it("is cut into an arc, a biarc and an arc by a straight across it", () => {
+    // x = 5 meets it once on each piece, 30° from either end.
+    const network = withUTurn();
+    build(network, vec(5, -5), vec(5, 25));
+
+    expect(kinds(network)).toEqual([
+      "arc",
+      "arc",
+      "biarc",
+      "straight",
+      "straight",
+      "straight",
+    ]);
+  });
+
+  it("is cut into a biarc and an arc by a straight ending on it", () => {
+    const network = withUTurn();
+    build(network, vec(30, 30), vec(diagonal, 10 + diagonal));
+
+    expect(kinds(network)).toEqual(["arc", "biarc", "straight"]);
+  });
+
+  it("is cut into its two pieces by a straight ending at the join", () => {
+    const network = withUTurn();
+    build(network, vec(30, 10), vec(10, 10));
+
+    expect(kinds(network)).toEqual(["arc", "arc", "straight"]);
   });
 
   it("still joins it at its node", () => {

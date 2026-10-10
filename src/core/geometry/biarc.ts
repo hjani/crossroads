@@ -10,6 +10,7 @@ import {
   nearestPointsBetweenLines,
   pointOnLine,
   STRAIGHT,
+  subPrimitiveLineGeometry,
   trimPrimitive,
   type LineGeometry,
   type PrimitiveLine,
@@ -68,10 +69,15 @@ export function biarcPrimitives(
 }
 
 /**
- * A biarc with `s₁` meters cut off its start and `s₂` off its end: each cut
- * off the piece at that end, the join kept (`docs/road-layout.md`).
+ * A biarc with `s₁` meters cut off its start and `s₂` off its end, measured
+ * along it (`docs/road-layout.md`). With `L₁`, `L₂` the pieces' lengths:
  *
- * A cut longer than its piece runs that piece backwards, past the join.
+ * - `s₁ ≥ L₁` → the first piece is gone: the second, `s₁ − L₁` cut off its
+ *   start and `s₂` off its end
+ * - `s₂ ≥ L₂` → the same at the other end
+ * - otherwise each cut off the piece at that end, the join kept
+ *
+ * `s₁ + s₂ > L` → what is left runs backwards, as a trimmed line does.
  */
 export function trimBiarc(
   from: Vec2,
@@ -79,16 +85,66 @@ export function trimBiarc(
   biarc: Biarc,
   s1: number,
   s2: number,
-): { readonly from: Vec2; readonly to: Vec2; readonly biarc: Biarc } {
-  const first = trimPrimitive(from, biarc.join, biarc.first, s1, 0);
-  const second = trimPrimitive(biarc.join, to, biarc.second, 0, s2);
+): { readonly from: Vec2; readonly to: Vec2; readonly geometry: LineGeometry } {
+  const { join } = biarc;
+  const firstLength = lineLength(from, join, biarc.first);
+  const secondLength = lineLength(join, to, biarc.second);
+  if (s1 >= firstLength) {
+    return trimPrimitive(join, to, biarc.second, s1 - firstLength, s2);
+  }
+  if (s2 >= secondLength) {
+    return trimPrimitive(from, join, biarc.first, s1, s2 - secondLength);
+  }
+
+  const first = trimPrimitive(from, join, biarc.first, s1, 0);
+  const second = trimPrimitive(join, to, biarc.second, 0, s2);
   return {
     from: first.from,
     to: second.to,
+    geometry: {
+      kind: "biarc",
+      biarc: { join, first: first.geometry, second: second.geometry },
+    },
+  };
+}
+
+/**
+ * The shape of the part of a biarc between two places on it, `partFrom`
+ * before `partTo` along it. A place off the biarc counts as where it
+ * reaches it (`biarcFractionAt`).
+ *
+ * - Both on one piece, a place at `join` counting as on either → that
+ *   piece's part.
+ * - On different pieces → a biarc, `join` kept, of each piece's part.
+ *
+ * Each part is cut as a line in one piece is (`subPrimitiveLineGeometry`) →
+ * a place a few millimeters off the curve can leave a kink as small at
+ * `join`.
+ */
+export function subBiarc(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  partFrom: Vec2,
+  partTo: Vec2,
+): LineGeometry {
+  const { join, first, second } = biarc;
+  const m = joinFraction(from, to, biarc);
+  const along = (place: Vec2): number =>
+    biarcFractionAt(from, to, biarc, place);
+
+  if (isSamePoint(partTo, join) || along(partTo) <= m) {
+    return subPrimitiveLineGeometry(from, join, first, partFrom, partTo);
+  }
+  if (isSamePoint(partFrom, join) || along(partFrom) > m) {
+    return subPrimitiveLineGeometry(join, to, second, partFrom, partTo);
+  }
+  return {
+    kind: "biarc",
     biarc: {
-      join: biarc.join,
-      first: first.geometry,
-      second: second.geometry,
+      join,
+      first: subPrimitiveLineGeometry(from, join, first, partFrom, join),
+      second: subPrimitiveLineGeometry(join, to, second, join, partTo),
     },
   };
 }

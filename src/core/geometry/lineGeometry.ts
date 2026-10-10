@@ -22,6 +22,7 @@ import {
   nearestPointOnBiarc,
   nearestPointsBetweenBiarcAndLine,
   pointOnBiarc,
+  subBiarc,
   trimBiarc,
   type Biarc,
 } from "./biarc";
@@ -214,8 +215,9 @@ export function lineDirectionAt(
 
 /**
  * The shape of the part of a line between two places on it: a straight
- * stays straight, an arc's part is an arc (`subArcVia`). A place off the
- * line counts as where the line reaches it (`lineFractionAt`).
+ * stays straight, an arc's part is an arc (`subArcVia`), a biarc's is a
+ * piece's part or a biarc (`subBiarc`). A place off the line counts as where
+ * the line reaches it (`lineFractionAt`).
  */
 export function subLineGeometry(
   from: Vec2,
@@ -226,14 +228,29 @@ export function subLineGeometry(
 ): LineGeometry {
   switch (geometry.kind) {
     case "straight":
+    case "arc":
+      return subPrimitiveLineGeometry(from, to, geometry, partFrom, partTo);
+    case "biarc":
+      return subBiarc(from, to, geometry.biarc, partFrom, partTo);
+  }
+}
+
+/** `subLineGeometry` for a line in one piece, which its part stays. */
+export function subPrimitiveLineGeometry(
+  from: Vec2,
+  to: Vec2,
+  geometry: PrimitiveLineGeometry,
+  partFrom: Vec2,
+  partTo: Vec2,
+): PrimitiveLineGeometry {
+  switch (geometry.kind) {
+    case "straight":
       return STRAIGHT;
     case "arc":
       return {
         kind: "arc",
         via: subArcVia(from, to, geometry.via, partFrom, partTo),
       };
-    case "biarc":
-      throw new Error("subLineGeometry: biarcs not supported yet");
   }
 }
 
@@ -252,14 +269,8 @@ export function trimLine(
     case "straight":
     case "arc":
       return trimPrimitive(from, to, geometry, s1, s2);
-    case "biarc": {
-      const trimmed = trimBiarc(from, to, geometry.biarc, s1, s2);
-      return {
-        from: trimmed.from,
-        to: trimmed.to,
-        geometry: { kind: "biarc", biarc: trimmed.biarc },
-      };
-    }
+    case "biarc":
+      return trimBiarc(from, to, geometry.biarc, s1, s2);
   }
 }
 
