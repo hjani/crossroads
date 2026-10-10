@@ -1,13 +1,6 @@
 import * as THREE from "three";
-import {
-  bisectorDirectionsAt,
-  continuingDirectionsAt,
-  geometryLeaving,
-  midSectionDirectionsAt,
-  nearestDirection,
-  perpendicularDirectionsAt,
-} from "../core/network/directions";
-import { angleOf, distance, type Vec2 } from "../core/geometry/point";
+import { geometryLeaving } from "../core/network/directions";
+import type { Vec2 } from "../core/geometry/point";
 import {
   applyRoadPlan,
   planRoad,
@@ -20,6 +13,11 @@ import type { PartStates } from "../render/PartStates";
 import { SectionPlanView } from "../render/SectionPlanView";
 import type { ScreenPoint, Viewport } from "../render/Viewport";
 import type { SectionSettingsPanel } from "../ui/SectionSettingsPanel";
+import {
+  capturedDirection,
+  offeredDirections,
+  sweepsWithinLimit,
+} from "./curvedRoadHelpers";
 import type { SectionSettings } from "./SectionSettings";
 import {
   endpointFrom,
@@ -29,27 +27,6 @@ import {
 } from "./sectionPointPlacement";
 import { hideSpeculatedParts, showLanding, showPlacedEnd } from "./toolHelpers";
 import type { Modifiers, Tool } from "./Tool";
-
-/**
- * The furthest round a planned road may turn: three quarters of a circle, as
- * a loop ramp does. Past it, a direction pointing nearly back from the far end
- * gives a road circling almost all the way round to get there.
- */
-const MAX_SWEEP_RADIANS = 1.5 * Math.PI;
-
-/**
- * How far the cursor must get from the start before the way it went picks a
- * direction. In pixels, as the pick radius it has to be wider than: a flick
- * is a movement of the hand, the same size at every zoom.
- */
-const CAPTURE_RADIUS_PIXELS = 40;
-
-/**
- * What a flick's heading is rounded to where the start offers no direction of
- * its own: a multiple of 15°. The grid's job for an angle, so a shape can be
- * drawn again and a hand's wobble does not bend the road.
- */
-const HEADING_STEP_RADIANS = Math.PI / 12;
 
 /**
  * Draws an arc that takes its direction from the network it starts on,
@@ -168,9 +145,8 @@ export class SmartArcTool implements Tool {
 
   /**
    * Picks the direction the cursor is flicked in, and releases it:
-   * - leaving the capture circle picks the direction nearest the way from the
-   *   start to the cursor, if none is picked yet. Open ground offers none, so
-   *   there it is that way itself, rounded by `roundHeading`
+   * - leaving the capture circle picks one (`capturedDirection`), if none is
+   *   picked yet
    * - coming back inside the pick radius releases it, so a road ending between
    *   the two keeps its flick
    *
@@ -182,20 +158,15 @@ export class SmartArcTool implements Tool {
     const ground = this.viewport.screenToGround(point);
     if (ground === null) return;
 
-    const from = this.start.position;
-    if (withinPickRadius(this.viewport, ground, from)) {
+    if (withinPickRadius(this.viewport, ground, this.start.position)) {
       this.flickedDirection = null;
-    } else if (
-      this.flickedDirection === null &&
-      distance(ground, from) >
-        CAPTURE_RADIUS_PIXELS * this.viewport.metersPerPixel
-    ) {
-      const heading = { x: ground.x - from.x, z: ground.z - from.z };
-      const offered = this.directionsAt(this.start);
-      this.flickedDirection =
-        offered.length > 0
-          ? nearestDirection(offered, heading)
-          : roundHeading(heading);
+    } else {
+      this.flickedDirection ??= capturedDirection(
+        this.viewport,
+        this.network,
+        this.start,
+        ground,
+      );
     }
   }
 
@@ -262,7 +233,11 @@ export class SmartArcTool implements Tool {
     const candidates =
       end === null || !this.showCandidates
         ? []
-        : this.plansTo(this.start, end, this.directionsAt(this.start));
+        : this.plansTo(
+            this.start,
+            end,
+            offeredDirections(this.network, this.start),
+          );
     this.showPlans(flicked, candidates);
     // Only the flicked plan says what a click does; the candidates are a
     // debug view, and claim nothing. Without it a click builds nothing, so it
@@ -272,34 +247,13 @@ export class SmartArcTool implements Tool {
     showLanding(this.landingMark, flicked !== null ? end : null, flicked);
   }
 
-  /** The directions a road could leave the start by. None on open ground. */
-  private directionsAt(start: Placement): Vec2[] {
-    switch (start.kind) {
-      case "node":
-        return [
-          ...continuingDirectionsAt(this.network, start.node),
-          ...bisectorDirectionsAt(this.network, start.node),
-          ...perpendicularDirectionsAt(this.network, start.node),
-        ];
-      case "section":
-        return midSectionDirectionsAt(
-          this.network,
-          start.section,
-          start.position,
-        );
-      case "grid":
-      case "free":
-        return [];
-    }
-  }
-
   /**
    * Plans from start to end, one for each starting direction.
    *
-   * A direction is left out where it gives no road worth drawing: one turning
-   * further round than `MAX_SWEEP_RADIANS`, or one whose plan has no piece
-   * because the end resolved onto the start's own place. A plan that does come
-   * back may still be unbuildable.
+   * A direction is left out where it gives no road worth drawing: one sweeping
+   * further round than `sweepsWithinLimit` allows, or one whose plan has no
+   * piece because the end resolved onto the start's own place. A plan that does
+   * come back may still be unbuildable.
    */
   private plansTo(
     start: Placement,
@@ -310,10 +264,13 @@ export class SmartArcTool implements Tool {
     const to = endpointFrom(end);
     const plans: RoadPlan[] = [];
     for (const direction of directions) {
-      if (!turnsWithinLimit(start.position, direction, end.position)) continue;
-
       const geometry = geometryLeaving(start.position, direction, end.position);
-      if (geometry === null) continue;
+      if (
+        geometry === null ||
+        !sweepsWithinLimit(start.position, end.position, geometry)
+      ) {
+        continue;
+      }
 
       const roadPlan = planRoad(
         this.network,
@@ -390,39 +347,4 @@ export class SmartArcTool implements Tool {
       view.dispose();
     }
   }
-}
-
-/**
- * Whether the arc that leaves `from` in `direction` and ends at `to` turns no
- * further round than `MAX_SWEEP_RADIANS`.
- *
- * Let `d = to − from`, and θ the angle between `direction` and `d`.
- *
- * - The arc turns through 2θ (tangent–chord angle theorem).
- * - θ is in 0..π, where cos is decreasing, so `2θ ≤ max` exactly when
- *   `cos θ ≥ cos(max/2)`. With `cos θ = direction·d / (|direction| |d|)`:
- *
- *       direction·d ≥ |direction| |d| · cos(max/2)
- *
- * No angle is computed, and `direction` does not need to be a unit vector.
- * A direction aimed at `to` has θ = 0 and always passes. One aimed exactly
- * away has θ = π, a full circle, which no limit short of one lets through.
- */
-function turnsWithinLimit(from: Vec2, direction: Vec2, to: Vec2): boolean {
-  const chordX = to.x - from.x;
-  const chordZ = to.z - from.z;
-  const alongChord = direction.x * chordX + direction.z * chordZ;
-  const lengths =
-    Math.hypot(direction.x, direction.z) * Math.hypot(chordX, chordZ);
-  return alongChord >= lengths * Math.cos(MAX_SWEEP_RADIANS / 2);
-}
-
-/**
- * The unit direction at a multiple of `HEADING_STEP_RADIANS` nearest to the
- * way `toward` points. `toward` does not need to be a unit vector.
- */
-function roundHeading(toward: Vec2): Vec2 {
-  const angle =
-    Math.round(angleOf(toward) / HEADING_STEP_RADIANS) * HEADING_STEP_RADIANS;
-  return { x: Math.cos(angle), z: Math.sin(angle) };
 }

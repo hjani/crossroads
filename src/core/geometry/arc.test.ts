@@ -6,6 +6,7 @@ import {
   arcFractionAt,
   arcLength,
   arcPolyline,
+  arcSweep,
   arcViaLeaving,
   circleThrough,
   nearestPointsBetweenArcs,
@@ -683,6 +684,24 @@ describe("arcLength", () => {
 
   it("is the straight distance when the three are in a line", () => {
     expect(arcLength(vec(0, 0), vec(10, 0), vec(5, 0))).toBeCloseTo(10);
+  });
+});
+
+describe("arcSweep", () => {
+  it("turns a quarter the short way round", () => {
+    expect(arcSweep(east, north, northeast)).toBeCloseTo(Math.PI / 2);
+  });
+
+  it("turns three quarters the long way round", () => {
+    expect(arcSweep(east, north, southwest)).toBeCloseTo((3 * Math.PI) / 2);
+  });
+
+  it("turns the same, never negative, run the other way", () => {
+    expect(arcSweep(north, east, northeast)).toBeCloseTo(Math.PI / 2);
+  });
+
+  it("turns nothing when the three are in a line", () => {
+    expect(arcSweep(vec(0, 0), vec(10, 0), vec(5, 0))).toBe(0);
   });
 });
 

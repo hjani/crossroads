@@ -1,3 +1,4 @@
+import { angleOf, type Vec2 } from "../core/geometry/point";
 import {
   changedOrViolatingParts,
   type RoadPlan,
@@ -47,6 +48,15 @@ export function showPlacedEnd(
   } else {
     mark.show([placed.position], planColor(plan));
   }
+}
+
+/**
+ * The unit direction at a multiple of `stepRadians` nearest to the way
+ * `toward` points. `toward` does not need to be a unit vector.
+ */
+export function snapDirection(toward: Vec2, stepRadians: number): Vec2 {
+  const angle = Math.round(angleOf(toward) / stepRadians) * stepRadians;
+  return { x: Math.cos(angle), z: Math.sin(angle) };
 }
 
 /** Planned, or refused where it can't be built. Planned with no plan yet. */

@@ -339,7 +339,7 @@ their join `J`, as one section.
 - [x] cutting a biarc: arc + biarc, or two arcs at `J`
   - `subLineGeometry` for biarcs → `planSection` can plan a biarc at all
   - lifts `planSection`'s refusal to cut one
-- [ ] Connector tool: plan on weld, nothing built
+- [x] Connector tool: plan on weld, nothing built
   - palette entry
   - arrival direction recorded when the far end welds
   - new picture: `connector.svg`

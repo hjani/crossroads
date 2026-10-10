@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoadLayout } from "./core/layout/RoadLayout";
 import { RoadNetwork } from "./core/network/RoadNetwork";
 import { ArcSectionTool } from "./input/ArcSectionTool";
+import { ConnectorTool } from "./input/ConnectorTool";
 import { InspectTool } from "./input/InspectTool";
 import { PanZoomControls } from "./input/PanZoomControls";
 import { SectionSettings } from "./input/SectionSettings";
@@ -107,6 +108,21 @@ const palette = new ToolPalette(document.body, [
     activate: () =>
       tools.setActiveTool(
         new SmartArcTool(
+          network,
+          layout,
+          viewport,
+          partStates,
+          sectionSettings,
+          new SectionSettingsPanel(document.body, sectionSettings),
+        ),
+      ),
+  },
+  {
+    id: "connector",
+    label: "Connector",
+    activate: () =>
+      tools.setActiveTool(
+        new ConnectorTool(
           network,
           layout,
           viewport,

@@ -221,22 +221,36 @@ the single circle for it: a biarc (`docs/road-network.md`, Biarcs).
   - connector: smooth at both ends, two arcs
 - The start: as the smart arc's.
 - Far end on open ground → nothing to land along → the smart arc's arc.
-- Far end welded onto a node or a road → it lands:
-  - the arrival direction: the cursor's heading over its last stretch of
-    movement, the moment the end welds → the nearest direction offered
-    there, as at a start
+- Far end welded onto a node or a road → it lands, in an arrival direction:
+  - first weld: the cursor's heading over its last stretch of movement →
+    the nearest direction offered there, reversed
+    - a road arriving in −d is the road leaving in d, run backwards
     - the cursor's own heading, not one measured from the weld point: on a
       road the weld point slides along under the cursor → every arrival
       would read square to the road
-  - kept while the end stays welded to the same node or road; unwelding
-    drops it, welding elsewhere picks again
+  - sliding on, still welded → carried, never read from the movement again:
+    sliding tunes the place, not the angle
+    - along the same road, or onto one meeting it at the node the end
+      slides across (directly, or through that node's junction): the same
+      angle to the road → square stays square, along a curve and across a
+      kink
+      - measured against one heading along the road, carried on through
+        each node the end passes, not each section's own from → to
+    - anything else (onto a junction, or onto a road not meeting the last
+      one there): the offered direction nearest the carried one
+  - only pulling away resets: unwelding keeps it until the cursor is
+    further than the release distance (pixels) from where the end was last
+    welded → a slip, or a small overshoot, comes back with it
+  - past the release distance → dropped; the next weld is a first weld
   - planned at once → a click builds it
 - `J`: chosen by the tool, no input.
-- Refused where it would turn more than ¾ of a circle in all.
+- Nothing planned where it would sweep more than ¾ of a circle in all, its
+  two arcs added up → as the smart arc's limit.
 - A click builds it, and its far end starts the next one, carrying on the
   direction it arrived in → a run, as with the smart arc.
-- Cancel and the debug view: as the smart arc's. The debug view shows the
-  start's directions only.
+- Cancel: as the smart arc's.
+
+![Two kinks, each a node where two roads meet: at the start the directions on offer leave the node and the flick out of the capture circle picks one; at the far end the same kind of directions arrive at the node and the cursor's last stretch picks one; the connector is the biarc between them, its join J marked](images/connector.svg)
 
 ## Inspect
 
@@ -303,8 +317,8 @@ First to answer wins:
 - Escape: cancel the edit in progress.
 - Delete, Backspace: remove the selection.
 - Ctrl, held: place the point without rounding it; welding still applies.
-- C: smart arc and connector, show the plan for every offered direction at
-  the start (debug view).
+- C: smart arc, show the plan for every offered direction at the start
+  (debug view).
 - Middle button: unclaimed, kept for an orbiting camera later.
 - Panning works mid-edit: start a section, move the view, finish it.
 

@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { biarc } from "./biarc";
 import { clearanceRules } from "./clearanceRules";
+import { connector } from "./connector";
 import { junctionAnatomy } from "./junctionAnatomy";
 import { junctionBiarc } from "./junctionBiarc";
 import { junctionJoins } from "./junctionJoins";
@@ -20,6 +21,7 @@ import { smartArc } from "./smartArc";
 const PICTURES: Record<string, () => string> = {
   "biarc.svg": biarc,
   "clearance-rules.svg": clearanceRules,
+  "connector.svg": connector,
   "junction-anatomy.svg": junctionAnatomy,
   "junction-biarc.svg": junctionBiarc,
   "junction-joins.svg": junctionJoins,

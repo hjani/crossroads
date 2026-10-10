@@ -3,6 +3,7 @@ import {
   arcDirectionAt,
   arcFractionAt,
   arcLength,
+  arcSweep,
   isArcValid,
   nearestPointOnArc,
   nearestPointsBetweenArcs,
@@ -131,6 +132,26 @@ export function lineLength(
     case "biarc":
       return biarcLength(from, to, geometry.biarc);
   }
+}
+
+/**
+ * How far round a line sweeps in all, in radians: its pieces' sweeps added
+ * up, whichever way each turns. Not the net turn: a quarter right then half a
+ * circle left sweeps three quarters, though it ends up turned a quarter left.
+ * A straight sweeps 0.
+ */
+export function lineSweep(
+  from: Vec2,
+  to: Vec2,
+  geometry: LineGeometry,
+): number {
+  return primitivesOf(from, to, geometry).reduce(
+    (sweep, piece) =>
+      piece.geometry.kind === "arc"
+        ? sweep + arcSweep(piece.from, piece.to, piece.geometry.via)
+        : sweep,
+    0,
+  );
 }
 
 /**

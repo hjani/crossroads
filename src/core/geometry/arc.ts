@@ -306,6 +306,15 @@ export function arcLength(from: Vec2, to: Vec2, via: Vec2): number {
 }
 
 /**
+ * How far round the arc turns, in radians, whichever way: 0 up to 2π. Three
+ * positions in a line are a straight, which turns 0.
+ */
+export function arcSweep(from: Vec2, to: Vec2, via: Vec2): number {
+  const run = arcRun(from, to, via);
+  return run === null ? 0 : Math.abs(run.sweep);
+}
+
+/**
  * The arc `from`–`via`–`to` with `s₁` meters cut off its start and `s₂` off
  * its end: its new ends, and a `via` between them.
  *
