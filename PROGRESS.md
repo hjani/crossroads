@@ -343,7 +343,7 @@ their join `J`, as one section.
   - palette entry
   - arrival direction recorded when the far end welds
   - new picture: `connector.svg`
-- [ ] Connector tool: a click builds, the run continues
+- [x] Connector tool: a click builds, the run continues
 
 ## Backlog
 

@@ -4,7 +4,11 @@ import type { LineGeometry } from "../core/geometry/lineGeometry";
 import { angleOf, distance, type Vec2 } from "../core/geometry/point";
 import { geometryLeaving } from "../core/network/directions";
 import { sectionDirectionAt, sectionFractionAt } from "../core/network/queries";
-import { planRoad, type RoadPlan } from "../core/layout/roadPlan";
+import {
+  applyRoadPlan,
+  planRoad,
+  type RoadPlan,
+} from "../core/layout/roadPlan";
 import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, Section, SectionId } from "../core/network/types";
@@ -86,9 +90,10 @@ interface Arrival {
  *   welds; sliding on carries it, and only pulling away drops it.
  * - Far end on open ground: the smart arc's arc.
  * - Planned and drawn as what building it would do, refusals included.
- * - Nothing is built yet: a click after the start does nothing.
+ * - A click builds the plan on screen where it can be built, and its far end
+ *   starts the next connector, which needs a flick of its own.
  *
- * Cancelling drops the start.
+ * Cancelling ends the run and keeps what was already built.
  */
 export class ConnectorTool implements Tool {
   /** Where the next click would land. */
@@ -104,6 +109,8 @@ export class ConnectorTool implements Tool {
    * The direction a flick picked at the start:
    * - null until the cursor first leaves the capture circle
    * - null again once the cursor is back inside the start's pick radius
+   * - null again once a click has built the connector, for the next one to
+   *   flick
    */
   private flickedDirection: Vec2 | null = null;
   /**
@@ -121,8 +128,15 @@ export class ConnectorTool implements Tool {
    * - null until the end first welds, and the cursor has a heading
    * - kept through a slip off the network, null once the cursor is further
    *   than `RELEASE_DISTANCE_PIXELS` from where the end was last welded
+   * - null again once a click has built the connector: its weld names the
+   *   road the click just cut
    */
   private arrival: Arrival | null = null;
+  /**
+   * The road from the start to the far end at the aim: what is drawn, and what
+   * a click builds. Null where there is none (`updatePlan`).
+   */
+  private plan: RoadPlan | null = null;
 
   constructor(
     private readonly network: RoadNetwork,
@@ -151,13 +165,33 @@ export class ConnectorTool implements Tool {
     return this.decoration;
   }
 
-  /** Places the start. Nothing is built yet, so a click after it does nothing. */
+  /**
+   * Places the start, or builds the plan on screen. A refused plan builds
+   * nothing and the connector stays in progress, so the click can be made
+   * again somewhere it works.
+   */
   onPointerDown(point: ScreenPoint, modifiers: Modifiers): void {
-    if (this.start !== null) return;
-    const ground = this.viewport.screenToGround(point);
-    if (ground === null) return;
+    if (this.start === null) {
+      const ground = this.viewport.screenToGround(point);
+      if (ground === null) return;
+      this.start = this.placeAt(ground, modifiers);
+      return;
+    }
 
-    this.start = this.placeAt(ground, modifiers);
+    const plan = this.plan;
+    if (plan === null || !plan.buildable) return;
+    const far = applyRoadPlan(this.network, plan);
+
+    // The far end starts the next connector, as in `SmartArcTool`. Its
+    // position is asked for rather than assumed: the click may have landed on
+    // a junction already there, a centimeter away.
+    this.start = {
+      kind: "node",
+      node: far,
+      position: this.network.getNode(far).position,
+    };
+    this.flickedDirection = null;
+    this.arrival = null;
   }
 
   /**
@@ -188,13 +222,17 @@ export class ConnectorTool implements Tool {
     }
   }
 
+  /** Ends the run. What was built stays. */
   cancel(): void {
     this.start = null;
     this.flickedDirection = null;
     this.arrival = null;
   }
 
-  /** Works out what the cursor aims at and how it arrives there, and redraws. */
+  /**
+   * Works out what the cursor aims at, how it arrives there and the road to
+   * it, and redraws.
+   */
   afterInputOrViewChange(
     cursor: ScreenPoint | null,
     modifiers: Modifiers,
@@ -206,16 +244,18 @@ export class ConnectorTool implements Tool {
         ? null
         : { ground, placed: this.placeAt(ground, modifiers) };
     this.updateArrival();
+    this.updatePlan();
     this.redraw();
   }
 
   /**
-   * Redraws for the new width. Where a click lands doesn't depend on it, so
-   * the aim stays as it was.
+   * Plans again for the new profile, and redraws. Where a click lands doesn't
+   * depend on it, so the aim stays as it was.
    */
   afterSettingsChange(): void {
     this.landingMark.setRoadWidth(this.settings.profile.width);
     this.startMark.setRoadWidth(this.settings.profile.width);
+    this.updatePlan();
     this.redraw();
   }
 
@@ -299,7 +339,24 @@ export class ConnectorTool implements Tool {
   }
 
   /**
-   * Draws what the road would be with the far end at the aim:
+   * Plans the road from the start to the far end at the aim, leaving in the
+   * flicked direction and, while the end is welded, arriving in the carried
+   * one. None before a start, before a flick, or while the cursor has not
+   * left the start (`endAt`).
+   */
+  private updatePlan(): void {
+    this.plan = null;
+    if (this.start === null || this.aim === null) return;
+    const end = this.endAt(this.start, this.aim.ground, this.aim.placed);
+    if (end === null || this.flickedDirection === null) return;
+
+    // Kept through a slip, but only used while the end is welded.
+    const arriving = isWeld(end) ? (this.arrival?.direction ?? null) : null;
+    this.plan = this.planTo(this.start, end, this.flickedDirection, arriving);
+  }
+
+  /**
+   * Draws the plan, and the marks around it:
    * - before a start: a mark on where it would start from
    * - after: a mark on the start, the plan with a mark on where its far end
    *   lands
@@ -313,21 +370,15 @@ export class ConnectorTool implements Tool {
       return;
     }
 
-    const end =
-      this.aim === null
-        ? null
-        : this.endAt(this.start, this.aim.ground, this.aim.placed);
-    // Kept through a slip, but only used while the end is welded.
-    const arriving =
-      end !== null && isWeld(end) ? (this.arrival?.direction ?? null) : null;
-    const plan =
-      end === null || this.flickedDirection === null
-        ? null
-        : this.planTo(this.start, end, this.flickedDirection, arriving);
-    this.showPlan(plan);
-    hideSpeculatedParts(this.partStates, plan);
-    showPlacedEnd(this.startMark, this.start, plan);
-    showLanding(this.landingMark, plan !== null ? end : null, plan);
+    this.showPlan(this.plan);
+    hideSpeculatedParts(this.partStates, this.plan);
+    showPlacedEnd(this.startMark, this.start, this.plan);
+    // A plan's far end is where the aim landed (`endAt`).
+    showLanding(
+      this.landingMark,
+      this.plan !== null ? (this.aim?.placed ?? null) : null,
+      this.plan,
+    );
   }
 
   /**
