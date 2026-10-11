@@ -89,7 +89,7 @@ const palette = new ToolPalette(document.body, [
   },
   {
     id: "arc",
-    label: "Arc",
+    label: "Arc (legacy)",
     activate: () =>
       tools.setActiveTool(
         new ArcSectionTool(
