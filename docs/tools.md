@@ -236,8 +236,12 @@ the single circle for it: a biarc (`docs/road-network.md`, Biarcs).
       kink
       - measured against one heading along the road, carried on through
         each node the end passes, not each section's own from → to
-    - anything else (onto a junction, or onto a road not meeting the last
-      one there): the offered direction nearest the carried one
+    - anything else (onto a road not meeting the last one there): the
+      offered direction nearest the carried one
+  - except entering a junction → read from the heading again, as a first
+    weld
+    - the angle to the last road stays, for the road slid onto next →
+      square stays square across a junction
   - only pulling away resets: unwelding keeps it until the cursor is
     further than the release distance (pixels) from where the end was last
     welded → a slip, or a small overshoot, comes back with it

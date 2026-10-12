@@ -295,6 +295,10 @@ export class ConnectorTool implements Tool {
    * - welded, with none carried: a first weld, picked by the cursor's heading.
    *   Not yet where the cursor hasn't moved, as when a zoom welds it: the
    *   next move picks it
+   * - entering a junction: picked by the heading again, as a first weld. A
+   *   road beside the junction may have caught the cursor on its way in, and
+   *   that road's pick is not the way it came. The angle to the last road
+   *   stays, for the road slid onto next
    * - welded, with one carried: carried onto the new weld (`carryArrival`)
    * - not welded: kept through a slip, dropped once the cursor is further than
    *   `RELEASE_DISTANCE_PIXELS` from where the end was last welded
@@ -318,7 +322,10 @@ export class ConnectorTool implements Tool {
       return;
     }
 
-    if (this.arrival !== null) {
+    const last = this.arrival?.weld ?? null;
+    const entersJunction =
+      end.kind === "node" && !(last?.kind === "node" && last.node === end.node);
+    if (this.arrival !== null && !entersJunction) {
       this.arrival = carryArrival(this.network, this.arrival, end);
       return;
     }
@@ -333,7 +340,7 @@ export class ConnectorTool implements Tool {
             relative:
               end.kind === "section"
                 ? relativeOnSection(this.network, end, direction)
-                : null,
+                : (this.arrival?.relative ?? null),
             weld: end,
           };
   }
