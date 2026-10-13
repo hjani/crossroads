@@ -12,6 +12,8 @@ export const LAYER = {
   SURFACE_DECORATION: 0.015,
   /** The network's sections. */
   SECTIONS: 0.02,
+  /** The lane overlay, over the network's lines, under what a tool draws. */
+  LANES: 0.025,
   /** Lines a tool draws, so a marked or planned section reads over the rest. */
   SECTION_DECORATION: 0.03,
   /** Marks a tool draws on a place — under the nodes, so a mark on one

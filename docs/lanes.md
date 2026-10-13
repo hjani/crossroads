@@ -94,6 +94,19 @@
   - lanes ← their roadway
   - connections at a node ← its junction and the lanes ending at it
 
+## Overlay
+
+- A debug view of the live lane graph, drawn over the road surface.
+- Each lane: its centerline as a thin line, an arrowhead at each end.
+  - Pointing the way the lane runs → its direction reads at either end.
+  - Entry: base on the entry point → points into the roadway.
+  - Exit: tip on the exit point → points out of it.
+  - → both inside the roadway.
+- Arrowheads sized in meters (`ARROW_BASE_METERS`, `ARROW_LENGTH_METERS`)
+  → grow with zoom; the line stays a pixel wide.
+- A color of its own, not a part state (`docs/part-states.md`): the road's
+  own gray would not show on it.
+
 ## Relationship to other modules
 
 - In `src/core/lanes/`, after `layout/`: uses the network and the layout

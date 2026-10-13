@@ -1,39 +1,46 @@
-import type * as THREE from "three";
+import * as THREE from "three";
+import type { LaneGraph } from "../core/lanes/LaneGraph";
 import type { Junction } from "../core/layout/junction";
 import type { RoadLayout } from "../core/layout/RoadLayout";
 import type { Roadway } from "../core/layout/roadway";
 import type { RoadNetwork } from "../core/network/RoadNetwork";
 import type { NodeId, SectionId } from "../core/network/types";
+import { LaneOverlay } from "./LaneOverlay";
 import type { PartStates } from "./PartStates";
 import { RoadSurface } from "./RoadSurface";
 
 /**
  * Draws the live network's layout: roadways and junctions, as a road
- * surface.
+ * surface, and its lanes over it.
  *
  * Rebuilt as a whole when the network's version changes.
  */
 export class LiveRoadLayoutView {
+  /** Add this to the scene once; the view keeps its contents up to date. */
+  readonly sceneObject = new THREE.Group();
+
   private readonly surface: RoadSurface;
+  private readonly laneOverlay = new LaneOverlay();
   private drawnVersion = -1;
 
   constructor(
     private readonly network: RoadNetwork,
     private readonly layout: RoadLayout,
+    private readonly laneGraph: LaneGraph,
     partStates: PartStates,
   ) {
     this.surface = new RoadSurface(partStates);
-  }
-
-  /** Add this to the scene once; the view keeps its contents up to date. */
-  get sceneObject(): THREE.Object3D {
-    return this.surface.sceneObject;
+    this.sceneObject.add(
+      this.surface.sceneObject,
+      this.laneOverlay.sceneObject,
+    );
   }
 
   /** Call once per frame. Cheap unless the network or the states changed. */
   update(): void {
     if (this.network.version !== this.drawnVersion) {
       this.surface.setParts(this.junctions(), this.roadways());
+      this.laneOverlay.setLanes(this.laneGraph.allLanes());
       this.drawnVersion = this.network.version;
     }
     this.surface.update();
@@ -42,6 +49,7 @@ export class LiveRoadLayoutView {
   /** Releases the GPU buffers behind the view. The view is unusable after. */
   dispose(): void {
     this.surface.dispose();
+    this.laneOverlay.dispose();
   }
 
   private *junctions(): IterableIterator<[NodeId, Junction]> {

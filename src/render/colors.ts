@@ -18,6 +18,12 @@ export const STATE_COLOR = {
   REFUSED: 0xff5555,
 } as const;
 
+/**
+ * The lane overlay (`docs/lanes.md`, Overlay): a debug view, not a part
+ * state, so outside `STATE_COLOR` and clear of every color in it.
+ */
+export const LANE_OVERLAY_COLOR = 0xff44cc;
+
 /** The opacity of an overlay on a part, to highlight it. */
 export const HIGHLIGHT_OPACITY = 0.35;
 

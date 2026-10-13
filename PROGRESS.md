@@ -356,7 +356,7 @@ crossings ignored. Ideas: `docs/ideas/lanes.md`.
 - [x] core: a roadway's lanes by its profile — its centerline offset
       (straight, arc, biarc), ids `(section, ±i)`. The inner lane width
       moves to core; the lane marks shader reads it from there. With tests
-- [ ] lane overlay: lanes drawn over the surface, their ends marked to show
+- [x] lane overlay: lanes drawn over the surface, their ends marked to show
       direction. Live network only
 - [ ] view options panel (`docs/ui.md`): one checkbox, show lanes
 - [ ] core: which lanes connect at a junction, drawn as straight chords.

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { LaneGraph } from "./core/lanes/LaneGraph";
 import { RoadLayout } from "./core/layout/RoadLayout";
 import { RoadNetwork } from "./core/network/RoadNetwork";
 import { ArcSectionTool } from "./input/ArcSectionTool";
@@ -39,10 +40,17 @@ const network = new RoadNetwork();
 
 const layout = new RoadLayout(network);
 
+const laneGraph = new LaneGraph(network, layout);
+
 // What the tools say about the parts of the layout, and the surface shows.
 const partStates = new PartStates();
 
-const liveRoadLayoutView = new LiveRoadLayoutView(network, layout, partStates);
+const liveRoadLayoutView = new LiveRoadLayoutView(
+  network,
+  layout,
+  laneGraph,
+  partStates,
+);
 scene.add(liveRoadLayoutView.sceneObject);
 
 // const networkView = new NetworkView(network);
