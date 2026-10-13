@@ -345,6 +345,26 @@ their join `J`, as one section.
   - new picture: `connector.svg`
 - [x] Connector tool: a click builds, the run continues
 
+### M14 — Lane graph
+
+Lanes along roadways and connections across junctions, derived from the
+layout and drawn as a debug overlay. No cars, conflicts or routing;
+crossings ignored. Ideas: `docs/ideas/lanes.md`.
+
+- [x] `docs/lanes.md` design note: lanes, their ids, connections, and the
+      rule for which lanes connect
+- [ ] core: a roadway's lanes by its profile — its centerline offset
+      (straight, arc, biarc), ids `(section, ±i)`. The inner lane width
+      moves to core; the lane marks shader reads it from there. With tests
+- [ ] lane overlay: lanes drawn over the surface, their ends marked to show
+      direction. Live network only
+- [ ] view options panel (`docs/ui.md`): one checkbox, show lanes
+- [ ] core: which lanes connect at a junction, drawn as straight chords.
+      With tests
+- [ ] connection shape, split further when planned: straight on, left turn,
+      right turn, U-turn
+- [ ] pictures for `docs/lanes.md`, drawn by `scripts/docs-images/`
+
 ## Backlog
 
 Wanted, but not part of a milestone yet.

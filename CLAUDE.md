@@ -21,7 +21,7 @@ TypeScript 7 + Three.js + Vite, running in the browser.
   matching the library's own convention — not a general project rule, just
   matches how all Three.js docs/examples name it.
 - Directory layout:
-  - `src/core/` — pure logic, no Three.js/rendering dependency. Three
+  - `src/core/` — pure logic, no Three.js/rendering dependency. The following
     layers, each importing only the ones before it:
     - `geometry/` — plane geometry on the ground: `Vec2`, segments, arcs,
       the shapes a line runs in (`LineGeometry`) and where two of them
@@ -30,6 +30,8 @@ TypeScript 7 + Three.js + Vite, running in the browser.
       the queries and edits on it.
     - `layout/` — the network as it lies on the ground: junctions and
       roadways (`docs/road-layout.md`).
+    - `lanes/` — where cars drive: lanes along roadways, connections
+      across junctions (`docs/lanes.md`).
   - `src/render/` — Three.js scene setup; converts core data into
     renderable geometry.
   - `src/input/` — camera pan/zoom, click/drag handling, tool-mode manager.

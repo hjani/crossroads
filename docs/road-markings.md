@@ -26,9 +26,10 @@ center.
 - 1 lane each way: dashed centerline.
 - 2 lanes each way: solid centerline, and a dashed divider `v` out on each
   side.
-  - Every lane but the curb lane is `v` wide → divider `i` at `i · v` from
-    the centerline, and the curb lane takes the rest of the width.
-    - Room at the curb, e.g. for parking.
+  - Every lane is `v` wide (`docs/lanes.md`) → divider `i` at `i · v` from
+    the centerline.
+    - The rest of the width is room at the curb, not a lane, e.g. for
+      parking. No line between it and the outer lane.
 - More: no lane marks → edge lines and crossings only.
 
 ## Fitted pattern
