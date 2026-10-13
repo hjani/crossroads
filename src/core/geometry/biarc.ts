@@ -146,6 +146,21 @@ export function offsetBiarc(
 }
 
 /**
+ * A biarc run the other way (`reverseLine`): ends and pieces swapped, `join`
+ * kept. Each piece keeps its shape, as a line in one piece does.
+ */
+export function reverseBiarc(from: Vec2, to: Vec2, biarc: Biarc): Line {
+  return {
+    from: to,
+    to: from,
+    geometry: {
+      kind: "biarc",
+      biarc: { join: biarc.join, first: biarc.second, second: biarc.first },
+    },
+  };
+}
+
+/**
  * The shape of the part of a biarc between two places on it, `partFrom`
  * before `partTo` along it. A place off the biarc counts as where it
  * reaches it (`biarcFractionAt`).

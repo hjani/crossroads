@@ -25,6 +25,7 @@ import {
   nearestPointsBetweenBiarcAndLine,
   offsetBiarc,
   pointOnBiarc,
+  reverseBiarc,
   subBiarc,
   trimBiarc,
   type Biarc,
@@ -371,6 +372,25 @@ export function offsetPrimitive(
             geometry: { kind: "arc", via: arc.via },
           };
     }
+  }
+}
+
+/**
+ * A line run the other way: the same ground, `from` and `to` swapped. A
+ * straight and an arc keep their shape — an arc is the same through `via`
+ * from either end — and a biarc swaps its pieces (`reverseBiarc`).
+ */
+export function reverseLine(
+  from: Vec2,
+  to: Vec2,
+  geometry: LineGeometry,
+): Line {
+  switch (geometry.kind) {
+    case "straight":
+    case "arc":
+      return { from: to, to: from, geometry };
+    case "biarc":
+      return reverseBiarc(from, to, geometry.biarc);
   }
 }
 

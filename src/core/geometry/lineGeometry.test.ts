@@ -7,6 +7,8 @@ import {
   lineSweep,
   nearestPointsBetweenLines,
   offsetLine,
+  pointOnLine,
+  reverseLine,
   STRAIGHT,
   type Line,
   type LineGeometry,
@@ -217,5 +219,42 @@ describe("offsetLine", () => {
     const arriving = lineDirectionAt(line.from, join, first, 1);
     const leaving = lineDirectionAt(join, line.to, second, 0);
     expectAt(arriving, leaving.x, leaving.z);
+  });
+});
+
+describe("reverseLine", () => {
+  const from = vec(0, 0);
+  const to = vec(40, 20);
+
+  /** Each place `t` along the reversed line is `1 − t` along the line. */
+  function expectRunsBack(geometry: LineGeometry): void {
+    const reversed = reverseLine(from, to, geometry);
+    for (const t of [0, 0.3, 1]) {
+      const back = pointOnLine(
+        reversed.from,
+        reversed.to,
+        reversed.geometry,
+        t,
+      );
+      const forth = pointOnLine(from, to, geometry, 1 - t);
+      expect(back.x).toBeCloseTo(forth.x);
+      expect(back.z).toBeCloseTo(forth.z);
+    }
+  }
+
+  it("runs a straight back over the same ground", () => {
+    expectRunsBack(STRAIGHT);
+  });
+
+  it("runs an arc back through the same `via`", () => {
+    expectRunsBack({ kind: "arc", via: vec(20, -5) });
+  });
+
+  it("runs a biarc back, its pieces swapped", () => {
+    const biarc = biarcBetween(from, vec(1, 0), to, vec(1, 0));
+    if (biarc === null) {
+      throw new Error("expected a biarc");
+    }
+    expectRunsBack({ kind: "biarc", biarc });
   });
 });
