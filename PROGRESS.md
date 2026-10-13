@@ -353,7 +353,7 @@ crossings ignored. Ideas: `docs/ideas/lanes.md`.
 
 - [x] `docs/lanes.md` design note: lanes, their ids, connections, and the
       rule for which lanes connect
-- [ ] core: a roadway's lanes by its profile — its centerline offset
+- [x] core: a roadway's lanes by its profile — its centerline offset
       (straight, arc, biarc), ids `(section, ±i)`. The inner lane width
       moves to core; the lane marks shader reads it from there. With tests
 - [ ] lane overlay: lanes drawn over the surface, their ends marked to show
@@ -440,3 +440,8 @@ Not blocking anything; do them when they start to bite.
       churn is, and a fixed-capacity attribute with `setDrawRange` would
       match the neighbors. It bites when a second thing starts redrawing
       per move, or on a machine where this one is already felt
+- [ ] say "from +x toward +z" for angles and "right/left of `d`" for sides,
+      instead of "counterclockwise" / "clockwise" (60 uses, 16 files). On
+      screen +z points down, so the turn called counterclockwise shows
+      clockwise, and `(−d.z, d.x)` is the right of `d` — `offsetLine` and
+      `lanesOf` already call it that

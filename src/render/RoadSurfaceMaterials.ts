@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CROSSING_DEPTH_METERS } from "../core/layout/roadway";
+import { LANE_WIDTH_METERS } from "../core/lanes/lane";
 import type { RoadProfile } from "../core/network/types";
 import { HIGHLIGHT_OPACITY, STATE_COLOR } from "./colors";
 import { PART_STATE, type PartState } from "./PartStates";
@@ -84,6 +85,8 @@ function makeMaterial(laneMarksSource: string): THREE.ShaderMaterial {
       },
       tintAmount: { value: HIGHLIGHT_OPACITY },
       crossingDepth: { value: CROSSING_DEPTH_METERS },
+      // Read only by the lane files that draw dividers.
+      laneWidth: { value: LANE_WIDTH_METERS },
     },
     // Seen only from above, so which way a triangle winds doesn't matter.
     side: THREE.DoubleSide,
