@@ -8,6 +8,7 @@ import {
   nearestPointOnArc,
   nearestPointsBetweenArcs,
   nearestPointsBetweenSegmentAndArc,
+  offsetArc,
   pointOnArc,
   segmentArcCrossings,
   subArcVia,
@@ -22,6 +23,7 @@ import {
   isBiarcValid,
   nearestPointOnBiarc,
   nearestPointsBetweenBiarcAndLine,
+  offsetBiarc,
   pointOnBiarc,
   subBiarc,
   trimBiarc,
@@ -32,6 +34,7 @@ import { distance, lerp, unitDirection, type Vec2 } from "./point";
 import {
   nearestPointOnSegment,
   nearestPointsBetweenSegments,
+  offsetSegment,
   segmentCrossing,
   segmentFractionAt,
   trimSegment,
@@ -86,6 +89,13 @@ export interface ArcGeometry {
 export interface BiarcGeometry {
   readonly kind: "biarc";
   readonly biarc: Biarc;
+}
+
+/** A line with its ends, in any shape. */
+export interface Line {
+  readonly from: Vec2;
+  readonly to: Vec2;
+  readonly geometry: LineGeometry;
 }
 
 /** A line in one piece, with its ends. */
@@ -285,7 +295,7 @@ export function trimLine(
   geometry: LineGeometry,
   s1: number,
   s2: number,
-): { readonly from: Vec2; readonly to: Vec2; readonly geometry: LineGeometry } {
+): Line {
   switch (geometry.kind) {
     case "straight":
     case "arc":
@@ -313,6 +323,53 @@ export function trimPrimitive(
         to: arc.to,
         geometry: { kind: "arc", via: arc.via },
       };
+    }
+  }
+}
+
+/**
+ * A line moved `offset` meters square to itself, to its right looking from
+ * `from` toward `to`: a line of the same shape, every point moved along its
+ * own normal. Negative → to the left. Null where an arc piece would reach or
+ * pass its center (`offsetArc`).
+ *
+ * Right is fixed by the world, not by the view: Y up → the right of a
+ * heading `d` is `d × ŷ = (−d.z, d.x)`.
+ */
+export function offsetLine(
+  from: Vec2,
+  to: Vec2,
+  geometry: LineGeometry,
+  offset: number,
+): Line | null {
+  switch (geometry.kind) {
+    case "straight":
+    case "arc":
+      return offsetPrimitive(from, to, geometry, offset);
+    case "biarc":
+      return offsetBiarc(from, to, geometry.biarc, offset);
+  }
+}
+
+/** `offsetLine` for a line in one piece, which it stays. */
+export function offsetPrimitive(
+  from: Vec2,
+  to: Vec2,
+  geometry: PrimitiveLineGeometry,
+  offset: number,
+): PrimitiveLine | null {
+  switch (geometry.kind) {
+    case "straight":
+      return { ...offsetSegment(from, to, offset), geometry };
+    case "arc": {
+      const arc = offsetArc(from, to, geometry.via, offset);
+      return arc === null
+        ? null
+        : {
+            from: arc.from,
+            to: arc.to,
+            geometry: { kind: "arc", via: arc.via },
+          };
     }
   }
 }

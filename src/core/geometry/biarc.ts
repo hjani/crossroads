@@ -8,10 +8,12 @@ import {
   lineLength,
   nearestPointOnLine,
   nearestPointsBetweenLines,
+  offsetPrimitive,
   pointOnLine,
   STRAIGHT,
   subPrimitiveLineGeometry,
   trimPrimitive,
+  type Line,
   type LineGeometry,
   type PrimitiveLine,
   type PrimitiveLineGeometry,
@@ -85,7 +87,7 @@ export function trimBiarc(
   biarc: Biarc,
   s1: number,
   s2: number,
-): { readonly from: Vec2; readonly to: Vec2; readonly geometry: LineGeometry } {
+): Line {
   const { join } = biarc;
   const firstLength = lineLength(from, join, biarc.first);
   const secondLength = lineLength(join, to, biarc.second);
@@ -104,6 +106,41 @@ export function trimBiarc(
     geometry: {
       kind: "biarc",
       biarc: { join, first: first.geometry, second: second.geometry },
+    },
+  };
+}
+
+/**
+ * A biarc moved `offset` meters square to itself, to its right looking from
+ * `from` toward `to` (`offsetLine`): each piece moved, `join` with them. Null
+ * if either piece is.
+ *
+ * - tangent at `join` → one heading there, one normal → both pieces move
+ *   `join` to the same place
+ * - a moved piece keeps its heading at every point → still tangent at the
+ *   moved `join`
+ */
+export function offsetBiarc(
+  from: Vec2,
+  to: Vec2,
+  biarc: Biarc,
+  offset: number,
+): Line | null {
+  const first = offsetPrimitive(from, biarc.join, biarc.first, offset);
+  const second = offsetPrimitive(biarc.join, to, biarc.second, offset);
+  if (first === null || second === null) {
+    return null;
+  }
+  return {
+    from: first.from,
+    to: second.to,
+    geometry: {
+      kind: "biarc",
+      biarc: {
+        join: first.to,
+        first: first.geometry,
+        second: second.geometry,
+      },
     },
   };
 }

@@ -75,6 +75,30 @@ export function trimSegment(
 }
 
 /**
+ * The segment `from`–`to` moved `offset` meters square to itself, to its
+ * right looking from `from` toward `to` (`offsetLine`). With `h = offset`,
+ * `d = unitDirection(from, to)` and `n = (−d.z, d.x)`, `d` turned to the
+ * right:
+ *
+ *     from + h·n  →  to + h·n
+ *
+ * `h < 0` → to the left.
+ */
+export function offsetSegment(
+  from: Vec2,
+  to: Vec2,
+  offset: number,
+): { readonly from: Vec2; readonly to: Vec2 } {
+  const d = unitDirection(from, to);
+  const shiftX = -offset * d.z;
+  const shiftZ = offset * d.x;
+  return {
+    from: { x: from.x + shiftX, z: from.z + shiftZ },
+    to: { x: to.x + shiftX, z: to.z + shiftZ },
+  };
+}
+
+/**
  * How far `point` is from the line through `a` and `b`, in meters. The line
  * runs on past both points, so unlike `nearestPointOnSegment` nothing is
  * clamped.

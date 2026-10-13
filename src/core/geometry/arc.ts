@@ -346,6 +346,57 @@ export function trimArc(
 }
 
 /**
+ * The arc `from`–`via`–`to` moved `offset` meters square to itself, to its
+ * right looking from `from` toward `to` (`offsetLine`): an arc around the
+ * same center. Null where it would reach or pass the center.
+ *
+ * Let `O`, `R` be its circle, `h = offset`, `τ = ±1` the way it turns (+1
+ * from +x toward +z), and `a` the angle of a point `P` on it, seen from `O`.
+ *
+ * - heading at `P` (`arcDirectionAt`): `d = τ·(−sin a, cos a)`
+ * - its right: `n = (−d.z, d.x) = −τ·(cos a, sin a) = −τ·(P − O)/R`
+ *   → along the radius, inward when the arc turns right
+ * - `P + h·n = O + (P − O)·(1 − τ·h/R)` → every point scaled about `O`:
+ *
+ *       P' = O + k·(P − O),   k = (R − τ·h) / R
+ *
+ * - → the arc of radius `R − τ·h` around `O`; each point keeps its angle →
+ *   `via` still between the ends, the same sweep
+ * - `k ≤ 0` → null: `k = 0` puts all three on `O`, `k < 0` mirrors them
+ *   through it, and the arc would run backwards
+ *
+ * Three positions in a line are a straight, and all three move by the
+ * straight's `h·n`, as `offsetSegment` moves its ends.
+ */
+export function offsetArc(
+  from: Vec2,
+  to: Vec2,
+  via: Vec2,
+  offset: number,
+): { readonly from: Vec2; readonly to: Vec2; readonly via: Vec2 } | null {
+  const run = arcRun(from, to, via);
+  if (run === null) {
+    const d = unitDirection(from, to);
+    const shifted = (point: Vec2): Vec2 => ({
+      x: point.x - offset * d.z,
+      z: point.z + offset * d.x,
+    });
+    return { from: shifted(from), to: shifted(to), via: shifted(via) };
+  }
+
+  const { center, radius } = run.circle;
+  const scale = (radius - Math.sign(run.sweep) * offset) / radius;
+  if (scale <= 0) {
+    return null;
+  }
+  const scaled = (point: Vec2): Vec2 => ({
+    x: center.x + (point.x - center.x) * scale,
+    z: center.z + (point.z - center.z) * scale,
+  });
+  return { from: scaled(from), to: scaled(to), via: scaled(via) };
+}
+
+/**
  * A `via` for the part of the arc `from`–`via`–`to` between two places on
  * it: the point halfway along that part — halfway being the one place on an
  * arc that is neither of its ends whatever the sweep.
