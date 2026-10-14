@@ -82,11 +82,12 @@ example.
 
 Where a picture helps understanding, add an SVG illustration in
 `docs/images/` and embed it in the note. A picture of the project's own
-geometry (a layout, a tessellation) is drawn by the project's code, not by
-hand: one module per picture in `scripts/docs-images/`, registered in its
-`main.ts`, written by `npm run docs:images`. Rerun it after changing what a
-picture shows. A sketch of an idea, with no code behind it, can be drawn by
-hand.
+geometry (a layout, a tessellation) is drawn by the project's code: one
+module per picture in `scripts/docs-images/`, registered in its `main.ts`,
+written by `npm run docs:images`. Rerun it after changing what a picture
+shows. Until that code exists, draw the picture by hand at the same path;
+the module replaces it in the increment that implements the geometry. A
+sketch of an idea, with no code behind it, stays hand-drawn.
 
 ## Verification
 
