@@ -52,6 +52,7 @@ export class LiveRoadLayoutView {
     if (this.network.version !== this.drawnVersion) {
       this.surface.setParts(this.junctions(), this.roadways());
       this.laneOverlay.setLanes(this.laneGraph.allLanes());
+      this.laneOverlay.setConnections(this.laneGraph.allConnections());
       this.drawnVersion = this.network.version;
     }
     this.surface.update();

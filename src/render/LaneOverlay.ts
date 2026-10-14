@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { lineDirectionAt, type Line } from "../core/geometry/lineGeometry";
 import type { Vec2 } from "../core/geometry/point";
+import type { Connection } from "../core/lanes/connection";
 import type { Lane } from "../core/lanes/lane";
 import { LANE_OVERLAY_COLOR } from "./colors";
 import { LAYER } from "./layers";
@@ -13,13 +14,17 @@ const ARROW_LENGTH_METERS = 2.5;
 
 /**
  * Draws lanes over the road surface as a debug view: each lane's centerline
- * as a line, an arrowhead at each end (`docs/lanes.md`, Overlay).
+ * as a line, an arrowhead at each end, and each connection as a straight line
+ * from its exit to its entry (`docs/lanes.md`, Overlay).
  *
- * Told which lanes to draw rather than reading the lane graph itself, as
- * `RoadSurface` is told its parts.
+ * Told which lanes and connections to draw rather than reading the lane graph
+ * itself, as `RoadSurface` is told its parts.
  */
 export class LaneOverlay {
-  /** Add this to the scene once; `setLanes` replaces what it shows. */
+  /**
+   * Add this to the scene once; `setLanes` and `setConnections` replace what
+   * it shows.
+   */
   readonly sceneObject = new THREE.Group();
 
   private readonly lines: THREE.LineSegments<
@@ -29,6 +34,11 @@ export class LaneOverlay {
   private readonly arrowheads: THREE.Mesh<
     THREE.BufferGeometry,
     THREE.MeshBasicMaterial
+  >;
+  /** Shares `lines`' material. */
+  private readonly connectionLines: THREE.LineSegments<
+    THREE.BufferGeometry,
+    THREE.LineBasicMaterial
   >;
 
   constructor() {
@@ -44,7 +54,11 @@ export class LaneOverlay {
         side: THREE.DoubleSide,
       }),
     );
-    this.sceneObject.add(this.lines, this.arrowheads);
+    this.connectionLines = new THREE.LineSegments(
+      makeGeometry([]),
+      this.lines.material,
+    );
+    this.sceneObject.add(this.lines, this.arrowheads, this.connectionLines);
   }
 
   /** Discards the geometry and builds it again from exactly these lanes. */
@@ -63,12 +77,29 @@ export class LaneOverlay {
     replaceGeometry(this.arrowheads, arrowheadCoordinates);
   }
 
+  /**
+   * Discards the connection lines and builds them again from exactly these
+   * connections. One of no length draws nothing.
+   */
+  setConnections(connections: Iterable<Connection>): void {
+    const coordinates: number[] = [];
+    for (const { incoming, outgoing } of connections) {
+      appendPolyline(
+        [incoming.centerline.to, outgoing.centerline.from],
+        coordinates,
+      );
+    }
+
+    replaceGeometry(this.connectionLines, coordinates);
+  }
+
   /** Releases the GPU buffers behind the overlay. Unusable after. */
   dispose(): void {
     this.lines.geometry.dispose();
     this.lines.material.dispose();
     this.arrowheads.geometry.dispose();
     this.arrowheads.material.dispose();
+    this.connectionLines.geometry.dispose();
   }
 }
 

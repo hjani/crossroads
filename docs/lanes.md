@@ -46,17 +46,43 @@
   entry.
   - Incoming: running into the junction's node. Outgoing: running out of
     it.
-- At most one per pair of lanes.
+- Every incoming lane connects to every outgoing lane at its node → exactly
+  one per such pair.
+  - Its own road's too: U-turns → a dead end connects too; no node is a
+    special case.
 - Several leaving one exit is a split, several reaching one entry a merge:
   no kind of their own.
   - Profile is per section → lane count changes only at nodes → fewer lanes
     past a 180° join is a merge.
-- A dead end connects too: U-turns → no node is a special case.
 - Leaves in the incoming lane's heading, arrives in the outgoing lane's →
   smooth at both ends.
 - `v` wide, as its lanes.
 - Exit and entry can be one point: an equal-width 180° join sets nothing
   back → a connection of zero length.
+
+### Turn
+
+- Each connection is straight on, a left turn, a right turn or a U-turn.
+- `h`: the heading where the incoming lane exits; `e`: where the outgoing
+  lane enters.
+- `φ`: the signed angle from `h` to `e`, in (−180°, 180°], positive to the
+  right.
+  - At the lane ends, not at the node → how far the connection itself
+    turns.
+  - Every lane of a road has the same heading at a roadway end → all
+    connections between two roads turn the same way.
+- Straight on: between two roads that pick each other.
+  - A road picks the outgoing road with the least `|φ|`, if within
+    `STRAIGHT_ON_MAX_TURN_RADIANS` and not tied with another
+    (`STRAIGHT_ON_TIE_RADIANS`); else none.
+  - At a road's end its exit heading is minus its entry heading →
+    `φ(B→A) = −φ(A→B)` → within the limit one way is within it both ways.
+  - → at most one straight-on road per road.
+  - Picked one way only, or a tie: ambiguous → a turn.
+    - D–B nearly one road, A joining 30° off D: A picks B, B and D pick
+      each other → D↔B straight on, A↔B a turn.
+- U-turn: back onto its own road (`φ = 180°`).
+- Otherwise right if `φ > 0`, left if `φ < 0`.
 
 ## Identity
 
@@ -103,6 +129,7 @@
   - Entry: base on the entry point → points into the roadway.
   - Exit: tip on the exit point → points out of it.
   - → both inside the roadway.
+- Each connection: a straight line from its exit to its entry.
 - Arrowheads sized in meters (`ARROW_BASE_METERS`, `ARROW_LENGTH_METERS`)
   → grow with zoom; the line stays a pixel wide.
 - A color of its own, not a part state (`docs/part-states.md`): the road's

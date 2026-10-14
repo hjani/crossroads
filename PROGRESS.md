@@ -359,8 +359,11 @@ crossings ignored. Ideas: `docs/ideas/lanes.md`.
 - [x] lane overlay: lanes drawn over the surface, their ends marked to show
       direction. Live network only
 - [x] view options panel (`docs/ui.md`): one checkbox, show lanes
-- [ ] core: which lanes connect at a junction, drawn as straight chords.
-      With tests
+- [x] core: which lanes connect at a junction, drawn as straight chords.
+      Every incoming lane to every outgoing one, each connection classified
+      as straight on, left, right or U-turn. With tests
+- [ ] fewer connections: which lanes of one road connect to which lanes of
+      another, instead of every one to every one. Rules decided when planned
 - [ ] connection shape, split further when planned: straight on, left turn,
       right turn, U-turn
 - [ ] pictures for `docs/lanes.md`, drawn by `scripts/docs-images/`
