@@ -2,6 +2,7 @@ import { lineDirectionAt } from "../geometry/lineGeometry";
 import { dot, type Vec2 } from "../geometry/point";
 import type { SectionId } from "../network/types";
 import type { Lane } from "./lane";
+import { junctionPairs, spreadPairs } from "./lanePairs";
 
 /** The widest turn still straight on, in radians (`docs/lanes.md`, Turn). */
 export const STRAIGHT_ON_MAX_TURN_RADIANS = Math.PI / 6;
@@ -33,19 +34,28 @@ export interface Connection {
 
 /** A road's lanes at the node running one way, and their heading there. */
 interface RoadEnd {
+  /** In lane order: lane `i` at `[i − 1]`. */
   readonly lanes: Lane[];
   /** Unit vector; the same for every lane of the road (`lanesOf`). */
   readonly heading: Vec2;
 }
 
 /**
- * The connections at one node: every lane of `incoming` to every lane of
- * `outgoing`, each with its turn. `incoming` are the lanes running into the
- * node, `outgoing` those running out of it.
+ * The connections at one node, each with its turn. `incoming` are the lanes
+ * running into the node, `outgoing` those running out of it.
  *
- * Decided per road, since a road's lanes share their heading at its end.
- * `∠(u, v)` the signed angle from `u` to `v` (`turnAngle`); `h_A` the exit
- * heading of road A's lanes, `e_A` their entry heading; `φ(A→B) = ∠(h_A, e_B)`.
+ * Which lanes, from each road A in (`docs/lanes.md`, Which lanes connect):
+ *
+ * - the roads A goes to: every other road; its own only at a dead end, where
+ *   it is the only road
+ * - just one → `spreadPairs`: a dead end's U-turns, or into the other of two
+ *   roads
+ * - more, a junction → `junctionPairs`, by the turn into each
+ *
+ * The turn, decided per road, since a road's lanes share their heading at
+ * its end. `∠(u, v)` the signed angle from `u` to `v` (`turnAngle`); `h_A`
+ * the exit heading of road A's lanes, `e_A` their entry heading;
+ * `φ(A→B) = ∠(h_A, e_B)`.
  *
  * - A picks B: the least `|φ(A→B)|`, within `STRAIGHT_ON_MAX_TURN_RADIANS`,
  *   no other road within `STRAIGHT_ON_TIE_RADIANS` of it (`straightestFrom`)
@@ -72,18 +82,33 @@ export function connectionsBetween(
 
   const connections: Connection[] = [];
   for (const [a, aEnd] of into) {
-    for (const [b, bEnd] of outOf) {
-      const turn = turnKind(a, b, picks, turnAngle(aEnd.heading, bEnd.heading));
-      for (const incomingLane of aEnd.lanes) {
-        for (const outgoingLane of bEnd.lanes) {
-          connections.push({
-            incoming: incomingLane,
-            outgoing: outgoingLane,
-            turn,
-          });
-        }
+    const targets = Array.from(outOf)
+      .filter(([b]) => b !== a || outOf.size === 1)
+      .map(([b, bEnd]) => ({
+        end: bEnd,
+        turn: turnKind(a, b, picks, turnAngle(aEnd.heading, bEnd.heading)),
+      }));
+    const n = aEnd.lanes.length;
+    const pairs =
+      targets.length === 1
+        ? [spreadPairs(n, targets[0].end.lanes.length)]
+        : junctionPairs(
+            n,
+            targets.map(({ end, turn }) => ({
+              kind: turn,
+              lanes: end.lanes.length,
+            })),
+          );
+
+    targets.forEach(({ end, turn }, t) => {
+      for (const [i, j] of pairs[t]) {
+        connections.push({
+          incoming: aEnd.lanes[i - 1],
+          outgoing: end.lanes[j - 1],
+          turn,
+        });
       }
-    }
+    });
   }
   return connections;
 }
@@ -154,8 +179,9 @@ function turnAngle(h: Vec2, e: Vec2): number {
 }
 
 /**
- * `lanes` grouped by road, in the order first met, each road with its lanes'
- * heading a fraction `t` along them: 1 at their exit, 0 at their entry.
+ * `lanes` grouped by road, in the order first met, each road's lanes in lane
+ * order whatever order they came in, with their heading a fraction `t` along
+ * them: 1 at their exit, 0 at their entry.
  */
 function roadEnds(lanes: readonly Lane[], t: number): Map<SectionId, RoadEnd> {
   const ends = new Map<SectionId, RoadEnd>();
@@ -170,6 +196,9 @@ function roadEnds(lanes: readonly Lane[], t: number): Map<SectionId, RoadEnd> {
       lanes: [lane],
       heading: lineDirectionAt(from, to, geometry, t),
     });
+  }
+  for (const { lanes } of ends.values()) {
+    lanes.sort((p, q) => Math.abs(p.id.index) - Math.abs(q.id.index));
   }
   return ends;
 }

@@ -47,15 +47,36 @@ function connect(...roads: RoadLanes[]): Connection[] {
   );
 }
 
+/** The connections from road `a` into road `b`. */
+function between(
+  connections: readonly Connection[],
+  a: SectionId,
+  b: SectionId,
+): Connection[] {
+  return connections.filter(
+    (c) => c.incoming.id.section === a && c.outgoing.id.section === b,
+  );
+}
+
 /** The turn of every connection from road `a` into road `b`. */
 function turns(
   connections: readonly Connection[],
   a: SectionId,
   b: SectionId,
 ): TurnKind[] {
-  return connections
-    .filter((c) => c.incoming.id.section === a && c.outgoing.id.section === b)
-    .map((c) => c.turn);
+  return between(connections, a, b).map((c) => c.turn);
+}
+
+/** The lane numbers `[i, j]` of every connection from road `a` into road `b`. */
+function pairs(
+  connections: readonly Connection[],
+  a: SectionId,
+  b: SectionId,
+): number[][] {
+  return between(connections, a, b).map((c) => [
+    Math.abs(c.incoming.id.index),
+    Math.abs(c.outgoing.id.index),
+  ]);
 }
 
 describe("connectionsBetween", () => {
@@ -69,10 +90,19 @@ describe("connectionsBetween", () => {
   it("goes straight on across a 180° join, both ways", () => {
     const connections = connect(road(A, 180), road(B, 0));
 
+    expect(connections).toHaveLength(2);
     expect(turns(connections, A, B)).toEqual(["straight"]);
     expect(turns(connections, B, A)).toEqual(["straight"]);
-    expect(turns(connections, A, A)).toEqual(["uTurn"]);
-    expect(turns(connections, B, B)).toEqual(["uTurn"]);
+  });
+
+  it("turns back onto its own road only at a dead end", () => {
+    const connections = connect(road(A, 180), road(B, 0), road(C, 90));
+
+    expect(
+      connections.filter(
+        (c) => c.incoming.id.section === c.outgoing.id.section,
+      ),
+    ).toEqual([]);
   });
 
   it("turns right toward the right of the way in, left toward its left", () => {
@@ -94,7 +124,7 @@ describe("connectionsBetween", () => {
       road(D, 270),
     );
 
-    expect(connections).toHaveLength(16);
+    expect(connections).toHaveLength(12);
     expect(turns(connections, A, B)).toEqual(["straight"]);
     expect(turns(connections, C, D)).toEqual(["straight"]);
     expect(turns(connections, D, C)).toEqual(["straight"]);
@@ -128,11 +158,73 @@ describe("connectionsBetween", () => {
     expect(turns(connections, A, C)).toEqual(["left"]);
   });
 
-  it("connects every lane in to every lane out, each turning as its road does", () => {
+  it("joins the lanes of a 180° join side by side, each turning as its road does", () => {
     const connections = connect(road(A, 180, 2), road(B, 0, 2));
 
-    expect(connections).toHaveLength(16);
-    expect(turns(connections, A, B)).toEqual(Array(4).fill("straight"));
-    expect(turns(connections, A, A)).toEqual(Array(4).fill("uTurn"));
+    expect(connections).toHaveLength(4);
+    expect(pairs(connections, A, B)).toEqual([
+      [1, 1],
+      [2, 2],
+    ]);
+    expect(pairs(connections, B, A)).toEqual([
+      [1, 1],
+      [2, 2],
+    ]);
+    expect(turns(connections, A, B)).toEqual(["straight", "straight"]);
+  });
+
+  it("turns a 2-lane dead end back lane for lane", () => {
+    const connections = connect(road(A, 180, 2));
+
+    expect(pairs(connections, A, A)).toEqual([
+      [1, 1],
+      [2, 2],
+    ]);
+  });
+
+  it("merges 3 lanes into 2 where two roads meet, and splits them back", () => {
+    const connections = connect(road(A, 180, 3), road(B, 0, 2));
+
+    expect(pairs(connections, A, B)).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 2],
+    ]);
+    expect(pairs(connections, B, A)).toEqual([
+      [1, 1],
+      [2, 2],
+      [2, 3],
+    ]);
+  });
+
+  it("gives every turn of a 2-lane cross both lanes, lane for lane", () => {
+    const connections = connect(
+      road(A, 180, 2),
+      road(B, 0, 2),
+      road(C, 90, 2),
+      road(D, 270, 2),
+    );
+
+    expect(connections).toHaveLength(24);
+    for (const b of [B, C, D]) {
+      expect(pairs(connections, A, b)).toEqual([
+        [1, 1],
+        [2, 2],
+      ]);
+    }
+  });
+
+  it("pairs lanes by number, whatever order they come in", () => {
+    const a = road(A, 180, 2);
+    const b = road(B, 0, 2);
+    const connections = connectionsBetween(
+      [...a.incoming, ...b.incoming].reverse(),
+      [...a.outgoing, ...b.outgoing].reverse(),
+    );
+
+    expect(pairs(connections, A, B)).toEqual([
+      [1, 1],
+      [2, 2],
+    ]);
   });
 });

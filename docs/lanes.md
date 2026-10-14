@@ -46,14 +46,9 @@
   entry.
   - Incoming: running into the junction's node. Outgoing: running out of
     it.
-- Every incoming lane connects to every outgoing lane at its node → exactly
-  one per such pair.
-  - Its own road's too: U-turns → a dead end connects too; no node is a
-    special case.
+- At most one per pair of lanes; which pairs: Which lanes connect, below.
 - Several leaving one exit is a split, several reaching one entry a merge:
   no kind of their own.
-  - Profile is per section → lane count changes only at nodes → fewer lanes
-    past a 180° join is a merge.
 - Leaves in the incoming lane's heading, arrives in the outgoing lane's →
   smooth at both ends.
 - `v` wide, as its lanes.
@@ -84,6 +79,46 @@
 - U-turn: back onto its own road (`φ = 180°`).
 - Otherwise right if `φ > 0`, left if `φ < 0`.
 
+### Which lanes connect
+
+![Three panels, each showing one road's connections. 1: a 3-lane road meeting a 2-lane road end to end, the lanes spread both ways. 2: a 3-lane road into a cross of 1-, 2- and 1-lane roads: lane 1 turns left, lane 2 goes straight, lane 3 goes straight and turns right. 3: the 3-lane stem of a T into 1-lane arms: the middle lane, in no window, takes the right turn of the lane on its right](images/lane-connections.svg)
+
+- Decided per pair of roads: A in, B out, `n_A` and `n_B` lanes each way.
+- Lanes numbered from the centerline on both roads, `1…n`.
+  - Right-hand traffic → lane 1 is the leftmost the way it runs, on every
+    road → one left-to-right order.
+  - Order kept → a pair's connections never cross, whatever the turn.
+  - Different pairs' connections may cross: left to conflict handling and
+    traffic lights.
+- Spread: the side with more lanes spread evenly over the other, in order →
+  each of its lanes in exactly one connection.
+  - A middle exactly on a border → toward the curb: 3 into 2 →
+    `1→1, 2→2, 3→2`.
+- By how many roads meet at the node:
+  - One, a dead end: back onto itself, `i → i` → U-turns.
+  - Two: A into the other road, spread.
+    - Profile is per section → lane count changes only at nodes → a lane
+      drop is a merge here.
+  - Three or more, a junction: turn groups, below. No U-turns.
+
+#### Junction
+
+- The roads A can turn into, grouped by turn: left, straight, right.
+- A group's size: `g = min(n_A, lanes of its widest road)`.
+  - Two left roads of 1 and 2 lanes → 2 left lanes, not 3.
+- Its window: `g` adjacent lanes of A.
+  - Left: the leftmost. Right: the rightmost.
+  - Straight: the middle; the leftmost with no left group, the rightmost
+    with no right group. Middle tie → toward the curb.
+- Each road B of a group, from the window:
+  - `g ≤ n_B`: the window spread over B's lanes.
+  - `g > n_B`: only `n_B` window lanes, one to one, on the turn side.
+    - Never straight: at most one straight road → the widest of its group.
+  - → no turn takes more of A's lanes than its road has.
+- No dead lanes: a lane in no window takes the connections of its nearest
+  neighbor; tie → toward the curb.
+  - → the only way a pair merges at a junction.
+
 ## Identity
 
 - Lane: `(section, ±i)`.
@@ -96,7 +131,7 @@
     - A section meets a node at most once → that node is never in doubt.
   - Valid only if `(B, ±j)` runs out of that node → a wrong sign is a bug,
     not another meaning.
-  - U-turn: `(A, +i) × (A, −j)`.
+  - U-turn: `(A, +i) × (A, −i)`.
 
 ## Lane graph
 

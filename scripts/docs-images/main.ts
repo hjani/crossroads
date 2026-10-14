@@ -8,6 +8,7 @@ import { junctionBiarc } from "./junctionBiarc";
 import { junctionJoins } from "./junctionJoins";
 import { junctionPairs } from "./junctionPairs";
 import { junctionTessellation } from "./junctionTessellation";
+import { laneConnections } from "./laneConnections";
 import { roadMarkings } from "./roadMarkings";
 import { roadwayTessellation } from "./roadwayTessellation";
 import { smartArc } from "./smartArc";
@@ -27,6 +28,7 @@ const PICTURES: Record<string, () => string> = {
   "junction-joins.svg": junctionJoins,
   "junction-pairs.svg": junctionPairs,
   "junction-tessellation.svg": junctionTessellation,
+  "lane-connections.svg": laneConnections,
   "roadway-tessellation.svg": roadwayTessellation,
   "road-markings.svg": roadMarkings,
   "smart-arc.svg": smartArc,

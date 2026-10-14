@@ -84,7 +84,7 @@ describe("LaneGraph", () => {
       .connectionsAt(west.to)
       .map((c) => [c.incoming.id, c.outgoing.id, c.turn]);
 
-    expect(connections).toHaveLength(9);
+    expect(connections).toHaveLength(6);
     expect(connections).toContainEqual([
       { section: west.id, index: 1 },
       { section: east.id, index: 1 },
@@ -99,11 +99,6 @@ describe("LaneGraph", () => {
       { section: west.id, index: 1 },
       { section: stem.id, index: 1 },
       "right",
-    ]);
-    expect(connections).toContainEqual([
-      { section: stem.id, index: -1 },
-      { section: stem.id, index: 1 },
-      "uTurn",
     ]);
   });
 
@@ -124,7 +119,7 @@ describe("LaneGraph", () => {
     addStraight(network, road.to, vec(40, 0));
 
     expect(before).toHaveLength(1);
-    expect(graph.connectionsAt(road.to)).toHaveLength(4);
+    expect(graph.connectionsAt(road.to)).toHaveLength(2);
   });
 
   it("gives every node's connections", () => {
