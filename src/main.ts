@@ -17,6 +17,8 @@ import { Viewport } from "./render/Viewport";
 import { InspectPanel } from "./ui/InspectPanel";
 import { SectionSettingsPanel } from "./ui/SectionSettingsPanel";
 import { ToolPalette } from "./ui/ToolPalette";
+import { ViewSettings } from "./ui/ViewSettings";
+import { ViewSettingsPanel } from "./ui/ViewSettingsPanel";
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
@@ -52,6 +54,11 @@ const liveRoadLayoutView = new LiveRoadLayoutView(
   partStates,
 );
 scene.add(liveRoadLayoutView.sceneObject);
+
+const viewSettings = new ViewSettings();
+new ViewSettingsPanel(document.body, viewSettings).onSettingsChanged(() =>
+  liveRoadLayoutView.setLanesVisible(viewSettings.lanesVisible),
+);
 
 // const networkView = new NetworkView(network);
 // scene.add(networkView.sceneObject);

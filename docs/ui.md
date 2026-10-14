@@ -63,6 +63,11 @@
 - A tool may show its settings in a panel fixed at the top center, there
   while the tool is active.
 
+## View settings
+
+- A panel fixed at the bottom-left, always there.
+- Shows settings related to what's displayed and how.
+
 ## Input
 
 - A panel is a sibling of the canvas, not a layer over it → the canvas
@@ -70,8 +75,9 @@
   - Neither side arbitrates for the other: the same separation as the
     camera and the tools sharing the canvas by mouse button, one level up.
 - Keyboard is the exception, since the global bindings listen on the window.
-  - A button that kept focus after a click would fire again on Space or
-    Enter → focus is dropped as soon as the click is handled.
+  - A control that kept focus after a click would act again on a key — a
+    button fires on Space or Enter, a checkbox toggles on Space → focus is
+    dropped as soon as the click is handled.
   - → keys mean the same over the panel as over the canvas.
 
 ## Relationship to other modules

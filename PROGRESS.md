@@ -358,7 +358,7 @@ crossings ignored. Ideas: `docs/ideas/lanes.md`.
       moves to core; the lane marks shader reads it from there. With tests
 - [x] lane overlay: lanes drawn over the surface, their ends marked to show
       direction. Live network only
-- [ ] view options panel (`docs/ui.md`): one checkbox, show lanes
+- [x] view options panel (`docs/ui.md`): one checkbox, show lanes
 - [ ] core: which lanes connect at a junction, drawn as straight chords.
       With tests
 - [ ] connection shape, split further when planned: straight on, left turn,

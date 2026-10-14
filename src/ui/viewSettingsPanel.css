@@ -1,0 +1,32 @@
+@import "./panel.css";
+
+.view-settings-panel {
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #e9e9ee;
+}
+
+/* A heading over a group, not the name of a thing as the inspect panel's
+   title is → the muted gray of its labels rather than its blue. */
+.view-settings-panel-title {
+  padding: 2px 4px 0;
+  color: #b4b7c2;
+}
+
+.view-settings-panel label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+/* The browser's own checkbox, tinted the palette's blue. */
+.view-settings-panel input {
+  margin: 0;
+  accent-color: #6ea8f0;
+  cursor: pointer;
+}

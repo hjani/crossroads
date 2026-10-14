@@ -97,6 +97,7 @@
 ## Overlay
 
 - A debug view of the live lane graph, drawn over the road surface.
+- Shown or hidden from the view options (`docs/ui.md`); hidden at startup.
 - Each lane: its centerline as a thin line, an arrowhead at each end.
   - Pointing the way the lane runs → its direction reads at either end.
   - Entry: base on the entry point → points into the roadway.

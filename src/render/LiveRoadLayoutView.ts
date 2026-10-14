@@ -34,6 +34,17 @@ export class LiveRoadLayoutView {
       this.surface.sceneObject,
       this.laneOverlay.sceneObject,
     );
+
+    // Initially hidden.
+    this.laneOverlay.sceneObject.visible = false;
+  }
+
+  /**
+   * Shows or hides the lanes. Hidden lanes are still kept up to date, so
+   * showing them needs no rebuild.
+   */
+  setLanesVisible(visible: boolean): void {
+    this.laneOverlay.sceneObject.visible = visible;
   }
 
   /** Call once per frame. Cheap unless the network or the states changed. */
