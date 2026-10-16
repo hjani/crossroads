@@ -1,18 +1,11 @@
-import {
-  lineDirectionAt,
-  STRAIGHT,
-} from "../../src/core/geometry/lineGeometry";
+import { lineDirectionAt } from "../../src/core/geometry/lineGeometry";
 import type { Vec2 } from "../../src/core/geometry/point";
 import type { Connection } from "../../src/core/lanes/connection";
 import type { Lane } from "../../src/core/lanes/lane";
 import { LaneGraph } from "../../src/core/lanes/LaneGraph";
 import { RoadLayout } from "../../src/core/layout/RoadLayout";
-import { RoadNetwork } from "../../src/core/network/RoadNetwork";
-import type {
-  NodeId,
-  RoadProfile,
-  SectionId,
-} from "../../src/core/network/types";
+import type { RoadNetwork } from "../../src/core/network/RoadNetwork";
+import type { NodeId, RoadProfile } from "../../src/core/network/types";
 import {
   ONE_LANE_PROFILE,
   TWO_LANE_PROFILE,
@@ -21,10 +14,10 @@ import { polylineBetween } from "../../src/render/tessellate";
 import {
   junctionShape,
   LAYOUT_STYLE,
+  roadsAround,
   roadwayShapes,
-  toward,
 } from "./layoutParts";
-import { HIGHLIGHT, MUTED, panel, picture, squareAt, svgPoint } from "./svg";
+import { HIGHLIGHT, MUTED, picture, svgPoint, zDownPanel } from "./svg";
 
 /**
  * docs/lanes.md, Which lanes connect: one panel per rule — two roads, a
@@ -47,21 +40,30 @@ const PANEL_METERS = 50;
 type LinkStyle = "link" | "fill";
 
 export function laneConnections(): string {
-  const join = roadsAround([
-    { degrees: 180, profile: THREE_LANE_PROFILE },
-    { degrees: 0, profile: TWO_LANE_PROFILE },
-  ]);
-  const cross = roadsAround([
-    { degrees: 90, profile: THREE_LANE_PROFILE },
-    { degrees: 270, profile: TWO_LANE_PROFILE },
-    { degrees: 180, profile: ONE_LANE_PROFILE },
-    { degrees: 0, profile: ONE_LANE_PROFILE },
-  ]);
-  const tee = roadsAround([
-    { degrees: 90, profile: THREE_LANE_PROFILE },
-    { degrees: 180, profile: ONE_LANE_PROFILE },
-    { degrees: 0, profile: ONE_LANE_PROFILE },
-  ]);
+  const join = roadsAround(
+    [
+      { degrees: 180, profile: THREE_LANE_PROFILE },
+      { degrees: 0, profile: TWO_LANE_PROFILE },
+    ],
+    ROAD_METERS,
+  );
+  const cross = roadsAround(
+    [
+      { degrees: 90, profile: THREE_LANE_PROFILE },
+      { degrees: 270, profile: TWO_LANE_PROFILE },
+      { degrees: 180, profile: ONE_LANE_PROFILE },
+      { degrees: 0, profile: ONE_LANE_PROFILE },
+    ],
+    ROAD_METERS,
+  );
+  const tee = roadsAround(
+    [
+      { degrees: 90, profile: THREE_LANE_PROFILE },
+      { degrees: 180, profile: ONE_LANE_PROFILE },
+      { degrees: 0, profile: ONE_LANE_PROFILE },
+    ],
+    ROAD_METERS,
+  );
   const crossA = cross.sections[0];
   const teeA = tee.sections[0];
 
@@ -78,13 +80,13 @@ export function laneConnections(): string {
 <text x="${column(0)}" y="24" font-weight="600">Two roads</text>
 <text x="${column(1)}" y="24" font-weight="600">Junction</text>
 <text x="${column(2)}" y="24" font-weight="600">No dead lanes</text>
-${zDownPanel(
+${scenePanel(
   column(0),
   { x: 0, z: 0 },
   laneScene(join.network, join.node, () => "link"),
   name({ x: -14, z: 15 }, "A") + name({ x: 14, z: 12 }, "B"),
 )}
-${zDownPanel(
+${scenePanel(
   column(1),
   { x: 0, z: 0 },
   laneScene(cross.network, cross.node, (c) =>
@@ -95,7 +97,7 @@ ${zDownPanel(
     name({ x: -19, z: -7 }, "L") +
     name({ x: 19, z: 8 }, "R"),
 )}
-${zDownPanel(
+${scenePanel(
   column(2),
   { x: 0, z: 5 },
   // Lane 2 is the one in no window (docs/lanes.md, Junction).
@@ -118,37 +120,6 @@ ${zDownPanel(
 <text x="${column(2)}" y="${bottom + 46}">connections of lane 3 (dashed).</text>
 <text x="${column(0)}" y="${bottom + 84}" font-size="12" fill="${MUTED}">Lanes numbered from the centerline, right-hand traffic. Panels 2 and 3 draw only the connections from A.</text>`,
   );
-}
-
-/**
- * Straight roads leaving a node at the origin, each `degrees` from +x toward
- * +z, `ROAD_METERS` long; `sections` in the order of `roads`.
- */
-function roadsAround(
-  roads: readonly { degrees: number; profile: RoadProfile }[],
-): { network: RoadNetwork; node: NodeId; sections: SectionId[] } {
-  const network = new RoadNetwork();
-  const [first, ...rest] = roads;
-  const firstSection = network.addSection(
-    { x: 0, z: 0 },
-    toward(first.degrees, ROAD_METERS),
-    STRAIGHT,
-    first.profile,
-  );
-  const node = firstSection.from;
-  const sections = [
-    firstSection.id,
-    ...rest.map(
-      ({ degrees, profile }) =>
-        network.addSection(
-          node,
-          toward(degrees, ROAD_METERS),
-          STRAIGHT,
-          profile,
-        ).id,
-    ),
-  ];
-  return { network, node, sections };
 }
 
 /**
@@ -178,8 +149,12 @@ function laneScene(
     if (style === null) {
       continue;
     }
-    const { incoming, outgoing } = connection;
-    ground += `<polyline class="${style}" points="${svgPoint(incoming.centerline.to)} ${svgPoint(outgoing.centerline.from)}"/>`;
+    const { incoming, outgoing, centerline } = connection;
+    const points = centerline.pieces.flatMap(({ from, to, geometry }, index) =>
+      // Each piece after the first starts where the one before ends.
+      polylineBetween(from, to, geometry).slice(index === 0 ? 0 : 1),
+    );
+    ground += `<polyline class="${style}" points="${points.map(svgPoint).join(" ")}"/>`;
     // Each lane's far end from the node: an incoming lane's entry, an
     // outgoing lane's exit.
     numbered.set(incoming, "entry");
@@ -205,26 +180,23 @@ function laneScene(
 }
 
 /**
- * A panel `PANEL_METERS` square around `center`, with +z down: `scene.ground`,
- * drawn z up by `svgPoint`, flipped back; `scene.labels` and `names` placed
- * at `(x, z)` as they are, so text reads the right way round.
- *
- * - flipped, a ground point shows at `y = z`
- * - `panel`'s square shows `y` from `−(minZ + size)` to `−minZ`
- * - → centered on `y = center.z` for the square around `(x, −center.z)`
+ * A `zDownPanel` `PANEL_METERS` square around `center`, in the picture's top
+ * row: `scene.ground` flipped, `scene.labels` and `names` upright.
  */
-function zDownPanel(
+function scenePanel(
   x: number,
   center: Vec2,
   scene: { ground: string; labels: string },
   names: string,
 ): string {
-  return panel(
+  return zDownPanel(
     x,
     34,
     PANEL_PIXELS,
-    squareAt({ x: center.x, z: -center.z }, PANEL_METERS),
-    `<g transform="scale(1,-1)">${scene.ground}</g>${scene.labels}${names}`,
+    center,
+    PANEL_METERS,
+    scene.ground,
+    scene.labels + names,
   );
 }
 

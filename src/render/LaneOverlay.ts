@@ -14,8 +14,8 @@ const ARROW_LENGTH_METERS = 2.5;
 
 /**
  * Draws lanes over the road surface as a debug view: each lane's centerline
- * as a line, an arrowhead at each end, and each connection as a straight line
- * from its exit to its entry (`docs/lanes.md`, Overlay).
+ * as a line, an arrowhead at each end, and each connection's centerline as a
+ * line along its shape (`docs/lanes.md`, Overlay).
  *
  * Told which lanes and connections to draw rather than reading the lane graph
  * itself, as `RoadSurface` is told its parts.
@@ -83,11 +83,10 @@ export class LaneOverlay {
    */
   setConnections(connections: Iterable<Connection>): void {
     const coordinates: number[] = [];
-    for (const { incoming, outgoing } of connections) {
-      appendPolyline(
-        [incoming.centerline.to, outgoing.centerline.from],
-        coordinates,
-      );
+    for (const { centerline } of connections) {
+      for (const { from, to, geometry } of centerline.pieces) {
+        appendPolyline(polylineBetween(from, to, geometry), coordinates);
+      }
     }
 
     replaceGeometry(this.connectionLines, coordinates);

@@ -1,8 +1,15 @@
 import { lineDirectionAt } from "../geometry/lineGeometry";
 import { dot, type Vec2 } from "../geometry/point";
+import type { JunctionOutline } from "../layout/outline";
 import type { SectionId } from "../network/types";
-import type { Lane } from "./lane";
-import { junctionPairs, spreadPairs } from "./lanePairs";
+import {
+  connectionLine,
+  curbsOf,
+  offsetConnectionLine,
+  type ConnectionLine,
+} from "./connectionLine";
+import { LANE_WIDTH_METERS, type Lane } from "./lane";
+import { junctionPairs, spreadPairs, type LanePair } from "./lanePairs";
 
 /** The widest turn still straight on, in radians (`docs/lanes.md`, Turn). */
 export const STRAIGHT_ON_MAX_TURN_RADIANS = Math.PI / 6;
@@ -30,6 +37,8 @@ export interface Connection {
   /** Runs out of the node; the connection ends at its entry. */
   readonly outgoing: Lane;
   readonly turn: TurnKind;
+  /** Where cars drive, from `incoming`'s exit to `outgoing`'s entry. */
+  readonly centerline: ConnectionLine;
 }
 
 /** A road's lanes at the node running one way, and their heading there. */
@@ -41,8 +50,9 @@ interface RoadEnd {
 }
 
 /**
- * The connections at one node, each with its turn. `incoming` are the lanes
- * running into the node, `outgoing` those running out of it.
+ * The connections at one node, each with its turn and its shape. `incoming`
+ * are the lanes running into the node, `outgoing` those running out of it,
+ * `outline` the outline of the node's junction.
  *
  * Which lanes, from each road A in (`docs/lanes.md`, Which lanes connect):
  *
@@ -68,11 +78,17 @@ interface RoadEnd {
  *   pick made one way only is a turn
  * - else B = A: U-turn
  * - else right if `φ > 0`, left if not
+ *
+ * The shape (`connectionLine`): from the incoming lane's exit, heading `h_A`,
+ * to the outgoing lane's entry, heading `e_B`, clear of the junction's curbs.
+ * Lanes side by side share one shape, moved sideways (`shapeSideBySide`).
  */
 export function connectionsBetween(
   incoming: readonly Lane[],
   outgoing: readonly Lane[],
+  outline: JunctionOutline,
 ): Connection[] {
+  const curbs = curbsOf(outline);
   const into = roadEnds(incoming, 1);
   const outOf = roadEnds(outgoing, 0);
   const picks = new Map<SectionId, SectionId | null>();
@@ -101,16 +117,101 @@ export function connectionsBetween(
           );
 
     targets.forEach(({ end, turn }, t) => {
-      for (const [i, j] of pairs[t]) {
+      const shapeAlone = ([i, j]: LanePair): ConnectionLine =>
+        connectionLine(
+          aEnd.lanes[i - 1].centerline.to,
+          aEnd.heading,
+          end.lanes[j - 1].centerline.from,
+          end.heading,
+          curbs,
+        );
+      for (const { pair, shape } of shapeSideBySide(
+        pairs[t],
+        turn,
+        shapeAlone,
+      )) {
+        const [i, j] = pair;
         connections.push({
           incoming: aEnd.lanes[i - 1],
           outgoing: end.lanes[j - 1],
           turn,
+          centerline: shape,
         });
       }
     });
   }
   return connections;
+}
+
+/** A connection's two lanes, by number, and its shape. */
+interface ShapedPair {
+  readonly pair: LanePair;
+  readonly shape: ConnectionLine;
+}
+
+/**
+ * The shapes of the connections between two roads, one per lane pair
+ * (`docs/lanes.md`, Side by side). `turn` is the way they all turn;
+ * `shapeAlone` shapes one connection on its own (`connectionLine`).
+ *
+ * In each group of lanes side by side (`groupSideBySide`):
+ *
+ * - the inner lane is shaped on its own: the group's rightmost turning right,
+ *   its leftmost otherwise
+ * - every other lane's connection is the inner lane's, moved one lane width
+ *   to the right per lane between them (`offsetConnectionLine`)
+ *   - lane `i` lies `(i − ½)·v` right of its road's centerline, on both roads
+ *     → the moved shape starts at its own lane's exit and ends at its own
+ *     lane's entry
+ *   - where the move would pass an arc's center: shaped on its own instead
+ */
+function shapeSideBySide(
+  pairs: readonly LanePair[],
+  turn: TurnKind,
+  shapeAlone: (pair: LanePair) => ConnectionLine,
+): ShapedPair[] {
+  return groupSideBySide(pairs).flatMap((group) => {
+    const innerPair = turn === "right" ? group[group.length - 1] : group[0];
+    const innerShape = shapeAlone(innerPair);
+    return group.map((pair) => {
+      if (pair === innerPair) {
+        return { pair, shape: innerShape };
+      }
+      // Negative: lanes to the left of the inner one.
+      const lanesRightOfInner = pair[0] - innerPair[0];
+      const moved = offsetConnectionLine(
+        innerShape,
+        lanesRightOfInner * LANE_WIDTH_METERS,
+      );
+      return { pair, shape: moved ?? shapeAlone(pair) };
+    });
+  });
+}
+
+/**
+ * The lane pairs between two roads, grouped side by side: a group is pairs
+ * `(i, j), (i + 1, j + 1), …`, each lane beside the one before on both roads.
+ *
+ * A pair joins the group whose last pair is one lane to its left on both
+ * roads, else starts a group alone — as the extra pair of a merge or a split
+ * does. `pairs` come in incoming lane order (`spreadPairs`, `junctionPairs`),
+ * so a pair's left neighbor is always seen before it.
+ */
+function groupSideBySide(pairs: readonly LanePair[]): LanePair[][] {
+  const groups: LanePair[][] = [];
+  for (const pair of pairs) {
+    const [incoming, outgoing] = pair;
+    const groupToTheLeft = groups.find((group) => {
+      const [lastIncoming, lastOutgoing] = group[group.length - 1];
+      return lastIncoming === incoming - 1 && lastOutgoing === outgoing - 1;
+    });
+    if (groupToTheLeft === undefined) {
+      groups.push([pair]);
+    } else {
+      groupToTheLeft.push(pair);
+    }
+  }
+  return groups;
 }
 
 /**

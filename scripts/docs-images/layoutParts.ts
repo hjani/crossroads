@@ -1,7 +1,14 @@
 import { arcPolyline } from "../../src/core/geometry/arc";
+import { STRAIGHT } from "../../src/core/geometry/lineGeometry";
 import type { Vec2 } from "../../src/core/geometry/point";
 import type { JunctionOutline } from "../../src/core/layout/outline";
 import type { RoadLayout } from "../../src/core/layout/RoadLayout";
+import { RoadNetwork } from "../../src/core/network/RoadNetwork";
+import type {
+  NodeId,
+  RoadProfile,
+  SectionId,
+} from "../../src/core/network/types";
 import { tessellateRoadway } from "../../src/render/tessellate";
 import { EDGE, polygon, svgPoint, triangles } from "./svg";
 
@@ -20,6 +27,33 @@ export const CURB = "#3aa7b3";
 export function toward(degrees: number, length: number): Vec2 {
   const angle = (degrees * Math.PI) / 180;
   return { x: length * Math.cos(angle), z: length * Math.sin(angle) };
+}
+
+/**
+ * Straight roads leaving a node at the origin, each `degrees` from +x toward
+ * +z, `length` meters long; `sections` in the order of `roads`.
+ */
+export function roadsAround(
+  roads: readonly { degrees: number; profile: RoadProfile }[],
+  length: number,
+): { network: RoadNetwork; node: NodeId; sections: SectionId[] } {
+  const network = new RoadNetwork();
+  const [first, ...rest] = roads;
+  const firstSection = network.addSection(
+    { x: 0, z: 0 },
+    toward(first.degrees, length),
+    STRAIGHT,
+    first.profile,
+  );
+  const node = firstSection.from;
+  const sections = [
+    firstSection.id,
+    ...rest.map(
+      ({ degrees, profile }) =>
+        network.addSection(node, toward(degrees, length), STRAIGHT, profile).id,
+    ),
+  ];
+  return { network, node, sections };
 }
 
 /** The classes the shapes here use. */

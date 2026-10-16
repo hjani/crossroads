@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="540" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#1d2125">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20" y="26" font-size="15" font-weight="600">largestFittingRadius on the long-setback corner: 10 tests, R = 4.84 m</text>
+
+<svg x="20" y="50" width="400" height="400" viewBox="-21 -1 22 22">
+<g transform="scale(1,-1)">
+<polygon points="-21,1 1,1 1,-21 -4,-21 -4,-4 -21,-4" fill="#c9cfd6"/>
+<polyline points="-21,-4 -4,-4 -4,-21" fill="none" stroke="#3aa7b3" stroke-width="2" vector-effect="non-scaling-stroke"/>
+<polyline points="-21,-1.5 -1.5,-1.5 -1.5,-21" fill="none" stroke="#9a9993" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+<circle cx="-4" cy="-4" r="1.5" fill="none" stroke="#5b6168" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>
+<path d="M -20 -1.5 A 18.5 18.5 0 0 0 -1.5 -20" fill="none" stroke="#e03131" stroke-width="1.5" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>
+<path d="M -10.8 -1.5 A 9.3 9.3 0 0 0 -1.5 -10.8" fill="none" stroke="#e03131" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+<path d="M -8.5 -1.5 A 7 7 0 0 0 -1.5 -8.5" fill="none" stroke="#e03131" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+<path d="M -6.2 -1.5 A 4.7 4.7 0 0 0 -1.5 -6.2" fill="none" stroke="#2b9348" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+<path d="M -6.344 -1.5 A 4.844 4.844 0 0 0 -1.5 -6.344" fill="none" stroke="#d6336c" stroke-width="3" vector-effect="non-scaling-stroke"/>
+<circle cx="-4" cy="-4" r="0.25"/>
+<circle cx="-1.5" cy="-1.5" r="0.25"/>
+<circle cx="-20" cy="-1.5" r="0.25"/>
+<circle cx="-1.5" cy="-20" r="0.25"/>
+</g>
+<text x="-1.2" y="0.6" font-size="0.75">K</text>
+<text x="-4.4" y="3.4" font-size="0.75" text-anchor="end">C</text>
+<text x="-20" y="0.4" font-size="0.75" text-anchor="middle">exit</text>
+<text x="-1.2" y="20.6" font-size="0.75">entry</text>
+<text x="-14" y="14" font-size="0.75" text-anchor="middle" fill="#5b6168">off road</text>
+<text x="-11.5" y="0.7" font-size="0.7" fill="#e03131" text-anchor="middle">3</text>
+<text x="-8.9" y="0.7" font-size="0.7" fill="#e03131" text-anchor="middle">5</text>
+<text x="-6.0" y="0.7" font-size="0.7" fill="#2b9348" text-anchor="end">4, 9</text>
+<text x="-12" y="9.5" font-size="0.7" fill="#e03131" text-anchor="middle">1: R_cap</text>
+</svg>
+
+<text x="470" y="64" font-weight="600" text-anchor="end">#</text>
+<text x="525" y="64" font-weight="600" text-anchor="end">R tried</text>
+<text x="545" y="64" font-weight="600">→ [lo, hi]</text>
+<text x="680" y="64" fill="#5b6168" text-anchor="middle">0</text>
+<text x="900" y="64" fill="#5b6168" text-anchor="middle">18.5</text>
+<text x="742" y="64" fill="#d6336c">R* 4.91</text>
+<line x1="738.4" y1="70" x2="738.4" y2="410" stroke="#d6336c" stroke-dasharray="4 3"/>
+
+<g>
+<text x="470" y="92" text-anchor="end">1</text><text x="525" y="92" text-anchor="end">18.50</text><text x="545" y="92" fill="#e03131">✗ R_cap first</text>
+<line x1="680" y1="88" x2="900" y2="88" stroke="#c9cfd6" stroke-width="2"/><line x1="681.2" y1="88" x2="900" y2="88" stroke="#2f6fdb" stroke-width="6"/><circle cx="900" cy="88" r="4" fill="#e03131"/>
+
+<text x="470" y="126" text-anchor="end">2</text><text x="525" y="126" text-anchor="end">0.10</text><text x="545" y="126" fill="#2b9348">✓ smallest R</text>
+<line x1="680" y1="122" x2="900" y2="122" stroke="#c9cfd6" stroke-width="2"/><line x1="681.2" y1="122" x2="900" y2="122" stroke="#2f6fdb" stroke-width="6"/><circle cx="681.2" cy="122" r="4" fill="#2b9348"/>
+
+<text x="470" y="160" text-anchor="end">3</text><text x="525" y="160" text-anchor="end">9.30</text><text x="545" y="160">✗ [0.10, 9.30]</text>
+<line x1="680" y1="156" x2="900" y2="156" stroke="#c9cfd6" stroke-width="2"/><line x1="681.2" y1="156" x2="790.6" y2="156" stroke="#2f6fdb" stroke-width="6"/><circle cx="790.6" cy="156" r="4" fill="#e03131"/>
+
+<text x="470" y="194" text-anchor="end">4</text><text x="525" y="194" text-anchor="end">4.70</text><text x="545" y="194">✓ [4.70, 9.30]</text>
+<line x1="680" y1="190" x2="900" y2="190" stroke="#c9cfd6" stroke-width="2"/><line x1="735.9" y1="190" x2="790.6" y2="190" stroke="#2f6fdb" stroke-width="6"/><circle cx="735.9" cy="190" r="4" fill="#2b9348"/>
+
+<text x="470" y="228" text-anchor="end">5</text><text x="525" y="228" text-anchor="end">7.00</text><text x="545" y="228">✗ [4.70, 7.00]</text>
+<line x1="680" y1="224" x2="900" y2="224" stroke="#c9cfd6" stroke-width="2"/><line x1="735.9" y1="224" x2="763.2" y2="224" stroke="#2f6fdb" stroke-width="6"/><circle cx="763.2" cy="224" r="4" fill="#e03131"/>
+
+<text x="470" y="262" text-anchor="end">6</text><text x="525" y="262" text-anchor="end">5.85</text><text x="545" y="262">✗ [4.70, 5.85]</text>
+<line x1="680" y1="258" x2="900" y2="258" stroke="#c9cfd6" stroke-width="2"/><line x1="735.9" y1="258" x2="749.6" y2="258" stroke="#2f6fdb" stroke-width="6"/><circle cx="749.6" cy="258" r="4" fill="#e03131"/>
+
+<text x="470" y="296" text-anchor="end">7</text><text x="525" y="296" text-anchor="end">5.28</text><text x="545" y="296">✗ [4.70, 5.28]</text>
+<line x1="680" y1="292" x2="900" y2="292" stroke="#c9cfd6" stroke-width="2"/><line x1="735.9" y1="292" x2="742.7" y2="292" stroke="#2f6fdb" stroke-width="6"/><circle cx="742.7" cy="292" r="4" fill="#e03131"/>
+
+<text x="470" y="330" text-anchor="end">8</text><text x="525" y="330" text-anchor="end">4.99</text><text x="545" y="330">✗ [4.70, 4.99]</text>
+<line x1="680" y1="326" x2="900" y2="326" stroke="#c9cfd6" stroke-width="2"/><line x1="735.9" y1="326" x2="739.3" y2="326" stroke="#2f6fdb" stroke-width="6"/><circle cx="739.3" cy="326" r="4" fill="#e03131"/>
+
+<text x="470" y="364" text-anchor="end">9</text><text x="525" y="364" text-anchor="end">4.84</text><text x="545" y="364">✓ [4.84, 4.99]</text>
+<line x1="680" y1="360" x2="900" y2="360" stroke="#c9cfd6" stroke-width="2"/><line x1="737.6" y1="360" x2="739.3" y2="360" stroke="#2f6fdb" stroke-width="6"/><circle cx="737.6" cy="360" r="4" fill="#2b9348"/>
+
+<text x="470" y="398" text-anchor="end">10</text><text x="525" y="398" text-anchor="end">4.92</text><text x="545" y="398">✗ [4.84, 4.92]</text>
+<line x1="680" y1="394" x2="900" y2="394" stroke="#c9cfd6" stroke-width="2"/><line x1="737.6" y1="394" x2="738.5" y2="394" stroke="#2f6fdb" stroke-width="6"/><circle cx="738.5" cy="394" r="4" fill="#e03131"/>
+</g>
+
+<text x="460" y="436">hi − lo = 7 cm, under the tolerance → R = lo = 4.84 m,</text>
+<text x="460" y="454">7 cm short of R* — the safe side: a little more than c from C.</text>
+
+<text x="20" y="482">A test: the turn at R — straight on along the lane line, its arc, straight on — clear of the curbs</text>
+<text x="20" y="500">and corners, and past no corner? ✓ raises lo to R, ✗ lowers hi to R. Blue: [lo, hi] after the test.</text>
+<text x="20" y="524" font-size="12" fill="#5b6168">Left: tests 1, 3, 5 (red, not clear), 4 (green), the result 9 (pink). Tests 6–8 and 10 lie between 4.9 and 5.9 m, too close to tell apart here.</text>
+</svg>

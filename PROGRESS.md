@@ -364,9 +364,9 @@ crossings ignored. Ideas: `docs/ideas/lanes.md`.
       as straight on, left, right or U-turn. With tests
 - [x] fewer connections: which lanes of one road connect to which lanes of
       another, instead of every one to every one. Rules decided when planned
-- [ ] connection shape, split further when planned: straight on, left turn,
-      right turn, U-turn
-- [ ] pictures for `docs/lanes.md`, drawn by `scripts/docs-images/`
+- [x] connection shape, split further when planned
+- [ ] experiment with lane direction arrows at the end of the lanes
+- [x] pictures for `docs/lanes.md`, drawn by `scripts/docs-images/`
 
 ## Backlog
 

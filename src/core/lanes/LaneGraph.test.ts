@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { lineDirectionAt, type Line } from "../geometry/lineGeometry";
 import type { Vec2 } from "../geometry/point";
 import { RoadLayout } from "../layout/RoadLayout";
 import { RoadNetwork } from "../network/RoadNetwork";
@@ -100,6 +101,36 @@ describe("LaneGraph", () => {
       { section: stem.id, index: 1 },
       "right",
     ]);
+  });
+
+  it("shapes every connection from its lane's exit to the next lane's entry", () => {
+    // A cross of straight roads: straight on, and turns either way.
+    const network = new RoadNetwork();
+    const west = addStraight(network, vec(-20, 0), vec(0, 0));
+    addStraight(network, west.to, vec(20, 0));
+    addStraight(network, west.to, vec(0, 20));
+    addStraight(network, west.to, vec(0, -20));
+    const graph = new LaneGraph(network, new RoadLayout(network));
+    const headingAt = ({ from, to, geometry }: Line, t: number): Vec2 =>
+      lineDirectionAt(from, to, geometry, t);
+
+    const connections = graph.connectionsAt(west.to);
+    expect(connections).toHaveLength(12);
+    for (const { incoming, outgoing, centerline } of connections) {
+      const first = centerline.pieces[0];
+      const last = centerline.pieces[centerline.pieces.length - 1];
+      expect(first.from).toEqual(incoming.centerline.to);
+      expect(last.to).toEqual(outgoing.centerline.from);
+
+      const leaving = headingAt(first, 0);
+      const exitHeading = headingAt(incoming.centerline, 1);
+      expect(leaving.x).toBeCloseTo(exitHeading.x);
+      expect(leaving.z).toBeCloseTo(exitHeading.z);
+      const arriving = headingAt(last, 1);
+      const entryHeading = headingAt(outgoing.centerline, 0);
+      expect(arriving.x).toBeCloseTo(entryHeading.x);
+      expect(arriving.z).toBeCloseTo(entryHeading.z);
+    }
   });
 
   it("gives back the connections it worked out before", () => {

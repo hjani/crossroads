@@ -80,6 +80,34 @@ export function panel(
   );
 }
 
+/**
+ * A square panel `pixels` wide at (`x`, `y`), `meters` of ground around
+ * `center`, with +z down as the app shows the ground (`Viewport`): `ground`,
+ * drawn z up by `svgPoint`, flipped back; `upright` placed at `(x, z)` as it
+ * is, so its text reads the right way round.
+ *
+ * - flipped, a ground point shows at `y = z`
+ * - `panel`'s square shows `y` from `−(minZ + size)` to `−minZ`
+ * - → centered on `y = center.z` for the square around `(x, −center.z)`
+ */
+export function zDownPanel(
+  x: number,
+  y: number,
+  pixels: number,
+  center: Vec2,
+  meters: number,
+  ground: string,
+  upright: string,
+): string {
+  return panel(
+    x,
+    y,
+    pixels,
+    squareAt({ x: center.x, z: -center.z }, meters),
+    `<g transform="scale(1,-1)">${ground}</g>${upright}`,
+  );
+}
+
 /** The outline of `ground`, drawn on a panel that shows it. */
 export function groundFrame(ground: GroundSquare): string {
   return (

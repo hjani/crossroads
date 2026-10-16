@@ -65,7 +65,11 @@ export class LaneGraph {
           (runsIn ? incoming : outgoing).push(lane);
         }
       }
-      connections = connectionsBetween(incoming, outgoing);
+      connections = connectionsBetween(
+        incoming,
+        outgoing,
+        this.layout.junctionAt(node).outline(),
+      );
       this.connections.set(node, connections);
     }
     return connections;
