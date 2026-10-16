@@ -14,6 +14,8 @@ import { LiveRoadLayoutView } from "./render/LiveRoadLayoutView";
 //import { NetworkView } from "./render/NetworkView";
 import { PartStates } from "./render/PartStates";
 import { Viewport } from "./render/Viewport";
+//import { buildEuropeanTown } from "./samples/europeanTown";
+//import { buildGridTown } from "./samples/gridTown";
 import { InspectPanel } from "./ui/InspectPanel";
 import { SectionSettingsPanel } from "./ui/SectionSettingsPanel";
 import { ToolPalette } from "./ui/ToolPalette";
@@ -41,6 +43,10 @@ scene.add(grid);
 const network = new RoadNetwork();
 
 const layout = new RoadLayout(network);
+
+// Ready-made towns to test against: keep one, or neither to start empty.
+//buildEuropeanTown(network, layout);
+//buildGridTown(network, layout);
 
 const laneGraph = new LaneGraph(network, layout);
 
