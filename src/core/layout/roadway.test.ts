@@ -166,8 +166,8 @@ describe("roadwayOf", () => {
   });
 });
 
-describe("roadwayOf crossings", () => {
-  // Set back by hand: only the roadway's length matters to its crossings.
+describe("roadwayOf crossings and turn arrows", () => {
+  // Set back by hand: only the roadway's length matters to its markings.
   const NO_SETBACKS = { from: 0, to: 0 };
 
   /** Ends `count` more sections at `node`, each to a node of its own. */
@@ -184,6 +184,14 @@ describe("roadwayOf crossings", () => {
     setbacks = NO_SETBACKS,
   ): Roadway["crossings"] {
     return roadwayOf(network, section, setbacks).crossings;
+  }
+
+  function turnArrowsOf(
+    network: RoadNetwork,
+    section: Section,
+    setbacks = NO_SETBACKS,
+  ): Roadway["turnArrows"] {
+    return roadwayOf(network, section, setbacks).turnArrows;
   }
 
   it("crosses only at the end where 3 sections meet", () => {
@@ -219,6 +227,30 @@ describe("roadwayOf crossings", () => {
       to: false,
     });
     expect(crossingsOf(network, road, { from: 47, to: 47 })).toEqual({
+      from: true,
+      to: true,
+    });
+  });
+
+  it("puts turn arrows only at the end where 3 sections meet", () => {
+    const network = new RoadNetwork();
+    const road = addStraight(network, vec(0, 0), vec(100, 0));
+    addSectionsAt(network, road.from, 1);
+    addSectionsAt(network, road.to, 2);
+    expect(turnArrowsOf(network, road)).toEqual({ from: false, to: true });
+  });
+
+  it("has no turn arrows where the crossings fit but the arrows don't", () => {
+    const network = new RoadNetwork();
+    const road = addStraight(network, vec(0, 0), vec(100, 0));
+    addSectionsAt(network, road.from, 2);
+    addSectionsAt(network, road.to, 2);
+    // 2D + 2g + A = 2·3 + 2·1 + 3 = 11 needed.
+    // 100 − 2·44.55 = 10.9 left; 100 − 2·44.5 = 11.
+    const short = roadwayOf(network, road, { from: 44.55, to: 44.55 });
+    expect(short.crossings).toEqual({ from: true, to: true });
+    expect(short.turnArrows).toEqual({ from: false, to: false });
+    expect(turnArrowsOf(network, road, { from: 44.5, to: 44.5 })).toEqual({
       from: true,
       to: true,
     });

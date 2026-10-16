@@ -365,7 +365,7 @@ crossings ignored. Ideas: `docs/ideas/lanes.md`.
 - [x] fewer connections: which lanes of one road connect to which lanes of
       another, instead of every one to every one. Rules decided when planned
 - [x] connection shape, split further when planned
-- [ ] experiment with lane direction arrows at the end of the lanes
+- [x] experiment with lane direction arrows at the end of the lanes
 - [x] pictures for `docs/lanes.md`, drawn by `scripts/docs-images/`
 
 ## Backlog

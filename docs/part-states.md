@@ -37,6 +37,11 @@
 - A state is a tint: its color (`STATE_COLOR`) mixed over the finished
   surface, markings included.
 - `hidden` → the part isn't drawn at all.
+- Turn arrows, meshes of their own (`docs/road-markings.md`), show their
+  roadway's state: its tint mixed into their white, as into the painted
+  marks; hidden with it.
+  - They cover the surface rather than tint over it → still one color per
+    pixel.
 - The live surface keeps its states across a rebuild. Ids no longer in the
   network are dropped.
 

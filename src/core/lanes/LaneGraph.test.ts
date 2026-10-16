@@ -171,4 +171,29 @@ describe("LaneGraph", () => {
 
     expect(() => graph.connectionsAt(road.from)).toThrow();
   });
+
+  it("gives the connections leaving a lane, at the node it runs into", () => {
+    // The T above: the stem leaves toward +z.
+    const network = new RoadNetwork();
+    const west = addStraight(network, vec(-20, 0), vec(0, 0));
+    const east = addStraight(network, west.to, vec(20, 0));
+    const stem = addStraight(network, west.to, vec(0, 20));
+    const graph = new LaneGraph(network, new RoadLayout(network));
+
+    // Lane +1 of `west` runs east, into the node at its `to` end.
+    const fromWest = graph
+      .connectionsLeaving({ section: west.id, index: 1 })
+      .map((c) => [c.outgoing.id.section, c.turn]);
+    expect(fromWest).toHaveLength(2);
+    expect(fromWest).toContainEqual([east.id, "straight"]);
+    expect(fromWest).toContainEqual([stem.id, "right"]);
+
+    // Lane −1 of `east` runs west, into the node at its `from` end.
+    const fromEast = graph
+      .connectionsLeaving({ section: east.id, index: -1 })
+      .map((c) => [c.outgoing.id.section, c.turn]);
+    expect(fromEast).toHaveLength(2);
+    expect(fromEast).toContainEqual([west.id, "straight"]);
+    expect(fromEast).toContainEqual([stem.id, "left"]);
+  });
 });

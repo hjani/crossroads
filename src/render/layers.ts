@@ -6,7 +6,11 @@
  * All of them clear the reference grid at zero.
  */
 export const LAYER = {
-  /** The roads, so every line over it stays visible. */
+  /**
+   * The roads, so every line over it stays visible. Markings drawn as meshes
+   * of their own (turn arrows) share this height, drawn over the surface by
+   * a depth offset instead: that holds for a tilted camera too.
+   */
   ROAD_SURFACE: 0.01,
   /** Areas a tool tints on the road, under every line. */
   SURFACE_DECORATION: 0.015,

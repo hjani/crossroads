@@ -2,6 +2,13 @@
 export const DASH_PERIOD_METERS = 4.5;
 /** Bar + gap across a crossing, in meters. */
 export const BAR_PERIOD_METERS = 1;
+/**
+ * How far a turn arrow's tip stays back from its section's crossing ahead,
+ * in meters: `g`.
+ */
+export const TURN_ARROW_GAP_METERS = 1;
+/** A turn arrow's length, tail to tip, in meters: `A`. */
+export const TURN_ARROW_LENGTH_METERS = 3;
 
 /**
  * The period a pattern is stretched to, so a whole number of them fits its

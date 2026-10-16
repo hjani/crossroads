@@ -2,7 +2,7 @@ import type { RoadLayout } from "../layout/RoadLayout";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, SectionId } from "../network/types";
 import { connectionsBetween, type Connection } from "./connection";
-import { lanesOf, type Lane } from "./lane";
+import { lanesOf, type Lane, type LaneId } from "./lane";
 
 /**
  * Where cars drive on the network: the lanes along every section, and the
@@ -73,6 +73,20 @@ export class LaneGraph {
       this.connections.set(node, connections);
     }
     return connections;
+  }
+
+  /**
+   * The connections leaving a lane's exit: those at the node it runs into
+   * that start from it. Throws for a section the network does not know.
+   */
+  connectionsLeaving(lane: LaneId): Connection[] {
+    const section = this.network.getSection(lane.section);
+    // `+i` runs `from → to`, `−i` the other way.
+    const node = lane.index > 0 ? section.to : section.from;
+    return this.connectionsAt(node).filter(
+      ({ incoming: { id } }) =>
+        id.section === lane.section && id.index === lane.index,
+    );
   }
 
   /** The lanes along every section, in no particular order. */

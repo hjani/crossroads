@@ -1,6 +1,7 @@
 import { trimLine } from "../geometry/lineGeometry";
 import type { RoadNetwork } from "../network/RoadNetwork";
 import type { NodeId, RoadProfile, Section } from "../network/types";
+import { TURN_ARROW_GAP_METERS, TURN_ARROW_LENGTH_METERS } from "./markings";
 import type { RoadwayOutline } from "./outline";
 
 /**
@@ -9,8 +10,24 @@ import type { RoadwayOutline } from "./outline";
  */
 export const CROSSING_DEPTH_METERS = 3;
 
-/** How many sections must meet at a node for a crossing at their ends. */
-const CROSSING_MIN_SECTIONS = 3;
+/**
+ * How many sections must meet at a node for their roadways' ends there to be
+ * junction ends (`docs/road-markings.md`, Junction ends).
+ */
+const JUNCTION_MIN_SECTIONS = 3;
+
+/** The shortest roadway with crossings, in meters: room for one at each end. */
+const CROSSINGS_MIN_LENGTH_METERS = 2 * CROSSING_DEPTH_METERS;
+
+/**
+ * The shortest roadway with turn arrows, in meters: room for both crossings
+ * and the arrows at both ends. The two ends' arrows lie side by side, in
+ * opposite lanes → one arrow's length, with a gap at each end of it.
+ */
+const TURN_ARROWS_MIN_LENGTH_METERS =
+  2 * CROSSING_DEPTH_METERS +
+  2 * TURN_ARROW_GAP_METERS +
+  TURN_ARROW_LENGTH_METERS;
 
 /**
  * A section between the setbacks at its two ends: a shorter section of the
@@ -25,6 +42,8 @@ export interface Roadway {
   readonly profile: RoadProfile;
   /** Which of its ends has a crossing. */
   readonly crossings: { readonly from: boolean; readonly to: boolean };
+  /** Which of its ends has turn arrows. */
+  readonly turnArrows: { readonly from: boolean; readonly to: boolean };
 }
 
 /**
@@ -67,23 +86,36 @@ export function roadwayOf(
       widthMeters: section.profile.width,
     },
     profile: section.profile,
-    crossings: crossingsOf(network, section, length),
+    crossings: junctionEndsWithRoom(
+      network,
+      section,
+      length,
+      CROSSINGS_MIN_LENGTH_METERS,
+    ),
+    turnArrows: junctionEndsWithRoom(
+      network,
+      section,
+      length,
+      TURN_ARROWS_MIN_LENGTH_METERS,
+    ),
   };
 }
 
 /**
- * Which ends of a section's roadway have a crossing: those at a node where
- * at least 3 sections meet. None on a roadway too short for two.
+ * Which ends of a section's roadway are junction ends, those at a node where
+ * at least 3 sections meet — if the roadway is at least `minLength` long, in
+ * meters. None if it is shorter.
  */
-function crossingsOf(
+function junctionEndsWithRoom(
   network: RoadNetwork,
   section: Section,
   length: number,
-): Roadway["crossings"] {
-  if (length < 2 * CROSSING_DEPTH_METERS) {
+  minLength: number,
+): { readonly from: boolean; readonly to: boolean } {
+  if (length < minLength) {
     return { from: false, to: false };
   }
-  const crosses = (node: NodeId) =>
-    network.sectionsAt(node).length >= CROSSING_MIN_SECTIONS;
-  return { from: crosses(section.from), to: crosses(section.to) };
+  const isJunctionEnd = (node: NodeId) =>
+    network.sectionsAt(node).length >= JUNCTION_MIN_SECTIONS;
+  return { from: isJunctionEnd(section.from), to: isJunctionEnd(section.to) };
 }

@@ -53,7 +53,7 @@ export class RoadSurfaceMaterials {
  * The tint each `PART_STATE` shows, by its number. `NONE` and `HIDDEN` show
  * none, but the shader indexes the table by every state.
  */
-const STATE_TINTS: Record<PartState, number> = {
+export const STATE_TINTS: Record<PartState, number> = {
   [PART_STATE.NONE]: 0,
   [PART_STATE.AIMED]: STATE_COLOR.AIMED,
   [PART_STATE.SELECTED]: STATE_COLOR.SELECTED,

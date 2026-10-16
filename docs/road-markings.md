@@ -3,9 +3,9 @@
 ## Scope
 
 - Paint on the road surface (`docs/road-surface.md`): a solid line along
-  each curb, lane marks set by the road's lanes each way, zebra crossings at
-  junctions.
-- Out of scope: arrows, stop lines.
+  each curb, lane marks set by the road's lanes each way, zebra crossings and
+  turn arrows at junctions.
+- Out of scope: stop lines.
 
 ## Markings
 
@@ -59,13 +59,20 @@ A fitted pattern along a dashed lane mark. `δ` the dash's share of a period.
     the pattern carries on across the node.
   - → at a junction or a crossing: half a gap before it.
 
+## Junction ends
+
+A roadway's end where it meets a junction: 3 or more sections meet at its
+node.
+
+- Each gets a crossing and turn arrows (below), one after the other, where
+  the roadway has room for them.
+  - Per end → a roadway has them at either end, both or neither.
+  - None at a dead end or a join of two.
+
 ## Crossings
 
-A zebra crossing at a roadway's end, where it meets a junction.
+A zebra crossing at a junction end.
 
-- At an end iff 3 or more sections meet at its node.
-  - Per end → a roadway has one at either end, both or neither.
-  - None at a dead end or a join of two.
 - `D` deep along the road, starting right at the roadway's end.
 - No lane marks on it.
 - A roadway under `2D` long has none → two crossings never overlap.
@@ -75,11 +82,56 @@ A zebra crossing at a roadway's end, where it meets a junction.
 
 ![A roadway's end at a junction, to scale: edge lines e in from the curb, centerline dashes with period P′ and half a gap at the end, and a crossing D deep with bars across W](images/road-markings.svg)
 
+## Turn arrows
+
+An arrow in a lane at a junction end: the turns the lane can take there.
+`A` is its length, `g` its gap to the crossing ahead.
+
+- In every lane running into a junction end.
+  - Every road is two-way → every junction end has lanes running in.
+- A roadway under `2D + 2g + A` long has none: room for both crossings and
+  the arrows at both ends.
+  - Its two ends' arrows lie in opposite lanes → side by side → one `A`.
+  - → an arrow stays `g` clear of both crossings, and is never without the
+    crossing ahead.
+- Shows the turns of the connections leaving its lane's exit
+  (`docs/lanes.md`): any of left, straight, right → 7 arrows.
+  - Never none: a junction leaves no lane dead.
+  - Never a U-turn: a junction has none.
+- Tip `g` back from the crossing, `A` long behind it.
+- Square to the road, as the crossing's edge: the roadway's centerline cut
+  back `D + g` at that end, then moved sideways as its lane is → the tip.
+  - → exact on arcs and biarcs.
+- Centered in its lane, narrower than it → clear of the lane marks → the
+  dash pattern is unchanged.
+
+### Shape
+
+![Four lanes, each with an arrow: straight; right, the shaft curving into a head pointing right; straight with a branch to the right; straight with a branch to each side. Dashed: the envelope each arrow fits in, A long](images/turn-arrows.svg)
+
+- A shaft, narrowing from the tail, and a head per turn.
+- Long along the road, as road arrows are: read at a low angle.
+- Straight: a head on the shaft's end.
+- Turn head: the straight head turned 90° → long along the road, short the
+  way it points.
+- Turns only: the shaft's end curves into a turn head per turn.
+- With straight: each turn a branch, leaving the shaft partway up already
+  angled off it, into a smaller turn head.
+- Left: right mirrored.
+
+### Drawn as meshes
+
+- Not in the surface shader: a shape of its own, no pattern along the road.
+- One mesh per arrow shape, drawn once per arrow (instanced).
+- At the surface's height, drawn over it by a depth offset, not a height →
+  holds for a tilted camera.
+- Takes its roadway's state (`docs/part-states.md`).
+
 ## Drawn in the shader
 
-Markings are not geometry of their own: the fragment shader colors each
-pixel of the surface from values its vertices carry, interpolated across
-each triangle.
+Markings other than turn arrows are not geometry of their own: the fragment
+shader colors each pixel of the surface from values its vertices carry,
+interpolated across each triangle.
 
 - Every vertex carries where it is on its road:
   - `side`: `±1`, which edge of the roadway it is on.
@@ -175,3 +227,6 @@ each triangle.
   lane marking for the roadways, one for the junctions.
 - The dash pattern is worked out in `src/core/layout/`, from the roadway's
   length.
+- Turn arrows are placed in `src/core/lanes/`, from the lane graph's
+  connections, and drawn in `src/render/`, beside the road surface.
+  - `g` and `A` live in `src/core/layout/`: the crossing rule needs them.

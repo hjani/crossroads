@@ -13,6 +13,7 @@ import { laneConnections } from "./laneConnections";
 import { roadMarkings } from "./roadMarkings";
 import { roadwayTessellation } from "./roadwayTessellation";
 import { smartArc } from "./smartArc";
+import { turnArrows } from "./turnArrows";
 
 /**
  * Writes every documentation picture into docs/images/, drawn by the
@@ -34,6 +35,7 @@ const PICTURES: Record<string, () => string> = {
   "roadway-tessellation.svg": roadwayTessellation,
   "road-markings.svg": roadMarkings,
   "smart-arc.svg": smartArc,
+  "turn-arrows.svg": turnArrows,
 };
 
 const folder = join("docs", "images");

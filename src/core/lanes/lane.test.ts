@@ -46,6 +46,7 @@ function roadway(
     },
     profile,
     crossings: { from: false, to: false },
+    turnArrows: { from: false, to: false },
   };
 }
 
